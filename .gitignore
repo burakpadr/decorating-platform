@@ -1,0 +1,33 @@
+# Node / pnpm
+node_modules/
+.pnpm-store/
+
+# Nuxt
+.nuxt/
+.output/
+.nitro/
+.data/
+dist/
+
+# Maven / Java
+api/target/
+*.class
+
+# Secrets
+.env
+.env.*
+!infra/.env.example
+
+# Editors
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

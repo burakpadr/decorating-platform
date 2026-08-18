@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: decorating-api
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/decorating}
+    username: ${DB_USER:decorating}
+    password: ${DB_PASSWORD:decorating}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema. Hibernate only checks it.
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: framework   # behind Caddy
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+decorating:
+  storage:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_BUCKET:decorating-photos}
+    presigned-put-ttl: PT15M
+    presigned-get-ttl: PT5M
+
+  # Customer-facing time promises must respect these hours (spec §8).
+  business-hours:
+    zone: Europe/Istanbul
+    open: "09:00"
+    close: "18:00"
+
+  quote:
+    validity-days: 14
+    photo-retention-days: 30      # counted from close date, never from send date
+
+  analysis:
+    poll-interval-ms: 10000
+    batch-size: 5
+    max-attempts: 3
+
+  rate-limit:
+    analysis:
+      per-phone-daily: 2
+      per-phone-monthly: 5
+    otp:
+      per-phone-per-minute: 1
+      per-phone-daily: 5
+      per-ip-hourly: 10
+      lock-after-failed-attempts: 5
+
+logging:
+  level:
+    com.burakpadr.decorating: INFO
+
+---
+# Used only while the OpenAPI spec is exported (`./mvnw -Popenapi verify`): boots the web layer
+# with no infrastructure.
+spring:
+  config:
+    activate:
+      on-profile: openapi
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.jpa.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  flyway:
+    enabled: false
+
+# The Maven plugin writes the response body verbatim, so the pretty printing has to happen here.
+# Without it the committed openapi.json is a single line and every contract change is an unreadable
+# diff.
+springdoc:
+  writer-with-default-pretty-printer: true

@@ -1,0 +1,17 @@
+{
+  "name": "decorating-platform",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @decorating/web dev",
+    "build": "pnpm --filter @decorating/api-client build && pnpm --filter @decorating/web build",
+    "generate:client": "pnpm --filter @decorating/api-client generate",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint"
+  }
+}

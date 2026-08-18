@@ -1,0 +1,14 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Decorating Platform API",
+    "description" : "Quoting and customer modules.",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "/",
+    "description" : "Same origin"
+  } ],
+  "paths" : { },
+  "components" : { }
+}

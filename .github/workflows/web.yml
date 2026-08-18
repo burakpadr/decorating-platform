@@ -1,0 +1,46 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web-ui/**'
+      - 'api-client/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'web-ui/**'
+      - 'api-client/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/web.yml'
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      # Also prerenders the 39 district pages, so a broken SEO route fails the build.
+      - name: Build
+        run: pnpm --filter @decorating/web build

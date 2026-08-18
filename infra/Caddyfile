@@ -1,0 +1,48 @@
+# Caddy handles TLS automatically. Certificates and the ACME account live in the caddy_data
+# volume — losing that volume means re-issuing, so it is worth including in snapshots.
+
+{
+	email admin@{$DOMAIN}
+}
+
+# Web app.
+{$DOMAIN}, www.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy web:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# API. Same registrable domain as the web app, which is what lets the session cookie work with
+# `Domain=.{$DOMAIN}; SameSite=Lax`. Separate domains would force SameSite=None and browser
+# friction.
+api.{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:8080
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Swagger UI is a development aid, not a public surface.
+	@docs path /swagger-ui* /v3/api-docs*
+	respond @docs 404
+}
+
+# MinIO. Browsers upload here directly via presigned PUT — photos never pass through the JVM.
+# CORS is configured on the bucket itself (mc cors set), not here, so the presigned signature is
+# not disturbed.
+storage.{$DOMAIN} {
+	reverse_proxy minio:9000
+
+	request_body {
+		max_size 20MB
+	}
+}

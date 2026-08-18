@@ -1,0 +1,1 @@
+Onayınız alındı. {slot} sizi arayacağız.

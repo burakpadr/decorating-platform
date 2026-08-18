@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Room analysis response (spec §6)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["roomType", "surfaces", "ceiling", "furnishing", "doorCount", "windowCount", "radiatorCount", "confidence", "unusablePhotos", "notes"],
+  "properties": {
+    "roomType": {
+      "type": "string",
+      "enum": ["LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY"]
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "coating", "currentTone", "fillerRatio", "skimCoatRequired", "crackLevel", "moisture", "wallpaper", "confidence"],
+        "properties": {
+          "id": { "type": "string", "enum": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "ROOM_GENERAL"] },
+          "photoId": { "type": "string" },
+          "coating": { "type": "string", "enum": ["PAINTED", "TILE", "WOOD", "BRICK"] },
+          "currentTone": { "type": "string", "enum": ["LIGHT", "MEDIUM", "DARK"] },
+          "fillerRatio": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "FULL"] },
+          "skimCoatRequired": { "type": "boolean" },
+          "crackLevel": { "type": "string", "enum": ["NONE", "HAIRLINE", "VISIBLE", "STRUCTURAL"] },
+          "moisture": { "type": "string", "enum": ["NONE", "STAIN", "ACTIVE"] },
+          "wallpaper": { "type": "boolean" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cornice", "downlightCount", "staining", "fillerRatio", "confidence"],
+      "properties": {
+        "cornice": { "type": "boolean" },
+        "downlightCount": { "type": "integer", "minimum": 0 },
+        "staining": { "type": "string", "enum": ["NONE", "LIGHT", "HEAVY"] },
+        "fillerRatio": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "FULL"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "furnishing": { "type": "string", "enum": ["EMPTY", "PARTIAL", "FURNISHED"] },
+    "doorCount": { "type": "integer", "minimum": 0 },
+    "windowCount": { "type": "integer", "minimum": 0 },
+    "radiatorCount": { "type": "integer", "minimum": 0 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "unusablePhotos": { "type": "array", "items": { "type": "string" } },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Turkish. The operator reads these."
+    }
+  }
+}

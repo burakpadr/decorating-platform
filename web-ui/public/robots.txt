@@ -1,0 +1,8 @@
+User-Agent: *
+Allow: /
+
+# The operator app and the customer's own quote pages have nothing to index and should not appear
+# in search results. The capture flow is client-only and behind a session anyway.
+Disallow: /op/
+Disallow: /teklifim/
+Disallow: /cekim/

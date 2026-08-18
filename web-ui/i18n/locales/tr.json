@@ -1,0 +1,65 @@
+{
+  "brand": {
+    "name": "Boya Teklifi",
+    "tagline": "Eve gelmeden boya badana teklifi alın."
+  },
+  "meta": {
+    "titleTemplate": "{page} — Boya Teklifi",
+    "district": {
+      "title": "{district} boya badana fiyatları",
+      "description": "{district} için boya badana fiyat aralığını eve gelmeden, fotoğraflarla öğrenin."
+    }
+  },
+  "nav": {
+    "getQuote": "Teklif al",
+    "howItWorks": "Nasıl çalışır",
+    "otherDistricts": "Diğer ilçeler"
+  },
+  "pages": {
+    "home": { "title": "Ana sayfa" },
+    "howItWorks": { "title": "Nasıl çalışır" },
+    "quoteRequest": { "title": "Teklif al" },
+    "capture": { "title": "Fotoğraf çekimi" },
+    "myQuote": { "title": "Teklifim" },
+    "operator": { "title": "Operatör kuyruğu" }
+  },
+  "rooms": {
+    "LIVING_ROOM": "Salon",
+    "MASTER_BEDROOM": "Ebeveyn yatak odası",
+    "BEDROOM": "Yatak odası",
+    "STUDY": "Çalışma odası",
+    "KITCHEN": "Mutfak",
+    "BATHROOM": "Banyo",
+    "HALLWAY": "Koridor",
+    "BALCONY": "Balkon"
+  },
+  "photoRoles": {
+    "WALL_1": "1. duvar",
+    "WALL_2": "2. duvar",
+    "WALL_3": "3. duvar",
+    "WALL_4": "4. duvar",
+    "CEILING": "Tavan",
+    "DETAIL": "Ayrıntı"
+  },
+  "wallCondition": {
+    "GOOD": "İyi durumda",
+    "MINOR": "Küçük onarımlar gerekiyor",
+    "MAJOR": "Ciddi onarımlar gerekiyor",
+    "UNSURE": "Emin değilim"
+  },
+  "furnishing": {
+    "EMPTY": "Boş",
+    "PARTIAL": "Kısmen eşyalı",
+    "FURNISHED": "Eşyalı"
+  },
+  "furnishingCheck": {
+    "question": "Fotoğraflarda eşya görünüyor. Boya günü ev boş olacak mı?",
+    "willBeEmpty": "Evet, boş olacak",
+    "willStayFurnished": "Hayır, eşyalı kalacak"
+  },
+  "callbackSlot": {
+    "MORNING": "Sabah",
+    "AFTERNOON": "Öğleden sonra",
+    "EVENING": "Akşam"
+  }
+}

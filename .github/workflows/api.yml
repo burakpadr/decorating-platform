@@ -1,0 +1,82 @@
+name: api
+
+# Path filters matter here. Without them every commit rebuilds and tests both applications.
+# api-client triggers this pipeline and the web one — that is intentional: a contract
+# change must verify against both sides.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - 'api-client/**'
+      - '.github/workflows/api.yml'
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'api-client/**'
+      - '.github/workflows/api.yml'
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Testcontainers needs a Docker daemon; ubuntu-latest ships one.
+      - name: Test
+        working-directory: api
+        run: ./mvnw -B verify
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: api/target/surefire-reports/
+
+  contract:
+    name: contract is in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Starts the app under the openapi Spring profile (no Postgres, no MinIO), fetches
+      # /v3/api-docs, writes api-client/openapi.json.
+      - name: Regenerate the OpenAPI spec
+        working-directory: api
+        run: ./mvnw -B -Popenapi verify -DskipTests
+
+      - name: Regenerate the TypeScript client
+        run: pnpm --filter @decorating/api-client generate
+
+      # A backend DTO change that breaks the frontend fails here, in the pull request that caused
+      # it, rather than at runtime.
+      - name: Fail if the committed contract is stale
+        run: |
+          if ! git diff --exit-code -- api-client; then
+            echo "::error::api-client is out of date. Run 'make client' and commit the result."
+            exit 1
+          fi

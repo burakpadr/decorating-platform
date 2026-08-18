@@ -1,0 +1,9 @@
+packages:
+  - 'api-client'
+  - 'web-ui'
+allowBuilds:
+  # esbuild's postinstall unpacks the platform-native binary. Without it, Vite cannot start.
+  esbuild: true
+
+# api is deliberately absent. Maven owns it independently — unifying the two build systems
+# costs more than it returns. The Makefile is the common entry point.

@@ -1,0 +1,1 @@
+Teklifiniz {date} tarihinde doluyor: {link}
