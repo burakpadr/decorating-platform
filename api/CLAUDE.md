@@ -136,6 +136,15 @@ coefficient must not retroactively alter existing quotes. That versioning is why
 coefficients (`ceiling_height_m`, `gross_to_net_ratio`, opening areas, crew figures) live in
 `price_book` rather than in config.
 
+`historical_job` (V4) is the other half of that handover: jobs completed before the system existed,
+which is what those placeholders will be replaced against. It is deliberately not `job_outcome` — that
+table's `quote_request_id` is `NOT NULL` because it records stage 8 against a quote the engine priced,
+and Phase 2 turns on exactly that distinction (`../docs/decisions/0011`). Its constraints are the
+feature: a unique `job_ref` so an import cannot double-count, an area requirement because every figure
+is per m², a reconciling cost split, and no personal-data column — these rows are never deleted.
+Intake lives in `src/main/resources/calibration/`; `historical_job_calibration` and
+`historical_job_unknown_item_code` are the reports, empty until the records are imported.
+
 ## Versioned text assets
 
 Two kinds of customer- or model-facing text live in `src/main/resources`, not in code and not in the
