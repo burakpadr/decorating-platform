@@ -32,9 +32,14 @@ A price book version is immutable once its migration has been applied. New figur
 version, which is activated while its predecessor is deactivated and kept.
 
 BOYA-1 is therefore satisfied by `V3__real_price_book.sql`, which creates `REAL-2026-01` and
-deactivates `SEED-2026-01`. The acceptance criterion is met in substance — the placeholder figures
-are no longer what any quote is priced against — and the board card's wording should be corrected to
-match.
+deactivates `SEED-2026-01`. The board card's wording should be corrected to match.
+
+`REAL-2026-01` carries the same market-derived figures V2 seeded, adopted as the operative cost
+list. The name describes the version's role — the book quotes are priced against — not the
+provenance of its numbers, and the migration says so at the top. Recording this matters more than it
+looks: the figures are market research, so a margin comparison against them measures the market and
+not this business, and the calibration pass Phase 2 describes has to run against real `job_outcome`
+rows before any coefficient tuned here means anything.
 
 A version is self-contained: `price_book_item`, `price_modifier`, `room_type_config` and
 `service_district` all hang off `price_book_id`, so a new version carries all four or prices

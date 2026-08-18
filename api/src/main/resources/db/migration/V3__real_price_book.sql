@@ -1,8 +1,13 @@
 -- BOYA-1 (Phase 0, spec §15 · workflow §12): the business's actual item costs.
 --
--- This migration ends Phase 0 for line items. Until now the active price book was SEED-2026-01,
--- whose figures V2 declares to be market-derived placeholders. REAL-2026-01 supersedes it with the
--- costs the business works to.
+-- REAL-2026-01 is the operative price book: the version quotes are priced against. SEED-2026-01,
+-- which V2 declares to be a set of placeholders, stops being that.
+--
+-- PROVENANCE OF THE FIGURES BELOW. They are the same market-derived figures V2 seeded, adopted
+-- deliberately as the operative cost list. They have not been through the business's books. "REAL"
+-- names the version's role, not the quality of its numbers — Phase 0's second half, extracting
+-- costs from the last 50 jobs (workflow §12), is still ahead, and the first calibration pass will
+-- supersede this version.
 --
 -- Why a new version instead of editing V2, which is what the ticket's acceptance text asks for:
 --
@@ -49,8 +54,9 @@ WHERE version_code = 'SEED-2026-01';
 -- margin gets marked up twice. labour_minutes are PERSON-minutes — §5.8 divides the total by 60 for
 -- person-hours and only then by crew size.
 --
--- Written out in full rather than copied from the seed: this list is the business's answer, and a
--- future reader has to be able to see it without reconstructing it from a superseded version.
+-- Written out in full rather than copied from the seed, so the operative list can be read here
+-- directly instead of being reconstructed from a version that is no longer active. What the values
+-- are worth is the provenance note above: market research, not this business's accounts.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO price_book_item (id, price_book_id, code, unit, labour_cost, material_cost, labour_minutes)
