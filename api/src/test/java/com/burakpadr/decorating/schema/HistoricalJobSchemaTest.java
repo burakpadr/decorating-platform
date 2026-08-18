@@ -23,8 +23,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 
 /**
- * The record of the last 50 jobs (BOYA-2, workflow §12): the second half of Phase 0, and the only
- * evidence that will say whether the price book's figures are this business's figures.
+ * The record of completed jobs (BOYA-2, workflow §12): the second half of Phase 0, and the only
+ * evidence that will say whether the price book's figures are this business's figures. No such history
+ * exists, so it is built forward, one row per job as it finishes — ADR 0012.
  *
  * <p>It cannot go in {@code job_outcome}. That table's {@code quote_request_id} is {@code NOT NULL}
  * and a foreign key — by design, since it records stage 8 against a quote the system produced. Jobs
@@ -50,7 +51,7 @@ class HistoricalJobSchemaTest {
 			Path.of("src/main/resources/calibration/historical-job-items-template.csv");
 
 	/** The Turkish sheet the business fills the templates from. */
-	private static final Path INTAKE_GUIDE = Path.of("../docs/product/son-50-is-kaydi.md");
+	private static final Path INTAKE_GUIDE = Path.of("../docs/product/tamamlanan-is-kaydi.md");
 
 	/** Columns the system owns; the business never types them, so they are not in the template. */
 	private static final List<String> SYSTEM_OWNED_JOB_COLUMNS = List.of("id", "recorded_at");

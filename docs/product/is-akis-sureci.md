@@ -631,7 +631,9 @@ Gereken iki şey:
 1.  **Kalem bazlı maliyet listesi.** Duvar boyası, tavan, macun, saten alçı, kapı, pervaz, petek gibi her kalem için metrekare veya adet başına işçilik ve malzeme maliyeti. Ayrıca her kalemin ne kadar sürdüğü.
 2.  **Son 50 işin kaydı.** Ev tipi, m², yapılan işler, verilen fiyat, gerçekleşen maliyet. Bu veri hem fiyat listesinin doğrulanmasını sağlar hem de katsayıların ilk kalibrasyonunu mümkün kılar.
 
-> Bu iki kalemin hangi kolonlarla toplanacağı ve kaydın nereye gireceği: `son-50-is-kaydi.md`.
+> İşletmede geçmiş işlerin kaydı bulunmadığı için bu kalem geriye dönük çıkarılamıyor; kayıt bundan
+> sonra tamamlanan işlerle biriktiriliyor. Kolonlar ve rutin: `tamamlanan-is-kaydi.md`, gerekçe:
+> `../decisions/0012-there-is-no-job-history-so-the-record-is-built-forward.md`.
 
 ### İşletmeden gelmesi gerekenler
 

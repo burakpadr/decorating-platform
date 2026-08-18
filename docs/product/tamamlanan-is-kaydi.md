@@ -1,22 +1,37 @@
-# Son 50 İşin Kaydı
+# Tamamlanan İş Kaydı
 
-> İş kalemi **BOYA-2**, Devreye Alma Önkoşulları. `is-akis-sureci.md` §12'nin ikinci yarısı.
+> `is-akis-sureci.md` §12'nin ikinci yarısı. BOYA-2 geçmiş 50 işin kaydını istiyordu; öyle bir kayıt
+> mevcut olmadığı için veri **geriye dönük çıkarılmıyor, bundan sonra biriktiriliyor** — gerekçe:
+> karar kaydı 0012.
 
-Bu doküman, işletmenin dolduracağı iki dosyayı ve her kolonun ne anlama geldiğini tanımlar.
-Şablonlar `api/src/main/resources/calibration/` altında; teknik tarafı aynı dizindeki `README.md`
-anlatır.
+Bu doküman, her tamamlanan iş için doldurulacak iki dosyayı ve her kolonun ne anlama geldiğini
+tanımlar. Şablonlar `api/src/main/resources/calibration/` altında; teknik tarafı aynı dizindeki
+`README.md` anlatır.
 
-## Neden bu veri
+## Neden bu kayıt
 
-§12'nin ifadesiyle:
+Sistemdeki fiyat listesi (`REAL-2026-01`) **piyasa araştırmasına dayalı** rakamlar taşıyor — BOYA-1
+kapatıldı ama rakamlar işletmenin defterinden geçmedi. Bu listenin işletmenin gerçek maliyetlerini
+üretip üretmediğini gösterecek tek kanıt, tamamlanan işlerin kaydı. Geçmişten çıkarılamadığı için
+bugünden başlıyor.
 
-> **Son 50 işin kaydı.** Ev tipi, m², yapılan işler, verilen fiyat, gerçekleşen maliyet. Bu veri hem
-> fiyat listesinin doğrulanmasını sağlar hem de katsayıların ilk kalibrasyonunu mümkün kılar.
+Kayıt biriktikçe iki ayrı soru cevaplanıyor ve ikisinin gerektirdiği kayıt sayısı aynı değil:
 
-Sistemdeki fiyat listesi (`REAL-2026-01`) şu an **piyasa araştırmasına dayalı** rakamlar taşıyor —
-BOYA-1 kapatıldı ama rakamlar işletmenin defterinden geçmedi. Bu 50 kayıt, o listenin bu işletmenin
-gerçek maliyetlerini üretip üretmediğini gösterecek tek kanıt. Kayıt gelmeden fiyat motorunun
-ürettiği hiçbir rakam doğrulanmış sayılamaz.
+- **Maliyet listesi doğru mu?** Gerçekleşen m² maliyeti listenin rakamlarıyla karşılaştırılır. Birkaç
+  iş bile duvar boyasının 62+38 TL/m²'sinin doğru bölgede olup olmadığını, günlük ekip maliyetinin
+  4.500 TL'ye yakın olup olmadığını gösterir. İlk kayıtlar zaten sizin elinizle fiyatladığınız işler
+  olacak — yani sistem hiç devrede olmadan maliyet listesini sınıyorlar.
+- **Kâr marjı ve katsayılar doğru mu?** Bu ortalama değil dağılım sorusu, o yüzden 20-30 iş gerekiyor.
+
+## Ne zaman doldurulur
+
+İş bittiğinde, o işin satırı yazılır. Toplu bir iş değil: haftada bir, biten işler için birer satır.
+Aynı dosyayı tekrar yüklemek sorun değil — daha önce girilmiş işler atlanır ve atlandıkları raporda
+yazılır, üzerine yazılmaz. Girilmiş bir kaydı düzeltmek bilinçli bir işlem; yeniden yükleyerek değil,
+düzelterek yapılır.
+
+Sistem teklif vermeye başladıktan sonra (artış 3) motorun fiyatladığı işler bu dosyaya değil, sistemin
+kendi `job_outcome` kaydına gider. Bu dosya, fiyatı elle verilmiş işler için.
 
 ## Üç kural
 
@@ -37,7 +52,8 @@ bırakmaktan kötüdür.
 
 ## Dosya 1 — `historical-jobs-template.csv`
 
-İş başına bir satır. En yakın tarihli 50 iş.
+İş başına bir satır, iş bittikçe. Dosya adındaki "historical" sistemin tablosuyla aynı kalsın diye
+duruyor: buraya giren iş, fiyatı motor tarafından hesaplanmamış iş demek.
 
 | Kolon | Zorunlu | Ne yazılır |
 |---|---|---|
@@ -102,22 +118,24 @@ Listede olmayan bir iş yaptıysanız (zemin, alçıpan, elektrik) kendi kodunuz
 reddetmez, "fiyat listesinde karşılığı yok" diye raporlar. O kalemi listeye eklemek gerekip
 gerekmediği ayrı bir karar.
 
-## Veri geldikten sonra ne oluyor
+## Kayıtlar biriktikçe ne oluyor
 
-Kayıtlar yüklendiği anda iki rapor çalışır ve BOYA-2'nin kabul kriteri ancak o zaman karşılanır:
+Her yüklemeden sonra iki rapor çalışır:
 
-1. **Fiyat listesinin doğrulanması.** İş başına gerçekleşen m² maliyeti, fiyat listesinin aynı iş
-   için ürettiği maliyetle karşılaştırılır. Liste sistematik olarak düşük çıkıyorsa her teklifte
-   para kaybediliyor demektir; yüksek çıkıyorsa iş kaybediliyordur.
-2. **Katsayıların ilk kalibrasyonu.** Bu veriden doğrudan çıkan katsayılar: gerçekleşen kâr marjı
+1. **Fiyat listesinin doğrulanması.** İş başına gerçekleşen m² maliyeti, listenin ürettiği maliyetle
+   karşılaştırılır. Liste sistematik olarak düşük çıkıyorsa her teklifte para kaybediliyor demektir;
+   yüksek çıkıyorsa iş kaybediliyordur. Bu, ilk kayıtlarla bile sinyal verir.
+2. **Katsayıların kalibrasyonu.** Bu kayıttan doğrudan çıkan katsayılar: gerçekleşen kâr marjı
    (`margin_ratio`), günlük ekip maliyeti (`actual_labour_cost` ÷ `actual_days`), brüt→net oranı
-   (`net_area_m2` ÷ `gross_area_m2`) ve ilçe farkları. Her biri şu an placeholder.
+   (`net_area_m2` ÷ `gross_area_m2`) ve ilçe farkları. Her biri şu an placeholder. Bunun için 20-30
+   iş gerekiyor: tek bir istisnai iş ortalamayı sürüklerken çıkarılan katsayı güven vermez.
 
 Sonuç yeni bir fiyat listesi sürümü olur; mevcut sürüm düzeltilmez, yerine geçilir (bkz. karar
 kaydı 0010). Oda bazlı ölçüye dayanan katsayılar — tavan yüksekliği, çevre çarpanları, boşluk
-oranları — bu veriden çıkmaz; onlar sistem çalışmaya başladıktan sonra, gerçek tekliflerle
+oranları — bu kayıttan çıkmaz; onlar sistem teklif vermeye başladıktan sonra, gerçek tekliflerle
 karşılaştırılarak kalibre edilir (Faz 2).
 
-**Kaç kayıt yeterli?** §12'nin 50 hedefi, marjın işten işe dalgalanmasını görebilmek için. Daha az
-kayıtla da başlanabilir ama 20-30 tamamlanmış işin altında tek bir istisnai iş ortalamayı
-sürüklüyor; o noktada rakam güven vermez.
+**Bu arada ne oluyor?** Fiyat motoru, listesi doğrulanmamış hâlde devreye giriyor — bilinçli olarak.
+Araya giren üç şey var: artış 1'in müşteri arayüzü hiç yok, yani ilk haftalar sizin elle fiyatlayıp
+karşılaştırdığınız haftalar; her teklif gönderilmeden önce sizin onayınızdan geçiyor; ve marj eşiğin
+altına düşen teklif uyarı veriyor. Kayıt birikmeden hiçbir rakam "doğrulandı" sayılmaz.

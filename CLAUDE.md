@@ -145,9 +145,13 @@ business's costs. `V2__seed_price_book.sql` lists what needs real figures, inclu
 that require an accountant. §16 has the full list of external inputs — the SMS sender ID and the vision
 provider's data processing agreement both have lead times, so they are worth starting early.
 
-Phase 0's second half is the record of the last 50 jobs, which validates the price list and calibrates
-the first coefficients (workflow §12). The apparatus for it exists — `historical_job` and its
-calibration views in `V4`, intake templates and `import.sql` under
-`api/src/main/resources/calibration/`, the Turkish column sheet at `docs/product/son-50-is-kaydi.md`,
-`docs/decisions/0011` for why it is not `job_outcome`. **The records themselves have not arrived**, so
-nothing has been validated or calibrated yet; `REAL-2026-01`'s figures are still market research.
+Phase 0's second half — the record of past jobs that validates the price list — **cannot be done: the
+business has no job history to extract** (`docs/decisions/0012`). The record is built forward instead,
+one row per job as it finishes, into `historical_job` and the calibration views in `V4`; intake and
+`import.sql` are under `api/src/main/resources/calibration/`, the routine and column sheet at
+`docs/product/tamamlanan-is-kaydi.md`, and `docs/decisions/0011` says why this is not `job_outcome`.
+
+Two things follow, and both are easy to forget: **increment 1 ships with an unvalidated price list** —
+`REAL-2026-01`'s figures are market research, and an empty `historical_job_calibration` is not
+validation — and **Phase 1 no longer waits on Phase 0's second half**, so do not restore that
+precondition from the spec's table without reading 0012.

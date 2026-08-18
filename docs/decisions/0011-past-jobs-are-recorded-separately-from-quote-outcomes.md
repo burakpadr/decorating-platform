@@ -1,7 +1,8 @@
 # 11. Past jobs are recorded separately from quote outcomes
 
 Date: 2026-08-18
-Status: accepted
+Status: accepted — consequences amended by
+[0012](0012-there-is-no-job-history-so-the-record-is-built-forward.md)
 
 ## Context
 
@@ -59,16 +60,19 @@ application code yet — increment 1 starts at `PricingEngine` (§17) — and be
 is arithmetic over evidence, not a feature.
 
 Intake is two CSV templates plus `import.sql`, in `api/src/main/resources/calibration/`, with the
-Turkish column sheet at `docs/product/son-50-is-kaydi.md`. The templates' headers are the tables'
+Turkish column sheet at `docs/product/tamamlanan-is-kaydi.md` (renamed by 0012). The templates' headers are the tables'
 columns, asserted by the test, as is the sheet documenting every column: a renamed column that reaches
 the business as an unexplained header comes back empty.
 
 ## Consequences
 
 **BOYA-2's acceptance criterion is not met by this.** The apparatus is in place; the price list is
-validated and the coefficients calibrated when the 50 records are imported, and not before. The card
-belongs on the board as waiting on the business, not as done — the same distinction ADR 0010 drew for
-`REAL-2026-01`, whose figures are still market research.
+validated and the coefficients calibrated when records are imported, and not before.
+
+> **Amended by 0012.** The 50 historical records do not exist and will not arrive. The card is closed
+> as impossible rather than blocked, and the dataset is built forward — one row per job as it
+> finishes. Everything above about *where* the rows land and *why* it is not `job_outcome` still
+> holds; only the expectation of a one-time handover from the business does not.
 
 **Margin is measured against the invoice, not the quote.** Where `actual_total_ex_vat` was recorded
 and differs, that is what realised margin uses. A job that ran over and was invoiced higher earned

@@ -1,85 +1,48 @@
--- BOYA-2: load the record of the last 50 jobs, then report on it.
+-- Load completed jobs into the calibration record, then report on them.
 --
--- Run once, against a database Flyway has already migrated to V4. The two filled-in files must sit
--- in the directory psql is started from, under exactly these names:
+-- Jobs are recorded as they finish rather than extracted from history (ADR 0012), so this runs again
+-- every time a batch is added, and the file may contain jobs already imported. Those are reported and
+-- left alone — see merge.sql. Correcting a job already recorded is a deliberate UPDATE, not a
+-- re-import.
+--
+-- The filled-in files must sit in the directory psql is started from, under exactly these names:
 --
 --   historical-jobs.csv
 --   historical-job-items.csv
 --
 --   cd <the directory holding the two filled-in files>
---   psql "$DATABASE_URL" -f <path to>/import.sql
+--   psql "$DATABASE_URL" -f <repo>/api/src/main/resources/calibration/import.sql
 --
--- Fixed names rather than psql variables because \copy does not interpolate them, and the
--- alternative — a server-side COPY — would need the files readable by the Postgres process itself.
--- If the work items have not been collected yet, put the template's header line in an otherwise
--- empty historical-job-items.csv; the import then loads the job rows alone.
+-- Fixed names rather than psql variables because \copy does not interpolate them, and a server-side
+-- COPY would need the files readable by the Postgres process itself. If no work items have been
+-- collected, put the template's header line in an otherwise empty historical-job-items.csv.
 --
--- One transaction: either every row lands or none does, so a rejected row never leaves a
--- half-imported set behind that a second run would then double.
+-- One transaction: either the whole batch lands or none of it does, so a rejected row never leaves a
+-- half-imported set behind that the next run would then double.
 
 \set ON_ERROR_STOP on
 \timing off
 
 BEGIN;
 
-CREATE TEMP TABLE staging_job (
-  job_ref               varchar(32),
-  completed_on          date,
-  district_code         varchar(32),
-  layout                varchar(16),
-  scope                 varchar(16),
-  furnishing            varchar(16),
-  wall_condition        varchar(16),
-  gross_area_m2         numeric(7,2),
-  net_area_m2           numeric(7,2),
-  door_count            integer,
-  quoted_total_ex_vat   numeric(14,2),
-  actual_total_ex_vat   numeric(14,2),
-  actual_cost           numeric(14,2),
-  actual_labour_cost    numeric(14,2),
-  actual_material_cost  numeric(14,2),
-  actual_days           integer,
-  crew_size             integer,
-  notes                 text
-) ON COMMIT DROP;
-
-CREATE TEMP TABLE staging_item (
-  job_ref   varchar(32),
-  code      varchar(32),
-  quantity  numeric(10,2)
-) ON COMMIT DROP;
+-- \ir resolves beside this file, not beside the CSVs psql was started from.
+\ir staging.sql
 
 \copy staging_job FROM 'historical-jobs.csv' WITH (FORMAT csv, HEADER true)
 \copy staging_item FROM 'historical-job-items.csv' WITH (FORMAT csv, HEADER true)
 
--- The ids are generated here rather than by the application because there is no application path
--- for this import: it happens once, before the software has a UI. v4 rather than the UUIDv7 the
--- schema conventions ask for, as in V3's item rows — nothing time-orders these.
-INSERT INTO historical_job (
-  id, job_ref, completed_on, district_code, layout, scope, furnishing, wall_condition,
-  gross_area_m2, net_area_m2, door_count, quoted_total_ex_vat, actual_total_ex_vat, actual_cost,
-  actual_labour_cost, actual_material_cost, actual_days, crew_size, notes)
-SELECT
-  gen_random_uuid(), job_ref, completed_on, district_code, layout, scope, furnishing, wall_condition,
-  gross_area_m2, net_area_m2, door_count, quoted_total_ex_vat, actual_total_ex_vat, actual_cost,
-  actual_labour_cost, actual_material_cost, actual_days, crew_size, notes
-FROM staging_job;
+\ir merge.sql
 
--- A work row whose job_ref matches nothing must fail the import, not vanish. A JOIN would drop it
--- silently and the per-code comparison would then be missing work nobody knows is missing; the
--- scalar subquery yields NULL instead and NOT NULL rejects the transaction.
-INSERT INTO historical_job_item (id, historical_job_id, code, quantity)
-SELECT
-  gen_random_uuid(),
-  (SELECT h.id FROM historical_job h WHERE h.job_ref = s.job_ref),
-  s.code,
-  s.quantity
-FROM staging_item s;
+\echo ''
+\echo '=== Already recorded, left untouched (correct these with UPDATE if the figures changed) ==='
+SELECT job_ref FROM import_skipped ORDER BY job_ref;
+
+DROP TABLE staging_job, staging_item, import_skipped;
 
 COMMIT;
 
 \echo ''
-\echo '=== Imported ==='
+\echo '=== The dataset now ==='
 SELECT count(*) AS jobs, min(completed_on) AS earliest, max(completed_on) AS latest
 FROM historical_job;
 
@@ -89,6 +52,7 @@ SELECT * FROM historical_job_unknown_item_code ORDER BY code, job_ref;
 
 \echo ''
 \echo '=== Realised margin against the active price book ==='
+\echo '(20-30 jobs before this means anything — spec §15 Phase 2)'
 SELECT
   count(*)                                        AS jobs,
   round(avg(realised_margin_ratio), 4)            AS avg_realised_margin,
