@@ -33,13 +33,13 @@ public record PriceBook(
 		Map<ItemCode, PriceBookItem> items,
 		Map<ModifierCode, PriceModifier> modifiers,
 		Map<RoomType, RoomTypeConfig> roomTypes,
-		Map<String, BigDecimal> districtFactors) {
+		Map<String, ServiceDistrict> districts) {
 
 	public PriceBook {
 		items = Map.copyOf(items);
 		modifiers = Map.copyOf(modifiers);
 		roomTypes = Map.copyOf(roomTypes);
-		districtFactors = Map.copyOf(districtFactors);
+		districts = Map.copyOf(districts);
 	}
 
 	public PriceBookItem item(ItemCode code) {
@@ -62,10 +62,15 @@ public record PriceBook(
 	}
 
 	/**
-	 * The factor for a district. An unknown district is 1.0000 rather than an error: the district
-	 * list is per version, and a quote must not fail because a newly served district has no row yet.
+	 * The factor for a district. An unknown district is 1.0000 rather than an error: the district list
+	 * is per version, and a quote must not fail because a newly served district has no row yet.
+	 *
+	 * <p>{@code active} is not consulted. Whether a district is served is decided by the first question
+	 * of stage 1, long before pricing; a quote already taken for a district since switched off must
+	 * still price the way it was quoted.
 	 */
 	public BigDecimal districtFactor(String districtCode) {
-		return districtFactors.getOrDefault(districtCode, BigDecimal.ONE);
+		ServiceDistrict district = districts.get(districtCode);
+		return district == null ? BigDecimal.ONE : district.districtFactor();
 	}
 }
