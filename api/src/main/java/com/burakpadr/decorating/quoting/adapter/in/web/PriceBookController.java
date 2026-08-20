@@ -83,7 +83,7 @@ class PriceBookController {
 	PriceBookItemResponse updateItem(
 			@PathVariable UUID id, @PathVariable ItemCode code, @Valid @RequestBody UpdateItemRequest request) {
 		return PriceBookItemResponse.of(versions.updateItem(
-				id, code, request.labourCost(), request.materialCost(), request.labourMinutes()));
+				id, code, request.materialCost(), request.labourMinutes()));
 	}
 
 	@PostMapping

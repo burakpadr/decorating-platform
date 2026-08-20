@@ -128,10 +128,16 @@ class HistoricalJobSchemaTest {
 		assertThat((BigDecimal) row.get("net_area_m2_used")).isEqualByComparingTo("92.00");
 		assertThat((BigDecimal) row.get("quoted_per_m2")).isEqualByComparingTo("739.13");
 		assertThat((BigDecimal) row.get("actual_cost_per_m2")).isEqualByComparingTo("565.22");
-		// 33,000 of labour over 3 days says the crew day cost is 11,000, not the seeded 4,500.
+		// 33,000 of labour over 3 days says the crew day cost is 11,000, against the 7,500 the live book
+		// carries. This column is the mechanism ADR 0012 committed to: a recorded job is allowed to
+		// contradict the price book, and this is the number that does the contradicting.
 		assertThat((BigDecimal) row.get("implied_crew_day_cost")).isEqualByComparingTo("11000.00");
 		assertThat((BigDecimal) row.get("implied_gross_to_net_ratio")).isEqualByComparingTo("0.8214");
-		assertThat(row.get("price_book_version")).isEqualTo("REAL-2026-01");
+		assertThat(row.get("price_book_version"))
+				.as("the view names whichever version is live, so this follows the migrations rather than "
+						+ "pinning a version code a later calibration pass would have to come back and edit")
+				.isEqualTo(jdbc.queryForObject(
+						"SELECT version_code FROM price_book WHERE active = true", String.class));
 		assertThat(row.get("net_area_estimated")).isEqualTo(false);
 		assertThat(row.get("quote_accuracy_ratio"))
 				.as("no invoice recorded means unknown, not 'invoiced exactly what was quoted'")

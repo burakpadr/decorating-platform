@@ -43,12 +43,16 @@ public interface ManagePriceBookVersions {
 
 	/**
 	 * Corrects one item on a version nothing has been priced with — the "edit" half of §7's
-	 * "clone + edit". Unlike a bulk increase this also sets the duration, because a wrong figure here
-	 * is usually a wrong figure in all three columns.
+	 * "clone + edit". Unlike a bulk increase this also sets the duration, which is the point: what an
+	 * operator knows about an item is how long it takes and what it costs in paint.
+	 *
+	 * <p>There is no labour cost to pass. It is derived from {@code labourMinutes} at the version's crew
+	 * rate (ADR 0016) and returned on the item, so the caller can show what the change did. Making
+	 * labour more expensive is a change to {@code crew_day_cost}, not to fourteen items.
 	 *
 	 * @throws com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked if the version is
 	 *     live or any quote points at it
 	 */
-	PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal labourCost,
-			BigDecimal materialCost, BigDecimal labourMinutes);
+	PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal materialCost,
+			BigDecimal labourMinutes);
 }

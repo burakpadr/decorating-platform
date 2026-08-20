@@ -116,7 +116,9 @@
       "material": "Malzeme",
       "minutes": "Süre (dk)",
       "unit": "Birim",
-      "saved": "Kaydedildi"
+      "saved": "Kaydedildi",
+      "labourDerived": "İşçilik (süreden)",
+      "derivationNote": "İşçilik TL'si girilmez: kalemin süresi, bu sürümün günlük ekip maliyetiyle çarpılır. İşçiliği pahalılaştırmak için ekip maliyetini değiştirin."
     },
     "coefficients": {
       "title": "Katsayılar",
@@ -128,7 +130,9 @@
       "materialVatRate": "Malzeme KDV",
       "baseBandRatio": "Taban bant genişliği",
       "ceilingHeightM": "Tavan yüksekliği",
-      "grossToNetRatio": "Brüt → net oranı"
+      "grossToNetRatio": "Brüt → net oranı",
+      "crewHoursPerDay": "Günlük çalışma saati",
+      "stage1OpeningRatio": "Kapı/pencere payı"
     },
     "units": {
       "SQM": "m²",

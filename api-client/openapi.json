@@ -327,10 +327,6 @@
       "UpdateItemRequest" : {
         "type" : "object",
         "properties" : {
-          "labourCost" : {
-            "type" : "number",
-            "minimum" : 0.00
-          },
           "materialCost" : {
             "type" : "number",
             "minimum" : 0.00
@@ -340,7 +336,7 @@
             "minimum" : 0.00
           }
         },
-        "required" : [ "labourCost", "labourMinutes", "materialCost" ]
+        "required" : [ "labourMinutes", "materialCost" ]
       },
       "PriceBookItemResponse" : {
         "type" : "object",

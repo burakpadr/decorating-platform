@@ -38,7 +38,11 @@ import org.springframework.test.annotation.DirtiesContext;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PriceBookVersionManagementTest {
 
-	private static final String ACTIVE = "REAL-2026-01";
+	/** The reconciled book (V5). Its items agree with its own crew rate, and the tests below rely on it. */
+	private static final String ACTIVE = "REAL-2026-02";
+
+	/** WALL_PAINT at 6 person-minutes, priced at REAL-2026-02's 7,500 TL crew day: 6 × 7500 / 1440. */
+	private static final String WALL_PAINT_LABOUR = "31.25";
 
 	@Autowired
 	private ManagePriceBookVersions versions;
@@ -55,7 +59,8 @@ class PriceBookVersionManagementTest {
 		jdbc.update("DELETE FROM quote WHERE created_by = 'OPERATOR'");
 		jdbc.update("DELETE FROM quote_request WHERE status = 'QUOTE_SENT'");
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'TEST-%'");
-		jdbc.update("DELETE FROM price_book WHERE version_code IN ('REAL-2026-02', 'REAL-2026-03')");
+		// REAL-2026-02 is a migration, not a fixture: only the versions these tests produce go.
+		jdbc.update("DELETE FROM price_book WHERE version_code IN ('REAL-2026-03', 'REAL-2026-04')");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -87,7 +92,7 @@ class PriceBookVersionManagementTest {
 		assertThat(books.findByVersionCode("TEST-COPY-1").orElseThrow()
 						.item(ItemCode.WALL_PAINT).labourCost())
 				.as("a copy that priced differently from its source would be an edit, not a copy")
-				.isEqualByComparingTo("62.00");
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 	}
 
 	@Test
@@ -123,14 +128,14 @@ class PriceBookVersionManagementTest {
 		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.as("the superseded version is still readable, unchanged — that is what makes the "
 						+ "conversation with a customer holding an old quote possible")
-				.isEqualByComparingTo("62.00");
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 		assertThat(books.findActive().orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.as("while new quotes price at the raised figure")
 				.isEqualByComparingTo("99.00");
 	}
 
 	@Test
-	@DisplayName("a bulk increase raises labour and leaves materials and durations alone")
+	@DisplayName("a labour increase raises the crew rate, and every item follows it")
 	void raisesLabourOnly() {
 		PriceBookSummary raised = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("15"));
@@ -138,9 +143,12 @@ class PriceBookVersionManagementTest {
 		PriceBook before = books.findByVersionCode(ACTIVE).orElseThrow();
 		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
 
-		assertThat(after.item(ItemCode.WALL_PAINT).labourCost())
-				.as("62.00 + 15%%")
-				.isEqualByComparingTo("71.30");
+		// Labour got 15% dearer because the crew did, which is the only way labour gets dearer
+		// (ADR 0016). 7,500 → 8,625, and WALL_PAINT's 6 minutes are worth 6 × 8625 / 1440.
+		assertThat(after.crewDayCost())
+				.as("the rise lands on the figure that explains it")
+				.isEqualByComparingTo("8625.00");
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("35.94");
 		assertThat(after.item(ItemCode.WALL_PAINT).materialCost())
 				.as("paint did not get more expensive because labour did — §6 keeps the two apart")
 				.isEqualByComparingTo(before.item(ItemCode.WALL_PAINT).materialCost());
@@ -150,14 +158,31 @@ class PriceBookVersionManagementTest {
 	}
 
 	@Test
+	@DisplayName("a material increase leaves the crew rate, and therefore every labour figure, alone")
+	void raisesMaterialWithoutTouchingTheCrewRate() {
+		PriceBookSummary raised = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.MATERIAL, new BigDecimal("40"));
+
+		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
+
+		// The labour column is rewritten by the same statement whichever target ran, so this is the test
+		// that the rewrite is a re-derivation and not a rise: 40% on paint must not move a single hour.
+		assertThat(after.crewDayCost()).isEqualByComparingTo("7500.00");
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost())
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
+		assertThat(after.item(ItemCode.MASKING).labourCost()).isEqualByComparingTo("130.21");
+	}
+
+	@Test
 	@DisplayName("a bulk increase can raise materials alone, which is the common case after a paint rise")
 	void raisesMaterialOnly() {
 		PriceBookSummary raised = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.MATERIAL, new BigDecimal("10"));
 
 		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
-		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("41.80");
-		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("62.00");
+		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("24.20");
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost())
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 	}
 
 	@Test
@@ -167,9 +192,15 @@ class PriceBookVersionManagementTest {
 				idOf(ACTIVE), IncreaseTarget.ALL, new BigDecimal("20"));
 
 		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
-		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("74.40");
-		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("45.60");
-		assertThat(after.item(ItemCode.MOBILIZATION).labourCost()).isEqualByComparingTo("2280.00");
+		assertThat(after.crewDayCost()).isEqualByComparingTo("9000.00");
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("37.50");
+		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("26.40");
+		assertThat(after.item(ItemCode.MOBILIZATION).labourCost())
+				.as("mobilization is 60 minutes of crew time like anything else")
+				.isEqualByComparingTo("375.00");
+		assertThat(after.item(ItemCode.MOBILIZATION).materialCost())
+				.as("the van and the fuel are the material half of it")
+				.isEqualByComparingTo("1905.00");
 	}
 
 	@Test
@@ -178,10 +209,11 @@ class PriceBookVersionManagementTest {
 		PriceBookSummary raised = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("1.5"));
 
-		// Masking labour is 115.00; 1.5% of it is 116.725, which is a figure the column cannot hold.
+		// The crew day becomes 7,612.50, and masking's 25 minutes are worth 132.161458… of it — a figure
+		// the column cannot hold. Rounding at the derivation, half up, like every other figure.
 		assertThat(books.findByVersionCode(raised.versionCode()).orElseThrow()
 						.item(ItemCode.MASKING).labourCost())
-				.isEqualByComparingTo("116.73");
+				.isEqualByComparingTo("132.16");
 	}
 
 	@Test
@@ -194,7 +226,7 @@ class PriceBookVersionManagementTest {
 
 		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.as("the whole point of producing a version instead of editing one")
-				.isEqualByComparingTo("62.00");
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 		assertThat(jdbc.queryForObject("SELECT price_book_id FROM quote WHERE id = ?", UUID.class, quote))
 				.isEqualTo(source);
 		assertThat(books.findActive().orElseThrow().versionCode())
@@ -210,10 +242,10 @@ class PriceBookVersionManagementTest {
 		PriceBookSummary second = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("5"));
 
-		assertThat(first.versionCode()).isEqualTo("REAL-2026-02");
+		assertThat(first.versionCode()).isEqualTo("REAL-2026-03");
 		assertThat(second.versionCode())
 				.as("a second increase from the same source must not fail on a name clash")
-				.isEqualTo("REAL-2026-03");
+				.isEqualTo("REAL-2026-04");
 	}
 
 	@Test
@@ -222,23 +254,25 @@ class PriceBookVersionManagementTest {
 		PriceBookSummary draft = versions.createVersionFrom(idOf(ACTIVE), "TEST-DRAFT-1");
 
 		versions.updateItem(draft.id(), ItemCode.WALL_PAINT,
-				new BigDecimal("70.00"), new BigDecimal("40.00"), new BigDecimal("7.00"));
+				new BigDecimal("40.00"), new BigDecimal("7.00"));
 
 		PriceBook edited = books.findByVersionCode("TEST-DRAFT-1").orElseThrow();
-		assertThat(edited.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("70.00");
-		assertThat(edited.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("40.00");
 		assertThat(edited.item(ItemCode.WALL_PAINT).labourMinutes())
 				.as("minutes are editable here — unlike a bulk increase, this is a correction")
 				.isEqualByComparingTo("7.00");
+		assertThat(edited.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("40.00");
+		assertThat(edited.item(ItemCode.WALL_PAINT).labourCost())
+				.as("the caller never sent a labour cost: 7 minutes at 7,500 a crew day is 36.46")
+				.isEqualByComparingTo("36.46");
 		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
-				.isEqualByComparingTo("62.00");
+				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 	}
 
 	@Test
 	@DisplayName("the live version cannot be edited, whatever the panel sends")
 	void refusesToEditTheLiveVersion() {
 		assertThatThrownBy(() -> versions.updateItem(idOf(ACTIVE), ItemCode.WALL_PAINT,
-						new BigDecimal("99.00"), new BigDecimal("1.00"), new BigDecimal("1.00")))
+						new BigDecimal("1.00"), new BigDecimal("1.00")))
 				.as("a figure that changed under a quote already sent is a figure nobody can explain")
 				.isInstanceOf(PriceBookVersionLocked.class);
 	}
@@ -252,7 +286,7 @@ class PriceBookVersionManagementTest {
 		versions.activate(next.id());
 
 		assertThatThrownBy(() -> versions.updateItem(superseded, ItemCode.WALL_PAINT,
-						new BigDecimal("99.00"), new BigDecimal("1.00"), new BigDecimal("1.00")))
+						new BigDecimal("1.00"), new BigDecimal("1.00")))
 				.as("being switched off is not the same as never having priced anything")
 				.isInstanceOf(PriceBookVersionLocked.class);
 	}

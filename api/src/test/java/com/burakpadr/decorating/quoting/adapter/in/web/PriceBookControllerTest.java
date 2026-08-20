@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(TestcontainersConfiguration.class)
 class PriceBookControllerTest {
 
-	private static final String ACTIVE = "REAL-2026-01";
+	private static final String ACTIVE = "REAL-2026-02";
 
 	@Autowired
 	private MockMvc mvc;
@@ -47,7 +47,7 @@ class PriceBookControllerTest {
 	void restoreTheActiveVersion() {
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'WEB-%'");
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'REAL-2026-0%' "
-				+ "AND version_code <> 'REAL-2026-01'");
+				+ "AND version_code NOT IN ('REAL-2026-01', 'REAL-2026-02')");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -108,7 +108,7 @@ class PriceBookControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"target\":\"LABOUR\",\"percent\":15}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.versionCode").value("REAL-2026-02"))
+				.andExpect(jsonPath("$.versionCode").value("REAL-2026-03"))
 				.andExpect(jsonPath("$.active").value(false));
 
 		assertThat(jdbc.queryForObject("SELECT labour_cost FROM price_book_item i "
@@ -116,7 +116,7 @@ class PriceBookControllerTest {
 						+ "WHERE b.version_code = ? AND i.code = 'WALL_PAINT'",
 						BigDecimal.class, ACTIVE))
 				.as("the live list is what quotes are priced against; a zam must not reach it")
-				.isEqualByComparingTo("62.00");
+				.isEqualByComparingTo("31.25");
 	}
 
 	@Test
@@ -163,7 +163,7 @@ class PriceBookControllerTest {
 						.value(org.hamcrest.Matchers.hasItem("SQM")))
 				.andExpect(jsonPath("$.items[?(@.code=='MOBILIZATION')].unit")
 						.value(org.hamcrest.Matchers.hasItem("LUMP_SUM")))
-				.andExpect(jsonPath("$.coefficients.crewDayCost").value(4500.00))
+				.andExpect(jsonPath("$.coefficients.crewDayCost").value(7500.00))
 				.andExpect(jsonPath("$.coefficients.marginRatio").value(0.3000));
 	}
 
@@ -179,9 +179,13 @@ class PriceBookControllerTest {
 
 		mvc.perform(put("/api/op/price-books/" + id + "/items/WALL_PAINT")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"labourCost\":70.00,\"materialCost\":40.00,\"labourMinutes\":7.00}"))
+						.content("{\"materialCost\":40.00,\"labourMinutes\":7.00}"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.labourCost").value(70.00))
+				.andExpect(jsonPath("$.materialCost").value(40.00))
+				.andExpect(jsonPath("$.labourMinutes").value(7.00))
+				// Derived, not sent: 7 minutes of a 7,500 TL crew day (ADR 0016). A request that carried a
+				// labour cost of its own would have no way to say this.
+				.andExpect(jsonPath("$.labourCost").value(36.46))
 				// Read back from the row rather than echoed from the request.
 				.andExpect(jsonPath("$.unit").value("SQM"));
 	}
@@ -192,7 +196,7 @@ class PriceBookControllerTest {
 	void refusesToEditTheLiveVersion() throws Exception {
 		mvc.perform(put("/api/op/price-books/" + idOf(ACTIVE) + "/items/WALL_PAINT")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"labourCost\":99.00,\"materialCost\":1.00,\"labourMinutes\":1.00}"))
+						.content("{\"materialCost\":1.00,\"labourMinutes\":1.00}"))
 				.andExpect(status().isConflict());
 	}
 
@@ -208,7 +212,7 @@ class PriceBookControllerTest {
 
 		mvc.perform(put("/api/op/price-books/" + id + "/items/WALL_PAINT")
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"labourCost\":70.00,\"materialCost\":40.00,\"labourMinutes\":0}"))
+						.content("{\"materialCost\":40.00,\"labourMinutes\":0}"))
 				.andExpect(status().isBadRequest());
 	}
 

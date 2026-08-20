@@ -47,11 +47,12 @@ class QuoteCalculationTest {
 				QuoteScope.WHOLE_HOME, Set.of(), WallCondition.MINOR, Furnishing.FURNISHED,
 				8, true, false, true, false));
 
-		// §5.10 with the district factor at 1.0000 instead of 1.05, which is what the seed carries
-		// until the business gives district differences (§16).
-		assertThat(result.quote().totalCost()).isEqualByComparingTo("50009.39");
+		// §5.10's job against the reconciled book (V5), Kadıköy at 1.0000. The figure is not §5.10's:
+		// that example's arithmetic belongs to the seed's item costs, which PricingEngineTest still holds
+		// to the letter. What this asserts is that the live list prices the worked example's shape.
+		assertThat(result.quote().totalCost()).isEqualByComparingTo("32955.51");
 		assertThat(result.quote().billableDays()).isEqualTo(3);
-		assertThat(result.priceBookVersion()).isEqualTo("REAL-2026-01");
+		assertThat(result.priceBookVersion()).isEqualTo("REAL-2026-02");
 
 		assertThat(result.netArea())
 				.as("a net area is used as it stands")

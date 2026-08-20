@@ -48,7 +48,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Import(TestcontainersConfiguration.class)
 class PriceBookPersistenceAdapterTest {
 
-	private static final String ACTIVE = "REAL-2026-01";
+	private static final String ACTIVE = "REAL-2026-02";
 	private static final String SUPERSEDED = "SEED-2026-01";
 
 	@Autowired
@@ -75,7 +75,7 @@ class PriceBookPersistenceAdapterTest {
 		assertThat(book.windowOpeningM2()).isEqualByComparingTo("2.20");
 		assertThat(book.crewSize()).isEqualTo(3);
 		assertThat(book.crewHoursPerDay()).isEqualByComparingTo("8.00");
-		assertThat(book.crewDayCost()).isEqualByComparingTo("4500.00");
+		assertThat(book.crewDayCost()).isEqualByComparingTo("7500.00");
 		assertThat(book.dayRoundingTolerance()).isEqualByComparingTo("0.25");
 		assertThat(book.marginRatio()).isEqualByComparingTo("0.30");
 		assertThat(book.marginAlertThreshold()).isEqualByComparingTo("0.20");
@@ -91,11 +91,12 @@ class PriceBookPersistenceAdapterTest {
 	void mapsItemCostsAndMinutes() {
 		PriceBook book = repository.findActive().orElseThrow();
 
-		assertThat(book.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("62.00");
-		assertThat(book.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("38.00");
+		assertThat(book.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("31.25");
+		assertThat(book.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("22.00");
 		assertThat(book.item(ItemCode.WALL_PAINT).labourMinutes()).isEqualByComparingTo("6.00");
-		assertThat(book.item(ItemCode.MOBILIZATION).labourCost()).isEqualByComparingTo("1900.00");
-		assertThat(book.item(ItemCode.MOBILIZATION).materialCost()).isEqualByComparingTo("0.00");
+		// V5 split mobilization: 60 minutes of crew time, and the van and fuel as material (ADR 0016).
+		assertThat(book.item(ItemCode.MOBILIZATION).labourCost()).isEqualByComparingTo("312.50");
+		assertThat(book.item(ItemCode.MOBILIZATION).materialCost()).isEqualByComparingTo("1587.50");
 		assertThat(book.item(ItemCode.CORNICE_CUTTING).labourMinutes()).isEqualByComparingTo("45.00");
 	}
 
@@ -201,8 +202,12 @@ class PriceBookPersistenceAdapterTest {
 						RoomInput.declared(RoomType.HALLWAY, WallCondition.MINOR)),
 				Furnishing.FURNISHED, 8, true, false, true, false, PricingSource.STAGE_1), book);
 
-		// §5.10 with the district at 1.0000 instead of 1.05: the cost drops from 52,509.86 to 50,009.39.
-		assertThat(quote.totalCost()).isEqualByComparingTo("50009.39");
+		// §5.10's shape, priced against the reconciled book (V5) at Kadıköy's 1.0000 district factor. Not
+		// comparable to §5.10's 52,509.86: that figure belongs to the seed's item costs, which
+		// PricingEngineTest still asserts against the fixture. Here the point is that the version the
+		// database hands back prices a whole job without a missing row — 4,176.85 person-minutes over a
+		// three-person crew is 2.90 days, so the 22,500 TL floor does not bind.
+		assertThat(quote.totalCost()).isEqualByComparingTo("32955.51");
 		assertThat(quote.billableDays()).isEqualTo(3);
 		assertThat(quote.lines()).extracting(line -> line.code())
 				.contains(ItemCode.WALL_PAINT, ItemCode.CEILING_PAINT, ItemCode.PATCH_FILLING,
@@ -212,9 +217,10 @@ class PriceBookPersistenceAdapterTest {
 	@Test
 	@DisplayName("one version's figures cannot leak into another's")
 	void versionsDoNotLeakIntoEachOther() {
-		// REAL-2026-01 and SEED-2026-01 carry identical item costs, so neither can prove isolation: a
-		// read that ignored price_book_id would collapse onto the same numbers and look correct. A decoy
-		// version with a figure nothing else has is what makes the leak visible.
+		// A decoy version with a figure nothing else has. Before V5 this was the only way to prove
+		// isolation at all, because REAL-2026-01 and SEED-2026-01 carried identical item costs and a read
+		// that ignored price_book_id collapsed onto the same numbers and looked correct. The two differ
+		// now, but the decoy stays: it is the only assertion here that fails for the right reason.
 		UUID decoy = UUID.randomUUID();
 		jdbc.update("INSERT INTO price_book (id, version_code, active, crew_day_cost, labour_vat_rate, "
 				+ "material_vat_rate) VALUES (?, 'DECOY-9999', false, 9999.00, 0.2000, 0.2000)", decoy);
@@ -224,7 +230,7 @@ class PriceBookPersistenceAdapterTest {
 		try {
 			assertThat(repository.findActive().orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 					.as("the active version must not take a figure from a version nobody activated")
-					.isEqualByComparingTo("62.00");
+					.isEqualByComparingTo("31.25");
 			assertThat(repository.findByVersionCode("DECOY-9999").orElseThrow()
 							.item(ItemCode.WALL_PAINT).labourCost())
 					.isEqualByComparingTo("999.99");

@@ -47,7 +47,11 @@ public interface PriceBookVersionRepository {
 	 */
 	boolean isEditable(UUID id);
 
-	/** Sets one item's three figures on a version the caller has established is editable. */
-	void updateItem(UUID priceBookId, ItemCode code, BigDecimal labourCost, BigDecimal materialCost,
+	/**
+	 * Sets one item's material cost and duration on a version the caller has established is editable.
+	 * Labour cost is not passed: the implementation derives it from the minutes at the version's own
+	 * crew rate (ADR 0016), so the two statements about labour cannot be made to disagree from here.
+	 */
+	void updateItem(UUID priceBookId, ItemCode code, BigDecimal materialCost,
 			BigDecimal labourMinutes);
 }

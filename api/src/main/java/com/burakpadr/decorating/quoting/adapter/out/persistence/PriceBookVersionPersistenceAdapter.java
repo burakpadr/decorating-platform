@@ -111,6 +111,15 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 		return findById(id).orElseThrow();
 	}
 
+	/**
+	 * §5.11's two statements about labour, reconciled: an item's TL figure is its own minutes priced at
+	 * the version's crew rate. Written once and used by every path that touches the column, because two
+	 * copies of this expression is the defect ADR 0016 records in miniature. {@code i} is
+	 * price_book_item, {@code b} is its price_book.
+	 */
+	private static final String DERIVED_LABOUR_COST =
+			"round(i.labour_minutes * b.crew_day_cost / (b.crew_size * b.crew_hours_per_day * 60), 2)";
+
 	@Override
 	public void increaseItemCosts(UUID priceBookId, IncreaseTarget target, BigDecimal percent) {
 		// One statement for all three targets: the half that is not being raised gets a factor of 1, and
@@ -119,11 +128,20 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 		BigDecimal labour = target.raisesLabour() ? factor : BigDecimal.ONE;
 		BigDecimal material = target.raisesMaterial() ? factor : BigDecimal.ONE;
 
-		// round() rather than the column's own truncation: a rounding rule that differs from the
-		// engine's HALF_UP by a cent per item is one nobody can reconcile against a quote.
-		jdbc.update("UPDATE price_book_item SET labour_cost = round(labour_cost * ?, 2), "
-				+ "material_cost = round(material_cost * ?, 2) WHERE price_book_id = ?",
-				labour, material, priceBookId);
+		// A labour rise is a rise in what the crew costs, not in fourteen unrelated figures. Raising
+		// crew_day_cost and re-deriving is the same arithmetic — labour is linear in the crew rate — but
+		// it leaves the version consistent, and it leaves a reader able to see WHY labour went up
+		// (ADR 0016). round() rather than the column's own truncation: a rounding rule that differs from
+		// the engine's HALF_UP by a cent per item is one nobody can reconcile against a quote.
+		jdbc.update("UPDATE price_book SET crew_day_cost = round(crew_day_cost * ?, 2) WHERE id = ?",
+				labour, priceBookId);
+		// labour_cost is re-derived unconditionally, not only when labour was the target: the version is
+		// already consistent, so for MATERIAL the expression returns what is there. One statement, no
+		// branch, and the invariant holds by construction.
+		jdbc.update("UPDATE price_book_item i SET labour_cost = " + DERIVED_LABOUR_COST + ", "
+				+ "material_cost = round(i.material_cost * ?, 2) "
+				+ "FROM price_book b WHERE b.id = i.price_book_id AND i.price_book_id = ?",
+				material, priceBookId);
 		// labour_minutes is untouched on purpose — see the port.
 	}
 
@@ -138,11 +156,16 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 	}
 
 	@Override
-	public void updateItem(UUID priceBookId, ItemCode code, BigDecimal labourCost,
-			BigDecimal materialCost, BigDecimal labourMinutes) {
-		jdbc.update("UPDATE price_book_item SET labour_cost = ?, material_cost = ?, labour_minutes = ? "
-				+ "WHERE price_book_id = ? AND code = ?",
-				labourCost, materialCost, labourMinutes, priceBookId, code.name());
+	public void updateItem(UUID priceBookId, ItemCode code, BigDecimal materialCost,
+			BigDecimal labourMinutes) {
+		// labour_cost is not a parameter: it is what the new minutes cost at this version's crew rate
+		// (ADR 0016). Accepting it would let the panel put back the disagreement V5 was written to
+		// remove — and the row would look perfectly plausible while it did.
+		jdbc.update("UPDATE price_book_item i SET material_cost = ?, labour_minutes = ?, "
+				+ "labour_cost = round(? * b.crew_day_cost / (b.crew_size * b.crew_hours_per_day * 60), 2) "
+				+ "FROM price_book b "
+				+ "WHERE b.id = i.price_book_id AND i.price_book_id = ? AND i.code = ?",
+				materialCost, labourMinutes, labourMinutes, priceBookId, code.name());
 	}
 
 	@Override

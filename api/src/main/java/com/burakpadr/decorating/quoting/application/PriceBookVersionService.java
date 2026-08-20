@@ -93,20 +93,21 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 	}
 
 	@Override
-	public PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal labourCost,
-			BigDecimal materialCost, BigDecimal labourMinutes) {
+	public PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal materialCost,
+			BigDecimal labourMinutes) {
 		PriceBookSummary version = versions.findById(versionId)
 				.orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
 		if (!versions.isEditable(versionId)) {
 			throw new PriceBookVersionLocked(version.versionCode());
 		}
-		if (labourCost.signum() < 0 || materialCost.signum() < 0 || labourMinutes.signum() <= 0) {
+		if (materialCost.signum() < 0 || labourMinutes.signum() <= 0) {
 			// Zero minutes would drop the item out of the duration and the minimum without changing a
-			// single price, which is the kind of wrong nobody sees (§5.8).
+			// single price, which is the kind of wrong nobody sees (§5.8). Since ADR 0016 it would also
+			// zero the item's labour cost, so the same line item would be free to do.
 			throw new IllegalArgumentException(
 					"costs cannot be negative and an item cannot take no time");
 		}
-		versions.updateItem(versionId, code, labourCost, materialCost, labourMinutes);
+		versions.updateItem(versionId, code, materialCost, labourMinutes);
 		// Read back rather than assembled here: the unit belongs to the row, and a response built from
 		// the request would happily report a unit the database disagrees with.
 		return books.findById(versionId).orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()))

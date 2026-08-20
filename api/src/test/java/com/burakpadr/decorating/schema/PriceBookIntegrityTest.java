@@ -179,6 +179,31 @@ class PriceBookIntegrityTest {
 				.isEmpty();
 	}
 
+	@Test
+	@DisplayName("the active book's item labour costs reconcile with its own crew day cost")
+	void activeItemLabourCostsReconcileWithTheCrewDayCost() {
+		// A price book states the cost of labour twice: once as crew_day_cost, once as a TL figure on
+		// every item. Both describe the same crew doing the same minutes, so either the two agree or one
+		// of them is fiction — and nothing before this test compared them. V3's own header states the
+		// rule ("Costs, not sale prices" · "labour_minutes are PERSON-minutes") and its figures break it:
+		// WALL_PAINT's 62 TL/m² over 6 person-minutes implies 4,960 TL per person-day against a book that
+		// says 1,500. The engine believes both, so it bills a 7.7 person-day job as 33,321 TL of labour
+		// while the crew it costs out is 13,500. See docs/decisions/0016.
+		List<Map<String, Object>> mismatched = jdbc.queryForList(
+				"SELECT i.code, i.labour_cost, i.labour_minutes, "
+						+ "  round(i.labour_minutes * b.crew_day_cost "
+						+ "        / (b.crew_size * b.crew_hours_per_day * 60), 2) AS derived "
+						+ "FROM price_book_item i JOIN price_book b ON b.id = i.price_book_id "
+						+ "WHERE b.active = true "
+						+ "  AND i.labour_cost <> round(i.labour_minutes * b.crew_day_cost "
+						+ "        / (b.crew_size * b.crew_hours_per_day * 60), 2)");
+
+		assertThat(mismatched)
+				.as("labour_cost must be labour_minutes priced at the book's own crew rate; "
+						+ "a figure above it is margin applied twice, below it is unbillable time")
+				.isEmpty();
+	}
+
 	private List<String> activeBookColumn(String sql) {
 		UUID activeId = jdbc.queryForObject(
 				"SELECT id FROM price_book WHERE active = true", UUID.class);

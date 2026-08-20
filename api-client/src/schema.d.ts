@@ -105,7 +105,6 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         UpdateItemRequest: {
-            labourCost: number;
             materialCost: number;
             labourMinutes: number;
         };

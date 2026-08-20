@@ -37,7 +37,7 @@ useHead({
 const book = computed(() => version.value!)
 
 type ItemCode = NonNullable<typeof version.value>['items'][number]['code']
-type Draft = { labourCost: string, materialCost: string, labourMinutes: string }
+type Draft = { materialCost: string, labourMinutes: string }
 
 const failure = ref('')
 const saved = ref<string>('')
@@ -48,7 +48,6 @@ const drafts = reactive<Record<string, Draft>>({})
 watch(version, book => {
   for (const item of book?.items ?? []) {
     drafts[item.code] = {
-      labourCost: formatDecimal(item.labourCost),
       materialCost: formatDecimal(item.materialCost),
       labourMinutes: formatDecimal(item.labourMinutes, 1),
     }
@@ -62,17 +61,29 @@ function isDirty(code: string): boolean {
   if (!item || !draft) {
     return false
   }
-  const changed = draft.labourCost !== formatDecimal(item.labourCost)
-    || draft.materialCost !== formatDecimal(item.materialCost)
+  const changed = draft.materialCost !== formatDecimal(item.materialCost)
     || draft.labourMinutes !== formatDecimal(item.labourMinutes, 1)
-  return changed && isDecimal(draft.labourCost) && isDecimal(draft.materialCost)
-    && isDecimal(draft.labourMinutes)
+  return changed && isDecimal(draft.materialCost) && isDecimal(draft.labourMinutes)
+}
+
+/**
+ * What the row's duration costs at this version's crew rate — the same expression the server writes
+ * (ADR 0016), so an operator sees the consequence of a duration before saving it rather than after.
+ * Duplicated deliberately: the server is the fact, and `[id].spec.ts` holds the two together.
+ */
+function derivedLabour(code: string): string {
+  const draft = drafts[code]
+  const crew = version.value?.coefficients
+  if (!draft || !crew || !isDecimal(draft.labourMinutes)) {
+    return '—'
+  }
+  const perMinute = Number(crew.crewDayCost) / (crew.crewSize * Number(crew.crewHoursPerDay) * 60)
+  return formatDecimal(parseDecimal(draft.labourMinutes) * perMinute)
 }
 
 function hasBadField(code: string): boolean {
   const draft = drafts[code]
-  return !!draft && (!isDecimal(draft.labourCost) || !isDecimal(draft.materialCost)
-    || !isDecimal(draft.labourMinutes))
+  return !!draft && (!isDecimal(draft.materialCost) || !isDecimal(draft.labourMinutes))
 }
 
 async function saveItem(code: ItemCode) {
@@ -87,7 +98,6 @@ async function saveItem(code: ItemCode) {
   const { error: failed, response } = await api.PUT('/api/op/price-books/{id}/items/{code}', {
     params: { path: { id, code } },
     body: {
-      labourCost: parseDecimal(draft.labourCost),
       materialCost: parseDecimal(draft.materialCost),
       labourMinutes: parseDecimal(draft.labourMinutes),
     },
@@ -217,11 +227,12 @@ function coefficient(key: string, value: number): string {
           <h2>{{ t('priceBook.items.title') }}</h2>
           <!-- On a wide screen the three labels are said once, at the top; on a phone each field
                carries its own, because there is no room for a header row. -->
+          <p class="hint">{{ t('priceBook.items.derivationNote') }}</p>
           <div class="items-head" aria-hidden="true">
             <span />
-            <span>{{ t('priceBook.items.labour') }}</span>
-            <span>{{ t('priceBook.items.material') }}</span>
             <span>{{ t('priceBook.items.minutes') }}</span>
+            <span>{{ t('priceBook.items.material') }}</span>
+            <span>{{ t('priceBook.items.labourDerived') }}</span>
           </div>
 
           <ul class="items">
@@ -233,13 +244,13 @@ function coefficient(key: string, value: number): string {
 
               <div class="fields">
                 <label>
-                  <span>{{ t('priceBook.items.labour') }}</span>
+                  <span>{{ t('priceBook.items.minutes') }}</span>
                   <span class="field">
                     <input
-                      v-model="drafts[item.code]!.labourCost" :disabled="!book.editable"
+                      v-model="drafts[item.code]!.labourMinutes" :disabled="!book.editable"
                       class="num" inputmode="decimal" type="text"
                     >
-                    <i>TL</i>
+                    <i>dk</i>
                   </span>
                 </label>
                 <label>
@@ -252,16 +263,16 @@ function coefficient(key: string, value: number): string {
                     <i>TL</i>
                   </span>
                 </label>
-                <label>
-                  <span>{{ t('priceBook.items.minutes') }}</span>
+                <!-- Not an input. The duration to its left is the input; this is what it costs. -->
+                <p class="derived">
+                  <span>{{ t('priceBook.items.labourDerived') }}</span>
                   <span class="field">
-                    <input
-                      v-model="drafts[item.code]!.labourMinutes" :disabled="!book.editable"
-                      class="num" inputmode="decimal" type="text"
-                    >
-                    <i>dk</i>
+                    <output :data-preview="derivedLabour(item.code) !== formatDecimal(item.labourCost)">
+                      {{ derivedLabour(item.code) }}
+                    </output>
+                    <i>TL</i>
                   </span>
-                </label>
+                </p>
               </div>
 
               <p v-if="hasBadField(item.code)" class="field-error">Sayı olmayan bir değer var.</p>
@@ -505,8 +516,13 @@ h2 {
   }
 
   /* Said once in the header row; repeating it 42 times is what made the screen noisy. */
-  .items label > span:first-child {
+  .items label > span:first-child,
+  .items .derived > span:first-child {
     display: none;
+  }
+
+  .derived {
+    margin: 0;
   }
 
   .field-error,
@@ -551,6 +567,41 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   gap: var(--gap);
+}
+
+/* The derived cell carries no border and no focus ring: it is not a place anything can be typed, and
+   dressing it as a field is how an operator comes to believe it is one. */
+.derived {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+.derived .field {
+  background: none;
+  border-color: transparent;
+}
+
+.derived output {
+  flex: 1 1 auto;
+  min-height: 2.6rem;
+  padding: 0 0.5rem;
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 2.6rem;
+  text-align: right;
+  color: var(--ink-2);
+}
+
+/* While the duration in the next cell no longer matches what is saved, the figure it implies is a
+   preview, not a fact — so it is marked as one. */
+.derived output[data-preview="true"] {
+  color: var(--brand);
+  font-weight: 650;
 }
 
 label {
