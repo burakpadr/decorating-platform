@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.adapter.in.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -145,6 +146,77 @@ class PriceBookControllerTest {
 		mvc.perform(post("/api/op/price-books/" + UUID.randomUUID() + "/bulk-increase")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"target\":\"ALL\",\"percent\":10}"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("GET /{id} shows a version's items and coefficients, with their units")
+	void showsAVersionInFull() throws Exception {
+		mvc.perform(get("/api/op/price-books/" + idOf(ACTIVE)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.versionCode").value(ACTIVE))
+				.andExpect(jsonPath("$.editable")
+						.value(false))
+				.andExpect(jsonPath("$.items.length()").value(14))
+				.andExpect(jsonPath("$.items[?(@.code=='WALL_PAINT')].unit")
+						.value(org.hamcrest.Matchers.hasItem("SQM")))
+				.andExpect(jsonPath("$.items[?(@.code=='MOBILIZATION')].unit")
+						.value(org.hamcrest.Matchers.hasItem("LUMP_SUM")))
+				.andExpect(jsonPath("$.coefficients.crewDayCost").value(4500.00))
+				.andExpect(jsonPath("$.coefficients.marginRatio").value(0.3000));
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("PUT corrects an item on a draft version")
+	void correctsAnItemOnADraft() throws Exception {
+		String created = mvc.perform(post("/api/op/price-books")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sourceId\":\"" + idOf(ACTIVE) + "\",\"versionCode\":\"WEB-DRAFT-1\"}"))
+				.andReturn().getResponse().getContentAsString();
+		String id = created.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+		mvc.perform(put("/api/op/price-books/" + id + "/items/WALL_PAINT")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"labourCost\":70.00,\"materialCost\":40.00,\"labourMinutes\":7.00}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.labourCost").value(70.00))
+				// Read back from the row rather than echoed from the request.
+				.andExpect(jsonPath("$.unit").value("SQM"));
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("PUT on the live version is a conflict — copy it and edit the copy")
+	void refusesToEditTheLiveVersion() throws Exception {
+		mvc.perform(put("/api/op/price-books/" + idOf(ACTIVE) + "/items/WALL_PAINT")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"labourCost\":99.00,\"materialCost\":1.00,\"labourMinutes\":1.00}"))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("an item that takes no time is refused: it would vanish from the duration silently")
+	void refusesAnItemWithNoDuration() throws Exception {
+		String created = mvc.perform(post("/api/op/price-books")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sourceId\":\"" + idOf(ACTIVE) + "\",\"versionCode\":\"WEB-DRAFT-2\"}"))
+				.andReturn().getResponse().getContentAsString();
+		String id = created.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
+
+		mvc.perform(put("/api/op/price-books/" + id + "/items/WALL_PAINT")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"labourCost\":70.00,\"materialCost\":40.00,\"labourMinutes\":0}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("a version that does not exist has no detail")
+	void detailOfAnUnknownVersionIsNotFound() throws Exception {
+		mvc.perform(get("/api/op/price-books/" + UUID.randomUUID()))
 				.andExpect(status().isNotFound());
 	}
 

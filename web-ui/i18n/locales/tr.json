@@ -16,12 +16,27 @@
     "otherDistricts": "Diğer ilçeler"
   },
   "pages": {
-    "home": { "title": "Ana sayfa" },
-    "howItWorks": { "title": "Nasıl çalışır" },
-    "quoteRequest": { "title": "Teklif al" },
-    "capture": { "title": "Fotoğraf çekimi" },
-    "myQuote": { "title": "Teklifim" },
-    "operator": { "title": "Operatör kuyruğu" }
+    "home": {
+      "title": "Ana sayfa"
+    },
+    "howItWorks": {
+      "title": "Nasıl çalışır"
+    },
+    "quoteRequest": {
+      "title": "Teklif al"
+    },
+    "capture": {
+      "title": "Fotoğraf çekimi"
+    },
+    "myQuote": {
+      "title": "Teklifim"
+    },
+    "operator": {
+      "title": "Operatör kuyruğu"
+    },
+    "priceBooks": {
+      "title": "Fiyat listesi"
+    }
   },
   "rooms": {
     "LIVING_ROOM": "Salon",
@@ -61,5 +76,78 @@
     "MORNING": "Sabah",
     "AFTERNOON": "Öğleden sonra",
     "EVENING": "Akşam"
+  },
+  "priceBook": {
+    "state": {
+      "active": "Yürürlükte",
+      "draft": "Taslak",
+      "superseded": "Geçmiş sürüm"
+    },
+    "age": "{age} oluşturuldu",
+    "stale": "Bu liste {age} güncellendi. Enflasyonda üç ayda bir zam bekleniyor.",
+    "locked": "Bu sürümle teklif verilmiş, o yüzden değiştirilemez. Kopyalayıp kopyayı düzenleyin.",
+    "empty": "Henüz fiyat listesi yok.",
+    "actions": {
+      "detail": "Ayrıntı",
+      "activate": "Yürürlüğe al",
+      "copy": "Kopyala",
+      "save": "Kaydet",
+      "back": "Listeye dön"
+    },
+    "copyPrompt": "Yeni sürümün kodu",
+    "increase": {
+      "title": "Toplu zam",
+      "target": "Neye uygulanacak",
+      "percent": "Yüzde",
+      "apply": "Zamlı yeni sürüm oluştur",
+      "note": "Zam yürürlükteki listeyi değiştirmez, yeni bir sürüm üretir.",
+      "targets": {
+        "LABOUR": "İşçilik",
+        "MATERIAL": "Malzeme",
+        "ALL": "İkisi de"
+      }
+    },
+    "items": {
+      "title": "Kalemler",
+      "labour": "İşçilik",
+      "material": "Malzeme",
+      "minutes": "Süre (dk)",
+      "unit": "Birim",
+      "saved": "Kaydedildi"
+    },
+    "coefficients": {
+      "title": "Katsayılar",
+      "crewDayCost": "Günlük ekip maliyeti",
+      "crewSize": "Ekip büyüklüğü",
+      "marginRatio": "Kâr marjı",
+      "marginAlertThreshold": "Marj uyarı eşiği",
+      "labourVatRate": "İşçilik KDV",
+      "materialVatRate": "Malzeme KDV",
+      "baseBandRatio": "Taban bant genişliği",
+      "ceilingHeightM": "Tavan yüksekliği",
+      "grossToNetRatio": "Brüt → net oranı"
+    },
+    "units": {
+      "SQM": "m²",
+      "UNIT": "adet",
+      "ROOM": "oda",
+      "LUMP_SUM": "iş başına"
+    },
+    "codes": {
+      "WALL_PAINT": "Duvar boyası",
+      "CEILING_PAINT": "Tavan boyası",
+      "PATCH_FILLING": "Macun tamiri",
+      "SKIM_COAT": "Saten alçı",
+      "PRIMER": "Astar",
+      "STAIN_BLOCK_PRIMER": "İzolasyon astarı",
+      "WALLPAPER_STRIPPING": "Duvar kağıdı sökümü",
+      "DOOR_PAINT": "Kapı boyası",
+      "TRIM_PAINT": "Pervaz boyası",
+      "RADIATOR_PAINT": "Petek boyası",
+      "DOWNLIGHT_CUTTING": "Spot kesimi",
+      "CORNICE_CUTTING": "Kartonpiyer kesimi",
+      "MASKING": "Örtü ve koruma",
+      "MOBILIZATION": "Nakliye ve kurulum"
+    }
   }
 }

@@ -2,13 +2,19 @@ package com.burakpadr.decorating.quoting.application;
 
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
+import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookDetail;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
+import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +35,24 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 	private static final BigDecimal MAX_PERCENT = new BigDecimal("200");
 
 	private final PriceBookVersionRepository versions;
+	private final PriceBookRepository books;
 
-	PriceBookVersionService(PriceBookVersionRepository versions) {
+	PriceBookVersionService(PriceBookVersionRepository versions, PriceBookRepository books) {
 		this.versions = versions;
+		this.books = books;
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<PriceBookSummary> list() {
 		return versions.findAll();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<PriceBookDetail> detail(UUID id) {
+		return versions.findById(id).flatMap(summary -> books.findById(id)
+				.map(book -> new PriceBookDetail(summary, book, versions.isEditable(id))));
 	}
 
 	@Override
@@ -75,6 +90,27 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 			candidate = PriceBookVersionCode.next(candidate);
 		}
 		return candidate;
+	}
+
+	@Override
+	public PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal labourCost,
+			BigDecimal materialCost, BigDecimal labourMinutes) {
+		PriceBookSummary version = versions.findById(versionId)
+				.orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
+		if (!versions.isEditable(versionId)) {
+			throw new PriceBookVersionLocked(version.versionCode());
+		}
+		if (labourCost.signum() < 0 || materialCost.signum() < 0 || labourMinutes.signum() <= 0) {
+			// Zero minutes would drop the item out of the duration and the minimum without changing a
+			// single price, which is the kind of wrong nobody sees (§5.8).
+			throw new IllegalArgumentException(
+					"costs cannot be negative and an item cannot take no time");
+		}
+		versions.updateItem(versionId, code, labourCost, materialCost, labourMinutes);
+		// Read back rather than assembled here: the unit belongs to the row, and a response built from
+		// the request would happily report a unit the database disagrees with.
+		return books.findById(versionId).orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()))
+				.item(code);
 	}
 
 	@Override

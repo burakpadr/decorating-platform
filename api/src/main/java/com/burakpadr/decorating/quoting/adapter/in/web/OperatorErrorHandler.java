@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -24,6 +25,15 @@ class OperatorErrorHandler {
 
 	@ExceptionHandler(DuplicateVersionCode.class)
 	ProblemDetail conflict(DuplicateVersionCode exception) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+	}
+
+	/**
+	 * A version that has priced something. A conflict rather than a bad request: the panel asked for
+	 * something reasonable, and the answer is "copy it and edit the copy".
+	 */
+	@ExceptionHandler(PriceBookVersionLocked.class)
+	ProblemDetail locked(PriceBookVersionLocked exception) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
 	}
 

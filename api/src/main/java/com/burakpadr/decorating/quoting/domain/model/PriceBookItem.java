@@ -10,4 +10,8 @@ import java.math.BigDecimal;
  * person-hours and only then by crew size.
  */
 public record PriceBookItem(
-		ItemCode code, BigDecimal labourCost, BigDecimal materialCost, BigDecimal labourMinutes) {}
+		ItemCode code,
+		PriceUnit unit,
+		BigDecimal labourCost,
+		BigDecimal materialCost,
+		BigDecimal labourMinutes) {}

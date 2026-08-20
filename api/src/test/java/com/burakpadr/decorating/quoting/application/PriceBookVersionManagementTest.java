@@ -9,6 +9,7 @@ import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
@@ -213,6 +214,47 @@ class PriceBookVersionManagementTest {
 		assertThat(second.versionCode())
 				.as("a second increase from the same source must not fail on a name clash")
 				.isEqualTo("REAL-2026-03");
+	}
+
+	@Test
+	@DisplayName("an item can be corrected on a draft version")
+	void editsAnItemOnADraftVersion() {
+		PriceBookSummary draft = versions.createVersionFrom(idOf(ACTIVE), "TEST-DRAFT-1");
+
+		versions.updateItem(draft.id(), ItemCode.WALL_PAINT,
+				new BigDecimal("70.00"), new BigDecimal("40.00"), new BigDecimal("7.00"));
+
+		PriceBook edited = books.findByVersionCode("TEST-DRAFT-1").orElseThrow();
+		assertThat(edited.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("70.00");
+		assertThat(edited.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("40.00");
+		assertThat(edited.item(ItemCode.WALL_PAINT).labourMinutes())
+				.as("minutes are editable here — unlike a bulk increase, this is a correction")
+				.isEqualByComparingTo("7.00");
+		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
+				.isEqualByComparingTo("62.00");
+	}
+
+	@Test
+	@DisplayName("the live version cannot be edited, whatever the panel sends")
+	void refusesToEditTheLiveVersion() {
+		assertThatThrownBy(() -> versions.updateItem(idOf(ACTIVE), ItemCode.WALL_PAINT,
+						new BigDecimal("99.00"), new BigDecimal("1.00"), new BigDecimal("1.00")))
+				.as("a figure that changed under a quote already sent is a figure nobody can explain")
+				.isInstanceOf(PriceBookVersionLocked.class);
+	}
+
+	@Test
+	@DisplayName("a version a quote points at cannot be edited, even after it is switched off")
+	void refusesToEditASupersededVersion() {
+		PriceBookSummary next = versions.createVersionFrom(idOf(ACTIVE), "TEST-DRAFT-2");
+		UUID superseded = idOf(ACTIVE);
+		insertSentQuote(superseded);
+		versions.activate(next.id());
+
+		assertThatThrownBy(() -> versions.updateItem(superseded, ItemCode.WALL_PAINT,
+						new BigDecimal("99.00"), new BigDecimal("1.00"), new BigDecimal("1.00")))
+				.as("being switched off is not the same as never having priced anything")
+				.isInstanceOf(PriceBookVersionLocked.class);
 	}
 
 	@Test

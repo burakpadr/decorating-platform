@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.adapter.out.persistence;
 
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
+import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import com.burakpadr.decorating.shared.Uuid7;
@@ -124,6 +125,24 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 				+ "material_cost = round(material_cost * ?, 2) WHERE price_book_id = ?",
 				labour, material, priceBookId);
 		// labour_minutes is untouched on purpose — see the port.
+	}
+
+	@Override
+	public boolean isEditable(UUID id) {
+		// One query, because the two halves of the answer have to be true at the same moment.
+		Boolean editable = jdbc.queryForObject(
+				"SELECT NOT b.active AND NOT EXISTS (SELECT 1 FROM quote q WHERE q.price_book_id = b.id) "
+						+ "FROM price_book b WHERE b.id = ?",
+				Boolean.class, id);
+		return Boolean.TRUE.equals(editable);
+	}
+
+	@Override
+	public void updateItem(UUID priceBookId, ItemCode code, BigDecimal labourCost,
+			BigDecimal materialCost, BigDecimal labourMinutes) {
+		jdbc.update("UPDATE price_book_item SET labour_cost = ?, material_cost = ?, labour_minutes = ? "
+				+ "WHERE price_book_id = ? AND code = ?",
+				labourCost, materialCost, labourMinutes, priceBookId, code.name());
 	}
 
 	@Override

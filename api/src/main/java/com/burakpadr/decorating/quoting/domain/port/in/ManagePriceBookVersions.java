@@ -1,9 +1,13 @@
 package com.burakpadr.decorating.quoting.domain.port.in;
 
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
+import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookDetail;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -17,6 +21,9 @@ import java.util.UUID;
 public interface ManagePriceBookVersions {
 
 	List<PriceBookSummary> list();
+
+	/** One version with its figures, and whether it can still be edited. */
+	Optional<PriceBookDetail> detail(UUID id);
 
 	/**
 	 * Copies a version whole — items, modifiers, room types and districts — under a new code. The copy
@@ -33,4 +40,15 @@ public interface ManagePriceBookVersions {
 	 * of it. Durations are not touched either: a price rise does not make the work slower.
 	 */
 	PriceBookSummary applyBulkIncrease(UUID sourceId, IncreaseTarget target, BigDecimal percent);
+
+	/**
+	 * Corrects one item on a version nothing has been priced with — the "edit" half of §7's
+	 * "clone + edit". Unlike a bulk increase this also sets the duration, because a wrong figure here
+	 * is usually a wrong figure in all three columns.
+	 *
+	 * @throws com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked if the version is
+	 *     live or any quote points at it
+	 */
+	PriceBookItem updateItem(UUID versionId, ItemCode code, BigDecimal labourCost,
+			BigDecimal materialCost, BigDecimal labourMinutes);
 }

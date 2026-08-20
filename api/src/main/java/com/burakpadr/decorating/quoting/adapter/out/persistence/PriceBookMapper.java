@@ -7,6 +7,7 @@ import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
 import com.burakpadr.decorating.quoting.domain.model.PriceModifier;
+import com.burakpadr.decorating.quoting.domain.model.PriceUnit;
 import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
 import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
@@ -52,8 +53,8 @@ final class PriceBookMapper {
 		Map<ItemCode, PriceBookItem> mappedItems = new EnumMap<>(ItemCode.class);
 		for (PriceBookItemEntity item : items) {
 			enumOf(ItemCode.class, item.getCode()).ifPresent(code -> mappedItems.put(code,
-					new PriceBookItem(code, item.getLabourCost(), item.getMaterialCost(),
-							item.getLabourMinutes())));
+					new PriceBookItem(code, PriceUnit.valueOf(item.getUnit()), item.getLabourCost(),
+							item.getMaterialCost(), item.getLabourMinutes())));
 		}
 
 		Map<ModifierCode, PriceModifier> mappedModifiers = new EnumMap<>(ModifierCode.class);

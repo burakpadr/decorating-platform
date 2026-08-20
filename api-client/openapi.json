@@ -10,6 +10,81 @@
     "description" : "Same origin"
   } ],
   "paths" : {
+    "/api/op/price-books/{id}/items/{code}" : {
+      "put" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "updateItem",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "WALL_PAINT", "CEILING_PAINT", "PATCH_FILLING", "SKIM_COAT", "PRIMER", "STAIN_BLOCK_PRIMER", "WALLPAPER_STRIPPING", "DOOR_PAINT", "TRIM_PAINT", "RADIATOR_PAINT", "DOWNLIGHT_CUTTING", "CORNICE_CUTTING", "MASKING", "MOBILIZATION" ]
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateItemRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The item as it now stands",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookItemResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A figure the price list cannot hold",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The version has priced quotes; copy it and edit the copy",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books" : {
       "get" : {
         "tags" : [ "price-book-controller" ],
@@ -45,11 +120,31 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Created",
+            "description" : "The new version, inactive",
             "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No source version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "That version code is taken",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -82,11 +177,31 @@
         },
         "responses" : {
           "201" : {
-            "description" : "Created",
+            "description" : "The raised version, inactive",
             "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A percent nobody meant to type",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -109,11 +224,58 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "The version, now live",
             "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/op/price-books/{id}" : {
+      "get" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "detail",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The version, its items and its coefficients",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookDetailResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
                 }
               }
             }
@@ -124,6 +286,74 @@
   },
   "components" : {
     "schemas" : {
+      "UpdateItemRequest" : {
+        "type" : "object",
+        "properties" : {
+          "labourCost" : {
+            "type" : "number",
+            "minimum" : 0.00
+          },
+          "materialCost" : {
+            "type" : "number",
+            "minimum" : 0.00
+          },
+          "labourMinutes" : {
+            "type" : "number",
+            "minimum" : 0.00
+          }
+        },
+        "required" : [ "labourCost", "labourMinutes", "materialCost" ]
+      },
+      "PriceBookItemResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "enum" : [ "WALL_PAINT", "CEILING_PAINT", "PATCH_FILLING", "SKIM_COAT", "PRIMER", "STAIN_BLOCK_PRIMER", "WALLPAPER_STRIPPING", "DOOR_PAINT", "TRIM_PAINT", "RADIATOR_PAINT", "DOWNLIGHT_CUTTING", "CORNICE_CUTTING", "MASKING", "MOBILIZATION" ]
+          },
+          "unit" : {
+            "type" : "string",
+            "enum" : [ "SQM", "UNIT", "ROOM", "LUMP_SUM" ]
+          },
+          "labourCost" : {
+            "type" : "number"
+          },
+          "materialCost" : {
+            "type" : "number"
+          },
+          "labourMinutes" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "code", "labourCost", "labourMinutes", "materialCost", "unit" ]
+      },
+      "ProblemDetail" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "instance" : {
+            "type" : "string",
+            "format" : "uri"
+          },
+          "properties" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
       "CreatePriceBookVersionRequest" : {
         "type" : "object",
         "properties" : {
@@ -157,7 +387,8 @@
             "type" : "string",
             "format" : "date-time"
           }
-        }
+        },
+        "required" : [ "active", "createdAt", "id", "versionCode" ]
       },
       "BulkIncreaseRequest" : {
         "type" : "object",
@@ -173,6 +404,78 @@
           }
         },
         "required" : [ "percent", "target" ]
+      },
+      "Coefficients" : {
+        "type" : "object",
+        "properties" : {
+          "ceilingHeightM" : {
+            "type" : "number"
+          },
+          "grossToNetRatio" : {
+            "type" : "number"
+          },
+          "stage1OpeningRatio" : {
+            "type" : "number"
+          },
+          "crewSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "crewHoursPerDay" : {
+            "type" : "number"
+          },
+          "crewDayCost" : {
+            "type" : "number"
+          },
+          "marginRatio" : {
+            "type" : "number"
+          },
+          "marginAlertThreshold" : {
+            "type" : "number"
+          },
+          "labourVatRate" : {
+            "type" : "number"
+          },
+          "materialVatRate" : {
+            "type" : "number"
+          },
+          "baseBandRatio" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "baseBandRatio", "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
+      },
+      "PriceBookDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "versionCode" : {
+            "type" : "string"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "editable" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "coefficients" : {
+            "$ref" : "#/components/schemas/Coefficients"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PriceBookItemResponse"
+            }
+          }
+        },
+        "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
       }
     }
   }

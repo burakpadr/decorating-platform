@@ -22,4 +22,7 @@ public interface PriceBookRepository {
 
 	/** A specific version, so a quote already sent stays readable against the figures that made it. */
 	Optional<PriceBook> findByVersionCode(String versionCode);
+
+	/** The same, by id — what a quote actually stores, and what the operator panel navigates by. */
+	Optional<PriceBook> findById(java.util.UUID id);
 }

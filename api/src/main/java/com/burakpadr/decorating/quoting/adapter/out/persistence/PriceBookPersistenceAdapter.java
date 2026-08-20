@@ -51,6 +51,11 @@ class PriceBookPersistenceAdapter implements PriceBookRepository {
 		return books.findByVersionCode(versionCode).map(this::assemble);
 	}
 
+	@Override
+	public Optional<PriceBook> findById(UUID id) {
+		return books.findById(id).map(this::assemble);
+	}
+
 	private PriceBook assemble(PriceBookEntity book) {
 		UUID id = book.getId();
 		return PriceBookMapper.toDomain(

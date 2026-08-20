@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.domain.port.out;
 
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
+import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import java.math.BigDecimal;
 import java.util.List;
@@ -37,4 +38,16 @@ public interface PriceBookVersionRepository {
 	 * which no quote can point at yet.
 	 */
 	void increaseItemCosts(UUID priceBookId, IncreaseTarget target, BigDecimal percent);
+
+	/**
+	 * Whether anything has been priced with this version: not live, and no quote pointing at it.
+	 *
+	 * <p>Asked of the database rather than tracked as a flag, because the answer is a fact about the
+	 * quote table and a flag would be a second copy of it that could disagree.
+	 */
+	boolean isEditable(UUID id);
+
+	/** Sets one item's three figures on a version the caller has established is editable. */
+	void updateItem(UUID priceBookId, ItemCode code, BigDecimal labourCost, BigDecimal materialCost,
+			BigDecimal labourMinutes);
 }

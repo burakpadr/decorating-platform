@@ -7,6 +7,7 @@ import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
 import com.burakpadr.decorating.quoting.domain.model.PriceModifier;
+import com.burakpadr.decorating.quoting.domain.model.PriceUnit;
 import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
 import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
@@ -47,20 +48,20 @@ public final class PriceBookFixture {
 
 	private static Map<ItemCode, PriceBookItem> items() {
 		Map<ItemCode, PriceBookItem> items = new EnumMap<>(ItemCode.class);
-		item(items, ItemCode.WALL_PAINT, "62", "38", "6");
-		item(items, ItemCode.CEILING_PAINT, "70", "38", "8");
-		item(items, ItemCode.PATCH_FILLING, "50", "15", "12");
-		item(items, ItemCode.SKIM_COAT, "100", "42", "22");
-		item(items, ItemCode.PRIMER, "20", "15", "3");
-		item(items, ItemCode.STAIN_BLOCK_PRIMER, "25", "40", "4");
-		item(items, ItemCode.WALLPAPER_STRIPPING, "48", "2", "14");
-		item(items, ItemCode.DOOR_PAINT, "350", "150", "55");
-		item(items, ItemCode.TRIM_PAINT, "140", "52", "22");
-		item(items, ItemCode.RADIATOR_PAINT, "270", "115", "40");
-		item(items, ItemCode.DOWNLIGHT_CUTTING, "46", "0", "8");
-		item(items, ItemCode.CORNICE_CUTTING, "308", "0", "45");
-		item(items, ItemCode.MASKING, "115", "62", "25");
-		item(items, ItemCode.MOBILIZATION, "1900", "0", "60");
+		item(items, ItemCode.WALL_PAINT, PriceUnit.SQM, "62", "38", "6");
+		item(items, ItemCode.CEILING_PAINT, PriceUnit.SQM, "70", "38", "8");
+		item(items, ItemCode.PATCH_FILLING, PriceUnit.SQM, "50", "15", "12");
+		item(items, ItemCode.SKIM_COAT, PriceUnit.SQM, "100", "42", "22");
+		item(items, ItemCode.PRIMER, PriceUnit.SQM, "20", "15", "3");
+		item(items, ItemCode.STAIN_BLOCK_PRIMER, PriceUnit.SQM, "25", "40", "4");
+		item(items, ItemCode.WALLPAPER_STRIPPING, PriceUnit.SQM, "48", "2", "14");
+		item(items, ItemCode.DOOR_PAINT, PriceUnit.UNIT, "350", "150", "55");
+		item(items, ItemCode.TRIM_PAINT, PriceUnit.UNIT, "140", "52", "22");
+		item(items, ItemCode.RADIATOR_PAINT, PriceUnit.UNIT, "270", "115", "40");
+		item(items, ItemCode.DOWNLIGHT_CUTTING, PriceUnit.UNIT, "46", "0", "8");
+		item(items, ItemCode.CORNICE_CUTTING, PriceUnit.ROOM, "308", "0", "45");
+		item(items, ItemCode.MASKING, PriceUnit.ROOM, "115", "62", "25");
+		item(items, ItemCode.MOBILIZATION, PriceUnit.LUMP_SUM, "1900", "0", "60");
 		return items;
 	}
 
@@ -99,9 +100,9 @@ public final class PriceBookFixture {
 			List.of(PhotoRole.WALL_1, PhotoRole.WALL_2, PhotoRole.CEILING);
 	private static final List<PhotoRole> ONE_GENERAL = List.of(PhotoRole.WALL_1, PhotoRole.CEILING);
 
-	private static void item(Map<ItemCode, PriceBookItem> into, ItemCode code,
+	private static void item(Map<ItemCode, PriceBookItem> into, ItemCode code, PriceUnit unit,
 			String labour, String material, String minutes) {
-		into.put(code, new PriceBookItem(code, new BigDecimal(labour), new BigDecimal(material),
+		into.put(code, new PriceBookItem(code, unit, new BigDecimal(labour), new BigDecimal(material),
 				new BigDecimal(minutes)));
 	}
 
