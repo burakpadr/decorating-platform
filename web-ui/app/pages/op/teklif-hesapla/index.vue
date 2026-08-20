@@ -213,7 +213,7 @@ watch(() => JSON.stringify(form), () => {
           </div>
         </div>
 
-        <fieldset>
+        <fieldset class="divided">
           <legend>{{ t('calculate.scope') }}</legend>
           <div class="segmented">
             <button
@@ -226,9 +226,9 @@ watch(() => JSON.stringify(form), () => {
 
           <!-- "Tüm ev" is four rooms to the person typing and seven areas to the engine, so the screen
                says which seven before anything is priced. -->
-          <p v-if="form.scope === 'WHOLE_HOME'" class="scope">
-            {{ t('calculate.scopeWholeHome', {
-              layout: t(`layout.${form.layout}`), count: wholeHomeCount }) }}
+          <p v-if="form.scope === 'WHOLE_HOME'" class="derived">
+            <span class="derived-label">{{ t('calculate.scopeWholeHome', {
+              layout: t(`layout.${form.layout}`), count: wholeHomeCount }) }}</span>
             <span class="areas">
               <span v-for="area in areas" :key="area.type">
                 {{ t(`rooms.${area.type}`) }}<i v-if="area.count > 1"> ×{{ area.count }}</i>
@@ -248,7 +248,7 @@ watch(() => JSON.stringify(form), () => {
                 {{ t(`rooms.${area.type}`) }}<i v-if="area.count > 1"> ×{{ area.count }}</i>
               </button>
             </div>
-            <p class="scope">
+            <p class="derived">
               <strong>{{ t('calculate.scopeSelected', { count: selectedAreaCount }) }}</strong>
               — {{ t('calculate.scopeHint') }}
               <button
@@ -271,7 +271,7 @@ watch(() => JSON.stringify(form), () => {
         <!-- Two choices about the home, side by side: three stacked full-width bars was three times
              the furniture for one question each. The labels are the operator's short forms; the long
              customer phrasings belong in the customer's own form, where they are questions. -->
-        <div class="choices">
+        <div class="choices divided">
           <fieldset>
             <legend>{{ t('calculate.wallCondition') }}</legend>
             <div class="segmented" data-cols="4">
@@ -301,7 +301,7 @@ watch(() => JSON.stringify(form), () => {
 
         <!-- One row, one label, one meaning: everything switched on here makes the job dearer or the
              band wider. Four checkboxes in a three-then-one grid said none of that. -->
-        <fieldset>
+        <fieldset class="divided">
           <legend>{{ t('calculate.extras') }}</legend>
           <div class="chips" data-group="extras" role="group" :aria-label="t('calculate.extras')">
             <button
@@ -516,12 +516,15 @@ h2 {
   gap: 0.25rem;
 }
 
+/* The question. Full ink, real size, and space under it: a grey micro-label reads as system chrome,
+   not as something being asked — which is why the label and the options looked like one another. */
 .field-row > span,
 legend {
-  font-size: 0.8rem;
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.925rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--ink-2);
+  color: var(--ink);
 }
 
 .area {
@@ -612,12 +615,13 @@ fieldset {
 }
 
 .segmented button {
-  min-height: 2.5rem;
-  padding: 0 0.45rem;
+  min-height: 2.6rem;
+  padding: 0 0.55rem;
   white-space: nowrap;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: calc(var(--radius-sm) - 1px);
   background: transparent;
+  /* Quiet, but still legible: an unchosen option nobody can read is not a choice. */
   color: var(--ink-2);
   font: inherit;
   font-size: 0.9rem;
@@ -625,10 +629,13 @@ fieldset {
   cursor: pointer;
 }
 
+/* The answer. Filled, bordered and in the brand colour, so the chosen option is not "slightly
+   brighter than the others" but visibly the one that is chosen. */
 .segmented button[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: var(--shadow);
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 650;
 }
 
 /* Toggle chips rather than checkboxes: this is a different kind of choice from the four flags below,
@@ -669,15 +676,28 @@ fieldset {
   opacity: 0.7;
 }
 
-.scope {
+/* Neither question nor answer: what the form worked out from them. Set apart with a rule so it stops
+   reading as another label with another list under it. */
+.derived {
   margin: 0;
+  padding: 0.5rem 0 0.5rem 0.7rem;
+  border-left: 2px solid var(--brand);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--ink-2);
 }
 
-.scope strong {
+.derived strong,
+.derived-label {
   color: var(--ink);
+}
+
+.scope {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-3);
 }
 
 .areas {
@@ -702,6 +722,12 @@ fieldset {
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+}
+
+/* One hairline per group: without them a form of ten controls is one wall of text. */
+.divided {
+  padding-top: var(--gap-loose);
+  border-top: 1px solid var(--line);
 }
 
 .choices {
