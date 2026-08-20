@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * an operator who needs to be told the code is taken. The message travels: an operator who cannot see
  * which code collided will pick another at random.
  */
-@RestControllerAdvice(assignableTypes = PriceBookController.class)
+@RestControllerAdvice(assignableTypes = {PriceBookController.class, QuoteCalculationController.class})
 class OperatorErrorHandler {
 
 	@ExceptionHandler(PriceBookVersionNotFound.class)

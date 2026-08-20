@@ -100,7 +100,7 @@ public final class PricingEngine {
 			minutes = minutes.add(
 					quantity.multiply(item.labourMinutes()).multiply(itemLabour).multiply(labourFactor));
 
-			lines.add(line(code, quantity, labour, material));
+			lines.add(line(code, item, quantity, labour, material));
 			items = items.add(labour, material);
 		}
 
@@ -113,7 +113,7 @@ public final class PricingEngine {
 					.multiply(itemModifierFactor(input, book, measured, ItemCode.MOBILIZATION, true));
 			BigDecimal material = mobilizationQuantity.multiply(item.materialCost())
 					.multiply(itemModifierFactor(input, book, measured, ItemCode.MOBILIZATION, false));
-			lines.add(line(ItemCode.MOBILIZATION, mobilizationQuantity, labour, material));
+			lines.add(line(ItemCode.MOBILIZATION, item, mobilizationQuantity, labour, material));
 			withMobilization = items.add(labour, material);
 		}
 
@@ -428,8 +428,9 @@ public final class PricingEngine {
 		return ratio;
 	}
 
-	private QuoteLine line(ItemCode code, BigDecimal quantity, BigDecimal labour, BigDecimal material) {
-		return new QuoteLine(code, quantity, labour, material, money(labour.add(material)));
+	private QuoteLine line(ItemCode code, PriceBookItem item, BigDecimal quantity, BigDecimal labour,
+			BigDecimal material) {
+		return new QuoteLine(code, item.unit(), quantity, labour, material, money(labour.add(material)));
 	}
 
 	private static void put(Map<ItemCode, BigDecimal> quantities, ItemCode code, BigDecimal quantity) {

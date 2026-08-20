@@ -36,6 +36,9 @@
     },
     "priceBooks": {
       "title": "Fiyat listesi"
+    },
+    "calculate": {
+      "title": "Teklif hesapla"
     }
   },
   "rooms": {
@@ -148,6 +151,58 @@
       "CORNICE_CUTTING": "Kartonpiyer kesimi",
       "MASKING": "Örtü ve koruma",
       "MOBILIZATION": "Nakliye ve kurulum"
+    }
+  },
+  "layout": {
+    "STUDIO": "Stüdyo (1+0)",
+    "ONE_PLUS_ONE": "1+1",
+    "TWO_PLUS_ONE": "2+1",
+    "THREE_PLUS_ONE": "3+1",
+    "FOUR_PLUS_ONE": "4+1",
+    "FIVE_PLUS_ONE": "5+1"
+  },
+  "scope": {
+    "WHOLE_HOME": "Tüm ev",
+    "SELECTED_ROOMS": "Seçili alanlar"
+  },
+  "calculate": {
+    "intro": "İşletmenin bildiği bir işi girin ve çıkan rakamı kendi fiyatınızla karşılaştırın.",
+    "district": "İlçe",
+    "area": "Alan",
+    "areaBasis": {
+      "GROSS": "Brüt",
+      "NET": "Net"
+    },
+    "layout": "Ev tipi",
+    "scope": "Kapsam",
+    "selectRooms": "Boyanacak alanlar",
+    "wallCondition": "Duvar durumu",
+    "furnishing": "Boya günü ev",
+    "doorCount": "Boyanacak kapı",
+    "doorColourChange": "Kapılarda renk değişimi",
+    "doorCountEstimated": "Kapı sayısı tahmini",
+    "hasElevator": "Asansör var",
+    "rush": "Acele iş",
+    "submit": "Hesapla",
+    "recalculate": "Yeniden hesapla",
+    "result": {
+      "band": "Teklif aralığı",
+      "total": "KDV dahil toplam",
+      "subtotal": "KDV hariç",
+      "vat": "KDV",
+      "cost": "Maliyet (iç)",
+      "margin": "Marj",
+      "days": "Fatura günü",
+      "minimumBinding": "Minimum tutar bağladı",
+      "bandWhy": "Aralık genişliği %{ratio} — belirsizlik arttıkça genişler, orta nokta kaymaz.",
+      "assumptions": "Varsayımlar",
+      "netArea": "Net alan",
+      "convertedFrom": "brüt {area} m²'den",
+      "areas": "Alan / kare",
+      "pricedWith": "Fiyat listesi",
+      "lines": "Kalem kırılımı",
+      "quantity": "Miktar",
+      "amount": "Tutar"
     }
   }
 }

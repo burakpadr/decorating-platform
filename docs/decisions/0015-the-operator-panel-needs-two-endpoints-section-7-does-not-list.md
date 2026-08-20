@@ -39,6 +39,22 @@ while leaving the duration behind — which surfaces months later as a margin no
 `labourMinutes` must be above zero: zero drops the item out of the duration and the minimum (§5.8)
 while every price still looks right.
 
+## Amended: a third, for the internal tool
+
+BOYA-22 needs one more — `POST /api/op/price-calculations`, which prices a job typed in by hand and
+answers with the breakdown. §7 lists no such call, and increment 1 is unshippable without it: the
+riskiest assumption in the system is whether the engine's figures are figures this business would
+charge (§15), and the way to find out is to enter a job whose price is already known.
+
+It stores nothing. No quote request, no row, no event — a question asked of the price book, not a job
+started, which is why asking it twice costs nothing and why it needs no idempotency story. POST rather
+than GET because the question is a dozen fields and a URL is the wrong place for them.
+
+The response carries every assumption behind the figure: the version that priced it, the net area used,
+whether that area was converted from gross, the areas the layout implied, and the quantity behind each
+line. The business is comparing this against a price it reached itself, and "52.520" alone cannot be
+argued with while "seven areas, 92 m² net, 221 m² of wall" can.
+
 ## Consequences
 
 The panel's flow is the one the domain already enforces everywhere else: copy, edit the copy, activate.

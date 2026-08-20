@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/price-calculations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["calculate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-books": {
         parameters: {
             query?: never;
@@ -114,6 +130,65 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+        };
+        CalculateQuoteRequest: {
+            districtCode: string;
+            area: number;
+            /** @enum {string} */
+            areaBasis: "GROSS" | "NET";
+            /** @enum {string} */
+            layout: "STUDIO" | "ONE_PLUS_ONE" | "TWO_PLUS_ONE" | "THREE_PLUS_ONE" | "FOUR_PLUS_ONE" | "FIVE_PLUS_ONE";
+            /** @enum {string} */
+            scope: "WHOLE_HOME" | "SELECTED_ROOMS";
+            selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
+            /** @enum {string} */
+            wallCondition: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
+            /** @enum {string} */
+            furnishing: "EMPTY" | "PARTIAL" | "FURNISHED";
+            /** Format: int32 */
+            doorCount?: number;
+            doorColourChange?: boolean;
+            doorCountEstimated?: boolean;
+            hasElevator?: boolean;
+            rush?: boolean;
+        };
+        CalculatedRoomResponse: {
+            /** @enum {string} */
+            type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
+            label: string;
+            /** Format: int32 */
+            requiredPhotos: number;
+        };
+        QuoteCalculationResponse: {
+            priceBookVersion: string;
+            netArea: number;
+            areaWasGross: boolean;
+            rooms: components["schemas"]["CalculatedRoomResponse"][];
+            /** Format: int32 */
+            photoCount: number;
+            lines: components["schemas"]["QuoteLineResponse"][];
+            totalMinutes: number;
+            /** Format: int32 */
+            billableDays: number;
+            minimumCost: number;
+            minimumBinding: boolean;
+            totalCost: number;
+            subtotalExVat: number;
+            vatAmount: number;
+            total: number;
+            bandRatio: number;
+            bandLow: number;
+            bandHigh: number;
+        };
+        QuoteLineResponse: {
+            /** @enum {string} */
+            code: "WALL_PAINT" | "CEILING_PAINT" | "PATCH_FILLING" | "SKIM_COAT" | "PRIMER" | "STAIN_BLOCK_PRIMER" | "WALLPAPER_STRIPPING" | "DOOR_PAINT" | "TRIM_PAINT" | "RADIATOR_PAINT" | "DOWNLIGHT_CUTTING" | "CORNICE_CUTTING" | "MASKING" | "MOBILIZATION";
+            /** @enum {string} */
+            unit: "SQM" | "UNIT" | "ROOM" | "LUMP_SUM";
+            quantity: number;
+            labourCost: number;
+            materialCost: number;
+            lineTotal: number;
         };
         CreatePriceBookVersionRequest: {
             /** Format: uuid */
@@ -212,6 +287,39 @@ export interface operations {
             };
             /** @description The version has priced quotes; copy it and edit the copy */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    calculate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalculateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description The price and everything assumed to reach it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteCalculationResponse"];
+                };
+            };
+            /** @description A job the price book cannot price */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

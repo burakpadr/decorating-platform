@@ -85,6 +85,44 @@
         }
       }
     },
+    "/api/op/price-calculations" : {
+      "post" : {
+        "tags" : [ "quote-calculation-controller" ],
+        "operationId" : "calculate",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CalculateQuoteRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The price and everything assumed to reach it",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuoteCalculationResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A job the price book cannot price",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books" : {
       "get" : {
         "tags" : [ "price-book-controller" ],
@@ -353,6 +391,174 @@
             "additionalProperties" : { }
           }
         }
+      },
+      "CalculateQuoteRequest" : {
+        "type" : "object",
+        "properties" : {
+          "districtCode" : {
+            "type" : "string"
+          },
+          "area" : {
+            "type" : "number",
+            "maximum" : 2000.0,
+            "minimum" : 1.0
+          },
+          "areaBasis" : {
+            "type" : "string",
+            "enum" : [ "GROSS", "NET" ]
+          },
+          "layout" : {
+            "type" : "string",
+            "enum" : [ "STUDIO", "ONE_PLUS_ONE", "TWO_PLUS_ONE", "THREE_PLUS_ONE", "FOUR_PLUS_ONE", "FIVE_PLUS_ONE" ]
+          },
+          "scope" : {
+            "type" : "string",
+            "enum" : [ "WHOLE_HOME", "SELECTED_ROOMS" ]
+          },
+          "selectedRooms" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+            },
+            "uniqueItems" : true
+          },
+          "wallCondition" : {
+            "type" : "string",
+            "enum" : [ "GOOD", "MINOR", "MAJOR", "UNSURE" ]
+          },
+          "furnishing" : {
+            "type" : "string",
+            "enum" : [ "EMPTY", "PARTIAL", "FURNISHED" ]
+          },
+          "doorCount" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 60,
+            "minimum" : 0
+          },
+          "doorColourChange" : {
+            "type" : "boolean"
+          },
+          "doorCountEstimated" : {
+            "type" : "boolean"
+          },
+          "hasElevator" : {
+            "type" : "boolean"
+          },
+          "rush" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "area", "areaBasis", "districtCode", "furnishing", "layout", "scope", "wallCondition" ]
+      },
+      "CalculatedRoomResponse" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "requiredPhotos" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "label", "requiredPhotos", "type" ]
+      },
+      "QuoteCalculationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "priceBookVersion" : {
+            "type" : "string"
+          },
+          "netArea" : {
+            "type" : "number"
+          },
+          "areaWasGross" : {
+            "type" : "boolean"
+          },
+          "rooms" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CalculatedRoomResponse"
+            }
+          },
+          "photoCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lines" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/QuoteLineResponse"
+            }
+          },
+          "totalMinutes" : {
+            "type" : "number"
+          },
+          "billableDays" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "minimumCost" : {
+            "type" : "number"
+          },
+          "minimumBinding" : {
+            "type" : "boolean"
+          },
+          "totalCost" : {
+            "type" : "number"
+          },
+          "subtotalExVat" : {
+            "type" : "number"
+          },
+          "vatAmount" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "bandRatio" : {
+            "type" : "number"
+          },
+          "bandLow" : {
+            "type" : "number"
+          },
+          "bandHigh" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "areaWasGross", "bandHigh", "bandLow", "bandRatio", "billableDays", "lines", "minimumBinding", "minimumCost", "netArea", "photoCount", "priceBookVersion", "rooms", "subtotalExVat", "total", "totalCost", "totalMinutes", "vatAmount" ]
+      },
+      "QuoteLineResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "enum" : [ "WALL_PAINT", "CEILING_PAINT", "PATCH_FILLING", "SKIM_COAT", "PRIMER", "STAIN_BLOCK_PRIMER", "WALLPAPER_STRIPPING", "DOOR_PAINT", "TRIM_PAINT", "RADIATOR_PAINT", "DOWNLIGHT_CUTTING", "CORNICE_CUTTING", "MASKING", "MOBILIZATION" ]
+          },
+          "unit" : {
+            "type" : "string",
+            "enum" : [ "SQM", "UNIT", "ROOM", "LUMP_SUM" ]
+          },
+          "quantity" : {
+            "type" : "number"
+          },
+          "labourCost" : {
+            "type" : "number"
+          },
+          "materialCost" : {
+            "type" : "number"
+          },
+          "lineTotal" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "code", "labourCost", "lineTotal", "materialCost", "quantity", "unit" ]
       },
       "CreatePriceBookVersionRequest" : {
         "type" : "object",

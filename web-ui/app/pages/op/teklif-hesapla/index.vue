@@ -1,0 +1,663 @@
+<script setup lang="ts">
+/**
+ * The internal tool (workflow §12, increment 1): price a job by hand and read the breakdown.
+ *
+ * This screen is what makes increment 1 shippable. The riskiest assumption in the system is whether the
+ * engine's figures are figures this business would charge, and the cheapest way to find out is for the
+ * business to enter a job whose price it already knows — no website, no photographs, no customer.
+ *
+ * So the answer leads with the two numbers that can be compared (the band and the total), and every
+ * assumption behind them is on the same screen: the areas the layout implied, the net area used, and the
+ * quantity behind each line. A figure nobody can take apart is a figure nobody will argue with, and
+ * arguing with it is the entire exercise.
+ */
+import type { Schemas } from '@decorating/api-client'
+
+const { t } = useI18n()
+const api = useApi()
+
+useHead({ title: t('meta.titleTemplate', { page: t('pages.calculate.title') }) })
+
+// Straight from the generated contract: a renamed field or a dropped enum value is a compile error
+// here rather than a form that posts something the API will not accept.
+type Request = Schemas['CalculateQuoteRequest']
+type Result = Schemas['QuoteCalculationResponse']
+
+const form = reactive({
+  districtCode: 'KADIKOY',
+  area: '92',
+  areaBasis: 'NET' as Request['areaBasis'],
+  layout: 'THREE_PLUS_ONE' as Request['layout'],
+  scope: 'WHOLE_HOME' as Request['scope'],
+  selectedRooms: [] as NonNullable<Request['selectedRooms']>,
+  wallCondition: 'MINOR' as Request['wallCondition'],
+  furnishing: 'FURNISHED' as Request['furnishing'],
+  doorCount: '8',
+  doorColourChange: true,
+  doorCountEstimated: false,
+  hasElevator: true,
+  rush: false,
+})
+
+const LAYOUTS = ['STUDIO', 'ONE_PLUS_ONE', 'TWO_PLUS_ONE', 'THREE_PLUS_ONE', 'FOUR_PLUS_ONE',
+  'FIVE_PLUS_ONE'] as const
+const CONDITIONS = ['GOOD', 'MINOR', 'MAJOR', 'UNSURE'] as const
+const FURNISHINGS = ['EMPTY', 'PARTIAL', 'FURNISHED'] as const
+const ROOM_TYPES = ['LIVING_ROOM', 'MASTER_BEDROOM', 'BEDROOM', 'STUDY', 'KITCHEN', 'BATHROOM',
+  'HALLWAY', 'BALCONY'] as const
+
+const result = ref<Result | null>(null)
+const failure = ref('')
+const busy = ref(false)
+
+const areaValid = computed(() => isDecimal(form.area) && parseDecimal(form.area) >= 1)
+const doorsValid = computed(() => /^\d+$/.test(form.doorCount))
+const roomsValid = computed(() => form.scope === 'WHOLE_HOME' || form.selectedRooms.length > 0)
+const canSubmit = computed(() => areaValid.value && doorsValid.value && roomsValid.value)
+
+async function calculate() {
+  if (!canSubmit.value) {
+    return
+  }
+  busy.value = true
+  failure.value = ''
+
+  const { data, error, response } = await api.POST('/api/op/price-calculations', {
+    body: {
+      districtCode: form.districtCode,
+      area: parseDecimal(form.area),
+      areaBasis: form.areaBasis,
+      layout: form.layout,
+      scope: form.scope,
+      selectedRooms: form.scope === 'SELECTED_ROOMS' ? form.selectedRooms : undefined,
+      wallCondition: form.wallCondition,
+      furnishing: form.furnishing,
+      doorCount: Number(form.doorCount),
+      doorColourChange: form.doorColourChange,
+      doorCountEstimated: form.doorCountEstimated,
+      hasElevator: form.hasElevator,
+      rush: form.rush,
+    },
+  })
+  busy.value = false
+
+  if (!response.ok || !data) {
+    failure.value = error?.detail ?? (response.status === 401 || response.status === 403
+      ? 'Operatör girişi gerekiyor.'
+      : `Hesaplanamadı (HTTP ${response.status}).`)
+    result.value = null
+    return
+  }
+  result.value = data
+}
+
+/** The margin the figures imply, so the operator does not have to divide two numbers on screen. */
+const marginRatio = computed(() => {
+  const quote = result.value
+  if (!quote || Number(quote.totalCost) === 0) {
+    return null
+  }
+  return (Number(quote.subtotalExVat) - Number(quote.totalCost)) / Number(quote.totalCost)
+})
+
+const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFractionDigits: 1 })
+</script>
+
+<template>
+  <div class="screen">
+    <header class="bar">
+      <div class="bar-inner">
+        <p class="eyebrow">Operatör paneli</p>
+        <h1>{{ t('pages.calculate.title') }}</h1>
+      </div>
+    </header>
+
+    <main class="content">
+      <p class="intro">{{ t('calculate.intro') }}</p>
+      <p v-if="failure" class="banner danger" role="alert">{{ failure }}</p>
+
+      <form class="panel" @submit.prevent="calculate()">
+        <div class="grid">
+          <label class="field-row">
+            <span>{{ t('calculate.district') }}</span>
+            <select v-model="form.districtCode">
+              <option v-for="district in DISTRICTS" :key="district.code" :value="district.code">
+                {{ district.name }}
+              </option>
+            </select>
+          </label>
+
+          <label class="field-row">
+            <span>{{ t('calculate.layout') }}</span>
+            <select v-model="form.layout">
+              <option v-for="layout in LAYOUTS" :key="layout" :value="layout">
+                {{ t(`layout.${layout}`) }}
+              </option>
+            </select>
+          </label>
+
+          <div class="field-row">
+            <span>{{ t('calculate.area') }}</span>
+            <div class="area">
+              <span class="field" :data-invalid="!areaValid">
+                <input v-model="form.area" class="num" inputmode="decimal" type="text">
+                <i>m²</i>
+              </span>
+              <div class="segmented small">
+                <button
+                  v-for="basis in (['NET', 'GROSS'] as const)" :key="basis" type="button"
+                  :aria-pressed="form.areaBasis === basis" @click="form.areaBasis = basis"
+                >
+                  {{ t(`calculate.areaBasis.${basis}`) }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <span>{{ t('calculate.doorCount') }}</span>
+            <div class="area">
+              <span class="field" :data-invalid="!doorsValid">
+                <input v-model="form.doorCount" class="num" inputmode="numeric" type="text">
+                <i>adet</i>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>{{ t('calculate.scope') }}</legend>
+          <div class="segmented">
+            <button
+              v-for="scope in (['WHOLE_HOME', 'SELECTED_ROOMS'] as const)" :key="scope" type="button"
+              :aria-pressed="form.scope === scope" @click="form.scope = scope"
+            >
+              {{ t(`scope.${scope}`) }}
+            </button>
+          </div>
+          <div v-if="form.scope === 'SELECTED_ROOMS'" class="checks">
+            <label v-for="room in ROOM_TYPES" :key="room" class="check">
+              <input v-model="form.selectedRooms" :value="room" type="checkbox">
+              <span>{{ t(`rooms.${room}`) }}</span>
+            </label>
+          </div>
+          <p v-if="!roomsValid" class="field-error">En az bir alan seçilmeli.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ t('calculate.wallCondition') }}</legend>
+          <div class="segmented wrap">
+            <button
+              v-for="condition in CONDITIONS" :key="condition" type="button"
+              :aria-pressed="form.wallCondition === condition" @click="form.wallCondition = condition"
+            >
+              {{ t(`wallCondition.${condition}`) }}
+            </button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>{{ t('calculate.furnishing') }}</legend>
+          <div class="segmented">
+            <button
+              v-for="furnishing in FURNISHINGS" :key="furnishing" type="button"
+              :aria-pressed="form.furnishing === furnishing" @click="form.furnishing = furnishing"
+            >
+              {{ t(`furnishing.${furnishing}`) }}
+            </button>
+          </div>
+        </fieldset>
+
+        <div class="checks">
+          <label class="check">
+            <input v-model="form.doorColourChange" type="checkbox">
+            <span>{{ t('calculate.doorColourChange') }}</span>
+          </label>
+          <label class="check">
+            <input v-model="form.doorCountEstimated" type="checkbox">
+            <span>{{ t('calculate.doorCountEstimated') }}</span>
+          </label>
+          <label class="check">
+            <input v-model="form.hasElevator" type="checkbox">
+            <span>{{ t('calculate.hasElevator') }}</span>
+          </label>
+          <label class="check">
+            <input v-model="form.rush" type="checkbox">
+            <span>{{ t('calculate.rush') }}</span>
+          </label>
+        </div>
+
+        <button class="btn primary wide" type="submit" :disabled="busy || !canSubmit">
+          {{ busy ? '…' : result ? t('calculate.recalculate') : t('calculate.submit') }}
+        </button>
+      </form>
+
+      <template v-if="result">
+        <section class="panel answer">
+          <p class="answer-label">{{ t('calculate.result.band') }}</p>
+          <p class="band num">
+            {{ formatPriceRange(Number(result.bandLow), Number(result.bandHigh)) }}
+          </p>
+          <p class="answer-total">
+            {{ t('calculate.result.total') }}
+            <strong class="num">{{ formatAmount(Number(result.total)) }}</strong>
+          </p>
+          <p class="hint">
+            {{ t('calculate.result.bandWhy', { ratio: (Number(result.bandRatio) * 100).toFixed(0) }) }}
+          </p>
+
+          <dl class="figures">
+            <dt>{{ t('calculate.result.cost') }}</dt>
+            <dd class="num">{{ formatAmount(Number(result.totalCost)) }}</dd>
+            <dt>{{ t('calculate.result.margin') }}</dt>
+            <dd class="num">{{ marginRatio === null ? '—' : PERCENT.format(marginRatio) }}</dd>
+            <dt>{{ t('calculate.result.subtotal') }}</dt>
+            <dd class="num">{{ formatAmount(Number(result.subtotalExVat)) }}</dd>
+            <dt>{{ t('calculate.result.vat') }}</dt>
+            <dd class="num">{{ formatAmount(Number(result.vatAmount)) }}</dd>
+            <dt>{{ t('calculate.result.days') }}</dt>
+            <dd class="num">{{ result.billableDays }}</dd>
+          </dl>
+          <p v-if="result.minimumBinding" class="banner note">
+            {{ t('calculate.result.minimumBinding') }}: {{ formatAmount(Number(result.minimumCost)) }}
+          </p>
+        </section>
+
+        <section class="panel">
+          <h2>{{ t('calculate.result.assumptions') }}</h2>
+          <dl class="figures">
+            <dt>{{ t('calculate.result.netArea') }}</dt>
+            <dd class="num">
+              {{ formatDecimal(Number(result.netArea)) }} m²
+              <em v-if="result.areaWasGross">
+                ({{ t('calculate.result.convertedFrom', { area: form.area }) }})
+              </em>
+            </dd>
+            <dt>{{ t('calculate.result.areas') }}</dt>
+            <dd class="num">{{ result.rooms.length }} · {{ result.photoCount }}</dd>
+            <dt>{{ t('calculate.result.pricedWith') }}</dt>
+            <dd class="num">{{ result.priceBookVersion }}</dd>
+          </dl>
+          <ul class="rooms">
+            <li v-for="room in result.rooms" :key="room.label">{{ room.label }}</li>
+          </ul>
+        </section>
+
+        <section class="panel">
+          <h2>{{ t('calculate.result.lines') }}</h2>
+          <ul class="lines">
+            <li v-for="line in result.lines" :key="line.code">
+              <span class="line-name">{{ t(`priceBook.codes.${line.code}`) }}</span>
+              <span class="line-qty num">
+                {{ formatDecimal(Number(line.quantity)) }} {{ t(`priceBook.units.${line.unit}`) }}
+              </span>
+              <span class="line-total num">{{ formatAmount(Number(line.lineTotal)) }}</span>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </main>
+  </div>
+</template>
+
+<style scoped>
+.screen {
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar-inner,
+.content {
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.bar-inner {
+  padding: 0.75rem 1rem;
+}
+
+.content {
+  padding: 1rem 1rem 4rem;
+  display: grid;
+  gap: var(--gap-loose);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+h1 {
+  margin: 0.1rem 0 0;
+  font-size: 1.375rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0 0 var(--gap-loose);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.intro,
+.hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.panel {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: var(--gap-loose);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--gap-loose);
+}
+
+.field-row {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.field-row > span,
+legend {
+  font-size: 0.75rem;
+  font-weight: 550;
+  color: var(--ink-3);
+}
+
+.area {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+}
+
+.field[data-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.field i {
+  padding-right: 0.55rem;
+  font-size: 0.75rem;
+  font-style: normal;
+  color: var(--ink-3);
+}
+
+input[type='text'] {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0 0.5rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  text-align: right;
+}
+
+input[type='text']:focus {
+  outline: none;
+}
+
+select {
+  min-height: 2.6rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 1rem;
+}
+
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--gap);
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.segmented.wrap {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.segmented.small {
+  flex: none;
+  width: 9rem;
+}
+
+.segmented button {
+  min-height: 2.5rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--gap);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--brand);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--danger);
+}
+
+.btn {
+  min-height: 2.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.btn.primary:hover {
+  background: var(--brand-hover);
+}
+
+.btn.wide {
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The answer leads with the two figures the business can compare with its own. */
+.answer {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line));
+  background: color-mix(in srgb, var(--brand-soft) 45%, var(--surface));
+  gap: var(--gap);
+}
+
+.answer-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.band {
+  margin: 0;
+  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.answer-total {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-2);
+}
+
+.answer-total strong {
+  color: var(--ink);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.figures dt {
+  color: var(--ink-2);
+}
+
+.figures dd {
+  margin: 0;
+  font-weight: 550;
+  text-align: right;
+}
+
+.figures em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.rooms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight) var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.rooms li {
+  padding: 0.1rem 0.45rem;
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+.lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.lines li {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) auto auto;
+  gap: var(--gap);
+  align-items: baseline;
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.line-qty {
+  color: var(--ink-2);
+  font-size: 0.825rem;
+}
+
+.line-total {
+  font-weight: 600;
+  min-width: 6.5rem;
+  text-align: right;
+}
+</style>
