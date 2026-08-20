@@ -35,7 +35,7 @@ const form = reactive({
   doorCount: '8',
   doorColourChange: true,
   doorCountEstimated: false,
-  hasElevator: true,
+  noElevator: false,
   rush: false,
 })
 
@@ -43,6 +43,9 @@ const LAYOUTS = ['STUDIO', 'ONE_PLUS_ONE', 'TWO_PLUS_ONE', 'THREE_PLUS_ONE', 'FO
   'FIVE_PLUS_ONE'] as const
 const CONDITIONS = ['GOOD', 'MINOR', 'MAJOR', 'UNSURE'] as const
 const FURNISHINGS = ['EMPTY', 'PARTIAL', 'FURNISHED'] as const
+
+/** The four things that add cost or uncertainty, as one row of on/off chips. */
+const EXTRAS = ['doorColourChange', 'doorCountEstimated', 'noElevator', 'rush'] as const
 /**
  * The areas this layout actually has, with their counts. Offering all eight room types instead was the
  * thing that made this control unanswerable: a study checkbox in a 3+1 did nothing at all, and
@@ -100,7 +103,10 @@ async function calculate() {
       doorCount: Number(form.doorCount),
       doorColourChange: form.doorColourChange,
       doorCountEstimated: form.doorCountEstimated,
-      hasElevator: form.hasElevator,
+      // The form asks what the job *has*, and every one of those makes it cost more or widen the
+      // band. The engine's flag is the other way round, so it is flipped here rather than asking the
+      // operator to think in negatives.
+      hasElevator: !form.noElevator,
       rush: form.rush,
     },
   })
@@ -214,7 +220,7 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
           </p>
 
           <template v-else>
-            <div class="chips" role="group" :aria-label="t('calculate.selectRooms')">
+            <div class="chips" data-group="areas" role="group" :aria-label="t('calculate.selectRooms')">
               <button
                 v-for="area in areas"
                 :key="area.type"
@@ -245,48 +251,54 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
           </template>
         </fieldset>
 
-        <fieldset>
-          <legend>{{ t('calculate.wallCondition') }}</legend>
-          <div class="segmented wrap">
-            <button
-              v-for="condition in CONDITIONS" :key="condition" type="button"
-              :aria-pressed="form.wallCondition === condition" @click="form.wallCondition = condition"
-            >
-              {{ t(`wallCondition.${condition}`) }}
-            </button>
-          </div>
-        </fieldset>
+        <!-- Two choices about the home, side by side: three stacked full-width bars was three times
+             the furniture for one question each. The labels are the operator's short forms; the long
+             customer phrasings belong in the customer's own form, where they are questions. -->
+        <div class="choices">
+          <fieldset>
+            <legend>{{ t('calculate.wallCondition') }}</legend>
+            <div class="segmented" data-cols="4">
+              <button
+                v-for="condition in CONDITIONS" :key="condition" type="button"
+                :aria-pressed="form.wallCondition === condition"
+                :title="t(`wallCondition.${condition}`)"
+                @click="form.wallCondition = condition"
+              >
+                {{ t(`wallConditionShort.${condition}`) }}
+              </button>
+            </div>
+          </fieldset>
 
-        <fieldset>
-          <legend>{{ t('calculate.furnishing') }}</legend>
-          <div class="segmented">
-            <button
-              v-for="furnishing in FURNISHINGS" :key="furnishing" type="button"
-              :aria-pressed="form.furnishing === furnishing" @click="form.furnishing = furnishing"
-            >
-              {{ t(`furnishing.${furnishing}`) }}
-            </button>
-          </div>
-        </fieldset>
-
-        <div class="checks">
-          <label class="check">
-            <input v-model="form.doorColourChange" type="checkbox">
-            <span>{{ t('calculate.doorColourChange') }}</span>
-          </label>
-          <label class="check">
-            <input v-model="form.doorCountEstimated" type="checkbox">
-            <span>{{ t('calculate.doorCountEstimated') }}</span>
-          </label>
-          <label class="check">
-            <input v-model="form.hasElevator" type="checkbox">
-            <span>{{ t('calculate.hasElevator') }}</span>
-          </label>
-          <label class="check">
-            <input v-model="form.rush" type="checkbox">
-            <span>{{ t('calculate.rush') }}</span>
-          </label>
+          <fieldset>
+            <legend>{{ t('calculate.furnishing') }}</legend>
+            <div class="segmented">
+              <button
+                v-for="furnishing in FURNISHINGS" :key="furnishing" type="button"
+                :aria-pressed="form.furnishing === furnishing" @click="form.furnishing = furnishing"
+              >
+                {{ t(`furnishing.${furnishing}`) }}
+              </button>
+            </div>
+          </fieldset>
         </div>
+
+        <!-- One row, one label, one meaning: everything switched on here makes the job dearer or the
+             band wider. Four checkboxes in a three-then-one grid said none of that. -->
+        <fieldset>
+          <legend>{{ t('calculate.extras') }}</legend>
+          <div class="chips" data-group="extras" role="group" :aria-label="t('calculate.extras')">
+            <button
+              v-for="extra in EXTRAS"
+              :key="extra"
+              type="button"
+              :aria-pressed="form[extra]"
+              @click="form[extra] = !form[extra]"
+            >
+              {{ t(`calculate.extraLabels.${extra}`) }}
+            </button>
+          </div>
+          <p class="scope">{{ t('calculate.extrasHint') }}</p>
+        </fieldset>
 
         <button class="btn primary wide" type="submit" :disabled="busy || !canSubmit">
           {{ busy ? '…' : result ? t('calculate.recalculate') : t('calculate.submit') }}
@@ -528,11 +540,6 @@ fieldset {
   border-radius: var(--radius-sm);
 }
 
-.segmented.wrap {
-  grid-auto-flow: row;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-}
-
 .segmented.small {
   flex: none;
   width: 9rem;
@@ -540,13 +547,14 @@ fieldset {
 
 .segmented button {
   min-height: 2.5rem;
-  padding: 0 0.5rem;
+  padding: 0 0.45rem;
+  white-space: nowrap;
   border: 0;
   border-radius: calc(var(--radius-sm) - 1px);
   background: transparent;
   color: var(--ink-2);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 550;
   cursor: pointer;
 }
@@ -630,26 +638,25 @@ fieldset {
   cursor: pointer;
 }
 
-.checks {
+.choices {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--gap-loose);
 }
 
-.check {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 2.5rem;
-  font-size: 0.9rem;
-  color: var(--ink);
-  cursor: pointer;
+/* Four segments need more room than three, so the split is not down the middle. */
+@media (min-width: 48rem) {
+  .choices {
+    grid-template-columns: 1.45fr 1fr;
+  }
 }
 
-.check input {
-  width: 1.1rem;
-  height: 1.1rem;
-  accent-color: var(--brand);
+/* On a phone the four conditions go two by two rather than clipping their own words. */
+@media (max-width: 30rem) {
+  .segmented[data-cols='4'] {
+    grid-auto-flow: row;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .field-error {

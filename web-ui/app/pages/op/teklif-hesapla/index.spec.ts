@@ -62,7 +62,22 @@ describe('manual quote calculation', () => {
         furnishing: 'FURNISHED',
         doorCount: 8,
         doorColourChange: true,
+        hasElevator: true,
       }),
+    })
+  })
+
+  it('asks what the job has, and sends the engine what it means', async () => {
+    const page = await mountSuspended(CalculatePage)
+
+    // Every chip in that row makes the job dearer or the band wider, so "Asansör yok" is the one
+    // that is switched on — the engine's flag is the opposite way round and is flipped for it.
+    await page.findAll('[data-group="extras"] button')
+      .find(chip => chip.text() === 'Asansör yok')!.trigger('click')
+    await page.find('form').trigger('submit')
+
+    expect(post).toHaveBeenCalledWith('/api/op/price-calculations', {
+      body: expect.objectContaining({ hasElevator: false }),
     })
   })
 
@@ -110,7 +125,7 @@ describe('manual quote calculation', () => {
 
     await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
 
-    const chips = page.findAll('.chips button').map(chip => chip.text())
+    const chips = page.findAll('[data-group="areas"] button').map(chip => chip.text())
     // A 3+1 has no study and no balcony, so offering them was offering a click that did nothing.
     expect(chips).toEqual([
       'Salon', 'Ebeveyn yatak odası', 'Yatak odası ×2', 'Mutfak', 'Banyo', 'Koridor',
@@ -121,7 +136,7 @@ describe('manual quote calculation', () => {
     const page = await mountSuspended(CalculatePage)
     await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
 
-    const chips = page.findAll('.chips button')
+    const chips = page.findAll('[data-group="areas"] button')
     await chips.find(chip => chip.text() === 'Salon')!.trigger('click')
     await chips.find(chip => chip.text().startsWith('Yatak odası'))!.trigger('click')
 
@@ -131,7 +146,7 @@ describe('manual quote calculation', () => {
   it('drops a selection the new layout cannot hold instead of pricing nothing for it', async () => {
     const page = await mountSuspended(CalculatePage)
     await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
-    await page.findAll('.chips button').find(c => c.text().startsWith('Yatak odası'))!.trigger('click')
+    await page.findAll('[data-group="areas"] button').find(c => c.text().startsWith('Yatak odası'))!.trigger('click')
     expect(page.text()).toContain('2 alan seçilecek')
 
     // A 1+1 has a master bedroom and no other bedroom: the tick would otherwise sit there pricing

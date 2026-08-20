@@ -209,6 +209,20 @@
     "scopeHint": "Bir tipi seçmek o tipteki bütün odaları kapsar — 3+1'de \"Yatak odası\" iki odadır.",
     "selectAll": "Tümünü seç",
     "clearSelection": "Temizle",
-    "noAreas": "En az bir alan seçilmeli."
+    "noAreas": "En az bir alan seçilmeli.",
+    "extras": "Bu işte ne var",
+    "extrasHint": "Seçilenler fiyatı artırır ya da aralığı genişletir.",
+    "extraLabels": {
+      "doorColourChange": "Kapıda renk değişimi",
+      "doorCountEstimated": "Kapı sayısı tahmini",
+      "noElevator": "Asansör yok",
+      "rush": "Acele iş"
+    }
+  },
+  "wallConditionShort": {
+    "GOOD": "İyi",
+    "MINOR": "Ufak çatlak",
+    "MAJOR": "Belirgin çatlak",
+    "UNSURE": "Belirsiz"
   }
 }
