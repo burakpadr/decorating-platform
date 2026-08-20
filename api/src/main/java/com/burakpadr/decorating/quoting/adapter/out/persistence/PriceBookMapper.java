@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.adapter.out.persistence;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.ModifierCode;
 import com.burakpadr.decorating.quoting.domain.model.ModifierTarget;
+import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
 import com.burakpadr.decorating.quoting.domain.model.PriceModifier;
@@ -12,6 +13,7 @@ import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +38,7 @@ final class PriceBookMapper {
 	 * dependency on Jackson here would put a serialization framework between the database and the
 	 * pricing domain.
 	 */
-	private static final Pattern QUOTED = Pattern.compile("\"([A-Z_]+)\"");
+	private static final Pattern QUOTED = Pattern.compile("\"([A-Z_0-9]+)\"");
 
 	private PriceBookMapper() {}
 
@@ -66,7 +68,7 @@ final class PriceBookMapper {
 		for (RoomTypeConfigEntity roomType : roomTypes) {
 			enumOf(RoomType.class, roomType.getRoomType()).ifPresent(type -> mappedRoomTypes.put(type,
 					new RoomTypeConfig(type, roomType.getAreaWeight(), roomType.getPerimeterFactor(),
-							roomType.getPaintableRatio())));
+							roomType.getPaintableRatio(), photosOf(roomType.getRequiredPhotos()))));
 		}
 
 		Map<String, ServiceDistrict> mappedDistricts = new LinkedHashMap<>();
@@ -96,6 +98,22 @@ final class PriceBookMapper {
 				mappedModifiers,
 				mappedRoomTypes,
 				mappedDistricts);
+	}
+
+	/**
+	 * The frames a room type asks for, in the order the column lists them — which is the order the
+	 * customer is asked to shoot them in, so it is not incidental.
+	 */
+	private static List<PhotoRole> photosOf(String json) {
+		List<PhotoRole> roles = new ArrayList<>();
+		if (json == null) {
+			return roles;
+		}
+		Matcher matcher = QUOTED.matcher(json);
+		while (matcher.find()) {
+			enumOf(PhotoRole.class, matcher.group(1)).ifPresent(roles::add);
+		}
+		return roles;
 	}
 
 	/** A null or empty {@code scope_items} means every item, matching the column's own convention. */

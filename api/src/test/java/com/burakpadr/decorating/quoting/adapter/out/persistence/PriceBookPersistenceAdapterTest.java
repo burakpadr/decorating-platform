@@ -9,6 +9,7 @@ import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.ModifierCode;
 import com.burakpadr.decorating.quoting.domain.model.ModifierTarget;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
+import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
 import com.burakpadr.decorating.quoting.domain.model.PriceModifier;
 import com.burakpadr.decorating.quoting.domain.model.PricedQuote;
 import com.burakpadr.decorating.quoting.domain.model.PricingInput;
@@ -131,6 +132,20 @@ class PriceBookPersistenceAdapterTest {
 						+ "right quote and a third too much")
 				.isEqualByComparingTo("0.6500");
 		assertThat(book.roomType(RoomType.HALLWAY).perimeterFactor()).isEqualByComparingTo("5.50");
+	}
+
+	@Test
+	@DisplayName("the frames each room type asks for come out of the jsonb column, in order")
+	void mapsTheRequiredPhotos() {
+		PriceBook book = repository.findActive().orElseThrow();
+
+		assertThat(book.roomType(RoomType.LIVING_ROOM).requiredPhotos())
+				.containsExactly(PhotoRole.WALL_1, PhotoRole.WALL_2, PhotoRole.WALL_3, PhotoRole.WALL_4,
+						PhotoRole.CEILING);
+		assertThat(book.roomType(RoomType.BATHROOM).requiredPhotos())
+				.as("order is shooting order, so it is not incidental")
+				.containsExactly(PhotoRole.WALL_1, PhotoRole.CEILING);
+		assertThat(book.roomType(RoomType.KITCHEN).requiredPhotos()).hasSize(3);
 	}
 
 	@Test

@@ -12,8 +12,9 @@ import org.hibernate.type.SqlTypes;
 /**
  * The {@code room_type_config} row (§4.5, §5.3).
  *
- * <p>{@code requiredPhotos} is carried but not mapped into the domain: it drives the capture flow, not
- * the price. It stays here so the entity matches the table it will later be cloned through.
+ * <p>{@code requiredPhotos} is the raw jsonb array of {@code photo.role} values, parsed in the mapper.
+ * It rides with the pricing coefficients because it answers the same question: how much of this kind of
+ * room is paintable, and therefore how much of it has to be seen (§2.4).
  */
 @Entity
 @Table(name = "room_type_config")
@@ -57,5 +58,9 @@ class RoomTypeConfigEntity {
 
 	BigDecimal getPaintableRatio() {
 		return paintableRatio;
+	}
+
+	String getRequiredPhotos() {
+		return requiredPhotos;
 	}
 }

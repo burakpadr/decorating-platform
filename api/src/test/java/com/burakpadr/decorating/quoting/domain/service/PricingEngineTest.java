@@ -3,32 +3,24 @@ package com.burakpadr.decorating.quoting.domain.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import com.burakpadr.decorating.quoting.domain.PriceBookFixture;
 import com.burakpadr.decorating.quoting.domain.model.Coating;
 import com.burakpadr.decorating.quoting.domain.model.FillerBand;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
-import com.burakpadr.decorating.quoting.domain.model.ModifierCode;
-import com.burakpadr.decorating.quoting.domain.model.ModifierTarget;
 import com.burakpadr.decorating.quoting.domain.model.Moisture;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
-import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
-import com.burakpadr.decorating.quoting.domain.model.PriceModifier;
 import com.burakpadr.decorating.quoting.domain.model.PricedQuote;
 import com.burakpadr.decorating.quoting.domain.model.PricingInput;
 import com.burakpadr.decorating.quoting.domain.model.PricingSource;
 import com.burakpadr.decorating.quoting.domain.model.QuoteLine;
 import com.burakpadr.decorating.quoting.domain.model.RoomInput;
 import com.burakpadr.decorating.quoting.domain.model.RoomType;
-import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
-import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import com.burakpadr.decorating.quoting.domain.model.SurfaceInput;
 import com.burakpadr.decorating.quoting.domain.model.Tone;
 import com.burakpadr.decorating.quoting.domain.model.WallCondition;
 import java.math.BigDecimal;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -595,67 +587,10 @@ class PricingEngineTest {
 
 	/** §5.11's seed, plus the 1.05 Kadıköy factor §5.10 prices against. */
 	private static PriceBook book() {
-		return bookWithVat("0.2000", "0.2000");
+		return PriceBookFixture.seed();
 	}
 
 	private static PriceBook bookWithVat(String labourRate, String materialRate) {
-		Map<ItemCode, PriceBookItem> items = new EnumMap<>(ItemCode.class);
-		item(items, ItemCode.WALL_PAINT, "62", "38", "6");
-		item(items, ItemCode.CEILING_PAINT, "70", "38", "8");
-		item(items, ItemCode.PATCH_FILLING, "50", "15", "12");
-		item(items, ItemCode.SKIM_COAT, "100", "42", "22");
-		item(items, ItemCode.PRIMER, "20", "15", "3");
-		item(items, ItemCode.STAIN_BLOCK_PRIMER, "25", "40", "4");
-		item(items, ItemCode.WALLPAPER_STRIPPING, "48", "2", "14");
-		item(items, ItemCode.DOOR_PAINT, "350", "150", "55");
-		item(items, ItemCode.TRIM_PAINT, "140", "52", "22");
-		item(items, ItemCode.RADIATOR_PAINT, "270", "115", "40");
-		item(items, ItemCode.DOWNLIGHT_CUTTING, "46", "0", "8");
-		item(items, ItemCode.CORNICE_CUTTING, "308", "0", "45");
-		item(items, ItemCode.MASKING, "115", "62", "25");
-		item(items, ItemCode.MOBILIZATION, "1900", "0", "60");
-
-		Map<ModifierCode, PriceModifier> modifiers = new EnumMap<>(ModifierCode.class);
-		modifiers.put(ModifierCode.FURNISHED, new PriceModifier(
-				ModifierCode.FURNISHED, new BigDecimal("1.2500"), ModifierTarget.LABOUR, Set.of()));
-		modifiers.put(ModifierCode.RUSH, new PriceModifier(
-				ModifierCode.RUSH, new BigDecimal("1.2500"), ModifierTarget.LABOUR, Set.of()));
-		modifiers.put(ModifierCode.DARK_TO_LIGHT, new PriceModifier(
-				ModifierCode.DARK_TO_LIGHT, new BigDecimal("1.5000"), ModifierTarget.BOTH,
-				Set.of(ItemCode.WALL_PAINT, ItemCode.DOOR_PAINT)));
-		modifiers.put(ModifierCode.NO_ELEVATOR, new PriceModifier(
-				ModifierCode.NO_ELEVATOR, new BigDecimal("1.2000"), ModifierTarget.BOTH,
-				Set.of(ItemCode.MOBILIZATION)));
-
-		Map<RoomType, RoomTypeConfig> rooms = new EnumMap<>(RoomType.class);
-		roomType(rooms, RoomType.LIVING_ROOM, "3.0", "4.1", "1.00");
-		roomType(rooms, RoomType.MASTER_BEDROOM, "1.5", "4.1", "1.00");
-		roomType(rooms, RoomType.BEDROOM, "1.2", "4.1", "1.00");
-		roomType(rooms, RoomType.STUDY, "1.0", "4.1", "1.00");
-		roomType(rooms, RoomType.KITCHEN, "1.1", "4.3", "0.65");
-		roomType(rooms, RoomType.BATHROOM, "0.5", "4.2", "0.20");
-		roomType(rooms, RoomType.HALLWAY, "0.8", "5.5", "1.00");
-		roomType(rooms, RoomType.BALCONY, "0.4", "4.3", "1.00");
-
-		return new PriceBook("TEST-5.11",
-				new BigDecimal("2.70"), new BigDecimal("0.82"), new BigDecimal("0.12"),
-				new BigDecimal("1.90"), new BigDecimal("2.20"),
-				3, new BigDecimal("8.00"), new BigDecimal("4500.00"), new BigDecimal("0.25"),
-				new BigDecimal("0.30"), new BigDecimal("0.20"),
-				new BigDecimal(labourRate), new BigDecimal(materialRate), new BigDecimal("0.12"),
-				items, modifiers, rooms,
-				Map.of("KADIKOY", new ServiceDistrict("KADIKOY", "Kadıköy", true, new BigDecimal("1.05"))));
-	}
-
-	private static void item(Map<ItemCode, PriceBookItem> into, ItemCode code,
-			String labour, String material, String minutes) {
-		into.put(code, new PriceBookItem(code, new BigDecimal(labour), new BigDecimal(material),
-				new BigDecimal(minutes)));
-	}
-
-	private static void roomType(Map<RoomType, RoomTypeConfig> into, RoomType type,
-			String weight, String perimeter, String paintable) {
-		into.put(type, new RoomTypeConfig(type, new BigDecimal(weight), new BigDecimal(perimeter),
-				new BigDecimal(paintable)));
+		return PriceBookFixture.seedWithVat(labourRate, materialRate);
 	}
 }
