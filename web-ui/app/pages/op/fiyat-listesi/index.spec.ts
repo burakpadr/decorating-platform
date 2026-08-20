@@ -23,9 +23,13 @@ mockNuxtImport('useApi', () => () => ({
 describe('price list versions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // useAsyncData caches by key across mounts, so without this the second test in the file asserts
+    // against the first test's payload — which is how a stubbed 401 kept rendering a list.
+    clearNuxtData('price-books')
     // The live version is deliberately NOT the newest: date order alone would put the draft first, so
     // this is the data that can tell "live first" apart from "newest first".
     versions.mockResolvedValue({
+      response: { ok: true, status: 200 },
       data: [
         {
           id: '11111111-1111-7111-8111-111111111111',
@@ -47,7 +51,7 @@ describe('price list versions', () => {
         },
       ],
     })
-    activate.mockResolvedValue({ data: {} })
+    activate.mockResolvedValue({ response: { ok: true, status: 200 }, data: {} })
   })
 
   it('lists every version with its age, live one first', async () => {
@@ -73,6 +77,18 @@ describe('price list versions', () => {
     const page = await mountSuspended(PriceBookList)
 
     expect(page.find('.warn').exists()).toBe(true)
+  })
+
+  it('says the operator is not logged in rather than showing an empty price book', async () => {
+    // A 401 rendered as "there are no price lists" tells the operator the database is empty when the
+    // truth is that nobody is logged in. The panel has no login screen yet, so this message is the
+    // only thing standing between that state and a wrong conclusion.
+    versions.mockResolvedValue({ response: { ok: false, status: 401 }, data: undefined })
+
+    const page = await mountSuspended(PriceBookList)
+
+    expect(page.text()).toContain('Operatör girişi gerekiyor')
+    expect(page.text()).not.toContain('Henüz fiyat listesi yok')
   })
 
   it('offers activation only for versions that are not live, and calls it with that id', async () => {

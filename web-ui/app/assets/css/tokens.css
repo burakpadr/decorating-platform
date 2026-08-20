@@ -1,0 +1,140 @@
+/*
+ * The design tokens for the operator side of the product.
+ *
+ * There was no design system to honour, so this is it: one place that decides colour, type, spacing
+ * and elevation, and two screens that only reference it. The alternative — hex values inside each
+ * page — is what the panel started as, and it broke the moment the operator's phone was in dark mode.
+ *
+ * The palette comes from the trade rather than from a template. A painter's world is pigment, so the
+ * primary is a deep pigment teal; the ground is a warm neutral, because a painting company's panel
+ * sitting on cold blue-grey looks like a bank. Semantic colours are separate from the primary and
+ * mean exactly one thing each: green is what quotes are priced against, amber is "this is going
+ * stale", red is refused.
+ *
+ * Numbers are the content here, so they get a monospace face and tabular figures everywhere they line
+ * up. Money that does not align in a column cannot be scanned, and scanning is the whole job.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Ground and surfaces — warm neutrals, not grey-blue. */
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1efeb;
+  --surface-sunken: #ebe8e2;
+  --line: #ded9d1;
+  --line-strong: #c8c2b8;
+
+  /* Ink. Three weights is enough; a fourth always ends up unreadable. */
+  --ink: #1c211f;
+  --ink-2: #5b625f;
+  --ink-3: #8b918d;
+
+  /* Pigment teal: the only place a saturated colour is spent. */
+  --brand: #0b6e68;
+  --brand-hover: #095a55;
+  --brand-ink: #ffffff;
+  --brand-soft: #e2f1ef;
+
+  /* Semantics, each meaning one thing. */
+  --live: #0f7a46;
+  --live-soft: #e4f4ea;
+  --warn: #a45c07;
+  --warn-soft: #fdf1de;
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+
+  --focus: #0b6e68;
+
+  /* A 4px rhythm, named by use rather than by size. */
+  --gap-tight: 0.25rem;
+  --gap: 0.5rem;
+  --gap-loose: 0.75rem;
+  --gap-section: 1.5rem;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  /* Two elevations. A third would be decoration. */
+  --shadow: 0 1px 2px rgb(28 33 31 / 6%), 0 1px 1px rgb(28 33 31 / 4%);
+  --shadow-raised: 0 4px 16px rgb(28 33 31 / 10%);
+
+  --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101413;
+    --surface: #181e1d;
+    --surface-2: #1f2726;
+    --surface-sunken: #131918;
+    --line: #2b3533;
+    --line-strong: #3c4846;
+
+    --ink: #e8ecea;
+    --ink-2: #a2aaa8;
+    --ink-3: #79817f;
+
+    /* Lifted, because the light-mode teal on a near-black ground fails contrast. */
+    --brand: #35b3a8;
+    --brand-hover: #4cc6bb;
+    --brand-ink: #06231f;
+    --brand-soft: #10312e;
+
+    --live: #4cc182;
+    --live-soft: #102c1e;
+    --warn: #e0a33f;
+    --warn-soft: #2e2211;
+    --danger: #f0837a;
+    --danger-soft: #33191a;
+
+    --focus: #35b3a8;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-raised: 0 6px 20px rgb(0 0 0 / 45%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Every figure in this product is meant to be compared with the one above it. */
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(a) {
+  color: var(--brand);
+  text-decoration-color: color-mix(in srgb, var(--brand) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+:where(button, a, input, select, summary):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

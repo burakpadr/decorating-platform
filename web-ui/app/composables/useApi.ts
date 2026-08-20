@@ -11,8 +11,15 @@ export function useApi() {
   const nuxtApp = useNuxtApp()
 
   if (!nuxtApp._decoratingApi) {
-    const { apiBase } = useRuntimeConfig().public
-    nuxtApp._decoratingApi = createApiClient({ baseUrl: apiBase })
+    const { apiBase, operatorAuth } = useRuntimeConfig().public
+    nuxtApp._decoratingApi = createApiClient({
+      baseUrl: apiBase,
+      // The operator realm is basic auth and the panel has no login screen yet. Empty everywhere but
+      // a developer's machine, where it is what makes /op/** usable before that screen exists — see
+      // the operator login work item. Never set this in production: it would ship the credentials to
+      // every browser that loads the app.
+      headers: operatorAuth ? { Authorization: `Basic ${btoa(operatorAuth)}` } : undefined,
+    })
   }
 
   return nuxtApp._decoratingApi as ReturnType<typeof createApiClient>

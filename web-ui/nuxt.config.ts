@@ -2,6 +2,11 @@
 import { DISTRICTS } from './app/utils/districts'
 
 export default defineNuxtConfig({
+  // One stylesheet, loaded globally: the tokens every screen reads. Page styles stay scoped and
+  // reference these — the panel's first version put hex values in each page and inverted itself the
+  // moment the operator's phone was in dark mode.
+  css: ['~/assets/css/tokens.css'],
+
   compatibilityDate: '2026-08-16',
   devtools: { enabled: true },
 
@@ -15,6 +20,11 @@ export default defineNuxtConfig({
       // Nuxt overrides this from NUXT_PUBLIC_API_BASE at runtime; the value here is the local
       // default only.
       apiBase: 'http://localhost:8080',
+
+      // `user:password` for the operator realm, from NUXT_PUBLIC_OPERATOR_AUTH. Empty by default and
+      // meant to stay empty outside local development: it is a stand-in for the login screen the
+      // panel does not have yet, not an authentication mechanism.
+      operatorAuth: '',
     },
   },
 

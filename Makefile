@@ -22,8 +22,21 @@ infra-down: ## Stop local infrastructure (volumes survive)
 dev: infra ## Start the API and the web app against local infrastructure
 	@echo "Run 'make dev-api' and 'make dev-web' in separate terminals."
 
+# Local operator credentials. Override on the command line: make dev-api OPERATOR_PASSWORD=...
+OPERATOR_USER ?= operator
+OPERATOR_PASSWORD ?= boya123
+
 dev-api: ## Run the API with hot reload
-	$(MVN) spring-boot:run
+	# In development the web app is :3000 and the API is :8080, so every panel request is
+	# cross-origin; in production Caddy puts them on one origin and this stays unset. The operator
+	# credentials are the local default and exist so the panel can be opened without a login screen.
+	# Program arguments, not environment variables: spring-boot:run forks a JVM and the forked
+	# process does not bind SPRING_SECURITY_USER_* — it starts with a generated password instead,
+	# and every request answers 401 while the environment looks correct.
+	$(MVN) spring-boot:run -Dspring-boot.run.arguments="\
+	--spring.security.user.name=$(OPERATOR_USER) \
+	--spring.security.user.password=$(OPERATOR_PASSWORD) \
+	--decorating.cors.allowed-origins=http://localhost:3000"
 
 dev-web: ## Run the web app with hot reload
 	pnpm --filter @decorating/web dev
