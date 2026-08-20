@@ -89,11 +89,24 @@ spring:
   config:
     activate:
       on-profile: openapi
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.jpa.autoconfigure.HibernateJpaAutoConfiguration
-      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+
+  # The whole bean graph is built — controllers, use cases, adapters — and nothing connects. Excluding
+  # the datasource instead would leave every adapter unsatisfiable, so each one would need a profile
+  # annotation and the export would stop exercising the graph it is supposed to describe.
+  datasource:
+    url: jdbc:postgresql://openapi-export.invalid:5432/none
+    username: none
+    password: none
+    hikari:
+      initialization-fail-timeout: -1     # do not open a connection while starting
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none                      # validate would need the database it must not touch
+    properties:
+      hibernate:
+        boot:
+          allow_jdbc_metadata_access: false
   flyway:
     enabled: false
 

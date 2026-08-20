@@ -1,0 +1,178 @@
+package com.burakpadr.decorating.quoting.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.burakpadr.decorating.TestcontainersConfiguration;
+import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
+import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
+import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
+import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+
+/**
+ * Managing price book versions (§7, workflow §6): the quarterly increase, and the promise that comes
+ * with it.
+ *
+ * <p>The promise is the reason this test exists. "Eski teklifler değişmez" — a customer who turns up
+ * with a two-week-old quote must be holding a figure the system can still explain. That works only
+ * because a quote records the version it was priced with and versions are never edited, so the test
+ * that matters here is not "does activation work" but "did anything already sent move".
+ */
+@SpringBootTest
+@Import(TestcontainersConfiguration.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+class PriceBookVersionManagementTest {
+
+	private static final String ACTIVE = "REAL-2026-01";
+
+	@Autowired
+	private ManagePriceBookVersions versions;
+
+	@Autowired
+	private PriceBookRepository books;
+
+	@Autowired
+	private JdbcTemplate jdbc;
+
+	/** The database is shared with every other test in the suite; leave it as it was found. */
+	@org.junit.jupiter.api.AfterEach
+	void restoreTheActiveVersion() {
+		jdbc.update("DELETE FROM quote WHERE created_by = 'OPERATOR'");
+		jdbc.update("DELETE FROM quote_request WHERE status = 'QUOTE_SENT'");
+		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'TEST-%'");
+		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
+		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
+	}
+
+	@Test
+	@DisplayName("every version is listed, and exactly one of them is active")
+	void listsEveryVersion() {
+		List<PriceBookSummary> all = versions.list();
+
+		assertThat(all).extracting(PriceBookSummary::versionCode).contains(ACTIVE, "SEED-2026-01");
+		assertThat(all.stream().filter(PriceBookSummary::active).count()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("a new version is a full copy of its source, and starts switched off")
+	void aNewVersionIsAFullCopyAndStartsInactive() {
+		UUID source = idOf(ACTIVE);
+
+		PriceBookSummary created = versions.createVersionFrom(source, "TEST-COPY-1");
+
+		assertThat(created.active())
+				.as("a version is reviewed before it prices anything, so it cannot arrive active")
+				.isFalse();
+		assertThat(created.id()).isNotEqualTo(source);
+		assertThat(childRows("price_book_item", created.id())).isEqualTo(14);
+		assertThat(childRows("price_modifier", created.id())).isEqualTo(4);
+		assertThat(childRows("room_type_config", created.id())).isEqualTo(8);
+		assertThat(childRows("service_district", created.id())).isEqualTo(39);
+		assertThat(books.findByVersionCode("TEST-COPY-1").orElseThrow()
+						.item(ItemCode.WALL_PAINT).labourCost())
+				.as("a copy that priced differently from its source would be an edit, not a copy")
+				.isEqualByComparingTo("62.00");
+	}
+
+	@Test
+	@DisplayName("activating a version switches the previous one off, never both on")
+	void activatingLeavesExactlyOneActive() {
+		PriceBookSummary created = versions.createVersionFrom(idOf(ACTIVE), "TEST-COPY-2");
+
+		versions.activate(created.id());
+
+		assertThat(books.findActive().orElseThrow().versionCode()).isEqualTo("TEST-COPY-2");
+		assertThat(jdbc.queryForObject("SELECT count(*) FROM price_book WHERE active = true", Integer.class))
+				.isEqualTo(1);
+		assertThat(jdbc.queryForObject(
+						"SELECT active FROM price_book WHERE version_code = ?", Boolean.class, ACTIVE))
+				.isFalse();
+	}
+
+	@Test
+	@DisplayName("a quote already sent keeps the figures it was computed with")
+	void aQuoteAlreadySentKeepsItsFigures() {
+		UUID oldVersion = idOf(ACTIVE);
+		UUID quote = insertSentQuote(oldVersion);
+
+		PriceBookSummary raised = versions.createVersionFrom(oldVersion, "TEST-RAISE-1");
+		jdbc.update("UPDATE price_book_item SET labour_cost = 99.00 "
+				+ "WHERE price_book_id = ? AND code = 'WALL_PAINT'", raised.id());
+		versions.activate(raised.id());
+
+		assertThat(jdbc.queryForObject(
+						"SELECT price_book_id FROM quote WHERE id = ?", UUID.class, quote))
+				.as("the quote points at the version that priced it, and that pointer never moves")
+				.isEqualTo(oldVersion);
+		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
+				.as("the superseded version is still readable, unchanged — that is what makes the "
+						+ "conversation with a customer holding an old quote possible")
+				.isEqualByComparingTo("62.00");
+		assertThat(books.findActive().orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
+				.as("while new quotes price at the raised figure")
+				.isEqualByComparingTo("99.00");
+	}
+
+	@Test
+	@DisplayName("a version code cannot be reused")
+	void refusesADuplicateVersionCode() {
+		assertThatThrownBy(() -> versions.createVersionFrom(idOf(ACTIVE), ACTIVE))
+				.isInstanceOf(DuplicateVersionCode.class)
+				.hasMessageContaining(ACTIVE);
+	}
+
+	@Test
+	@DisplayName("cloning a version that does not exist fails before anything is written")
+	void refusesToCloneAnUnknownVersion() {
+		UUID missing = UUID.randomUUID();
+
+		assertThatThrownBy(() -> versions.createVersionFrom(missing, "TEST-ORPHAN"))
+				.isInstanceOf(PriceBookVersionNotFound.class);
+		assertThat(jdbc.queryForObject(
+						"SELECT count(*) FROM price_book WHERE version_code = 'TEST-ORPHAN'", Integer.class))
+				.isZero();
+	}
+
+	@Test
+	@DisplayName("activating a version that does not exist is an error, not a silent no-op")
+	void refusesToActivateAnUnknownVersion() {
+		assertThatThrownBy(() -> versions.activate(UUID.randomUUID()))
+				.isInstanceOf(PriceBookVersionNotFound.class);
+	}
+
+	private UUID idOf(String versionCode) {
+		return jdbc.queryForObject(
+				"SELECT id FROM price_book WHERE version_code = ?", UUID.class, versionCode);
+	}
+
+	private Integer childRows(String table, UUID priceBookId) {
+		return jdbc.queryForObject(
+				"SELECT count(*) FROM " + table + " WHERE price_book_id = ?", Integer.class, priceBookId);
+	}
+
+	/** A quote in the state that matters: sent, priced, pointing at the version that priced it. */
+	private UUID insertSentQuote(UUID priceBookId) {
+		UUID request = UUID.randomUUID();
+		UUID quote = UUID.randomUUID();
+		jdbc.update("INSERT INTO quote_request (id, status, price_book_id) VALUES (?, 'QUOTE_SENT', ?)",
+				request, priceBookId);
+		jdbc.update("INSERT INTO quote (id, quote_request_id, price_book_id, status, total_cost, "
+				+ "subtotal, vat_amount, total, band_low, band_high, margin_ratio, estimated_days, "
+				+ "total_wall_sqm, total_ceiling_sqm, created_by) "
+				+ "VALUES (?, ?, ?, 'SENT', 52509.86, 68262.82, 13652.56, 81915.39, 72085.54, 91745.23, "
+				+ "0.3000, 3, 220.83, 92.00, 'OPERATOR')",
+				quote, request, priceBookId);
+		return quote;
+	}
+}

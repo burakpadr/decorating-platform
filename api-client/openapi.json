@@ -9,6 +9,119 @@
     "url" : "/",
     "description" : "Same origin"
   } ],
-  "paths" : { },
-  "components" : { }
+  "paths" : {
+    "/api/op/price-books" : {
+      "get" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePriceBookVersionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/op/price-books/{id}/activate" : {
+      "post" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "activate",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "CreatePriceBookVersionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "sourceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "versionCode" : {
+            "type" : "string",
+            "maxLength" : 32,
+            "minLength" : 0,
+            "pattern" : "[A-Z0-9-]+"
+          }
+        },
+        "required" : [ "sourceId", "versionCode" ]
+      },
+      "PriceBookSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "versionCode" : {
+            "type" : "string"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      }
+    }
+  }
 }

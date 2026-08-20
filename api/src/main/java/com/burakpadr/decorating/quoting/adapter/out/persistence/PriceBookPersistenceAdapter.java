@@ -4,7 +4,6 @@ import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Read-only and transactional per call: the four child reads must see one consistent version, or a
  * book could be assembled half from the version being replaced and half from its replacement.
  *
- * <p>Absent under the {@code openapi} profile. That profile exports the contract by booting the web
- * layer with no datasource, JPA or Flyway, so a bean that needs a Spring Data repository cannot be
- * created — and a failed boot there fails CI, not a test. Every persistence adapter carries this for
- * the same reason; {@code OpenApiProfileContextTest} is what notices when one forgets.
  */
 @Repository
-@Profile("!openapi")
 @Transactional(readOnly = true)
 class PriceBookPersistenceAdapter implements PriceBookRepository {
 
