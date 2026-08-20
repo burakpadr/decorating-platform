@@ -132,6 +132,22 @@ const marginRatio = computed(() => {
 })
 
 const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFractionDigits: 1 })
+
+/*
+ * After the first calculation the tool recalculates as the form changes, which is what turns it from a
+ * form into a calculator: the operator nudges the m² and watches the figure move. Debounced, and never
+ * before the first explicit press — nobody wants a request fired at them while they are still typing
+ * the first number.
+ */
+let pending: ReturnType<typeof setTimeout> | undefined
+
+watch(() => JSON.stringify(form), () => {
+  if (!result.value || !canSubmit.value) {
+    return
+  }
+  clearTimeout(pending)
+  pending = setTimeout(() => calculate(), 400)
+})
 </script>
 
 <template>
@@ -147,6 +163,7 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
       <p class="intro">{{ t('calculate.intro') }}</p>
       <p v-if="failure" class="banner danger" role="alert">{{ failure }}</p>
 
+      <div class="layout">
       <form class="panel" @submit.prevent="calculate()">
         <div class="grid">
           <label class="field-row">
@@ -305,6 +322,9 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
         </button>
       </form>
 
+      <!-- The answer stays in view while the inputs are nudged: this is a comparison tool, and the
+           figure being compared should not scroll away from the field being changed. -->
+      <aside class="answer-pane">
       <template v-if="result">
         <section class="panel answer">
           <p class="answer-label">{{ t('calculate.result.band') }}</p>
@@ -369,6 +389,10 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
           </ul>
         </section>
       </template>
+
+      <p v-else class="waiting">{{ t('calculate.waiting') }}</p>
+      </aside>
+      </div>
     </main>
   </div>
 </template>
@@ -390,7 +414,7 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
 
 .bar-inner,
 .content {
-  max-width: 52rem;
+  max-width: 78rem;
   margin: 0 auto;
 }
 
@@ -399,9 +423,44 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
 }
 
 .content {
-  padding: 1rem 1rem 4rem;
+  padding: 1rem 1.25rem 4rem;
   display: grid;
   gap: var(--gap-loose);
+}
+
+/* A calculator, not a page of stacked panels: the form on the left, the answer beside it and staying
+   there. Below 64rem there is no room for two columns, so it becomes form-then-answer. */
+.layout {
+  display: grid;
+  gap: var(--gap-loose);
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+    align-items: start;
+  }
+
+  .answer-pane {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+.answer-pane {
+  display: grid;
+  gap: var(--gap-loose);
+  align-content: start;
+}
+
+.waiting {
+  margin: 0;
+  padding: 1.5rem 1.25rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--ink-3);
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
 .eyebrow {
@@ -432,7 +491,7 @@ h2 {
 .intro,
 .hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.925rem;
   color: var(--ink-2);
 }
 
@@ -448,7 +507,7 @@ h2 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
   gap: var(--gap-loose);
 }
 
@@ -459,15 +518,22 @@ h2 {
 
 .field-row > span,
 legend {
-  font-size: 0.75rem;
-  font-weight: 550;
-  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
 }
 
 .area {
   display: flex;
   gap: var(--gap);
   align-items: center;
+}
+
+/* Wide enough for four digits: the field was clipping the leading "1" of 140 m². */
+.area .field {
+  flex: 1 1 5.5rem;
+  min-width: 5rem;
 }
 
 .field {
@@ -542,7 +608,7 @@ fieldset {
 
 .segmented.small {
   flex: none;
-  width: 9rem;
+  width: 7.75rem;
 }
 
 .segmented button {
@@ -554,7 +620,7 @@ fieldset {
   background: transparent;
   color: var(--ink-2);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 550;
   cursor: pointer;
 }
@@ -581,7 +647,7 @@ fieldset {
   background: var(--surface);
   color: var(--ink-2);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.925rem;
   font-weight: 550;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -605,7 +671,7 @@ fieldset {
 
 .scope {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.55;
   color: var(--ink-2);
 }
@@ -714,7 +780,7 @@ fieldset {
 
 .band {
   margin: 0;
-  font-size: clamp(1.4rem, 4.5vw, 2rem);
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
   font-weight: 650;
   letter-spacing: -0.02em;
 }
@@ -732,9 +798,9 @@ fieldset {
 .figures {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.35rem 1rem;
+  gap: 0.45rem 1rem;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .figures dt {
@@ -783,12 +849,12 @@ fieldset {
 
 .lines li {
   display: grid;
-  grid-template-columns: minmax(7rem, 1fr) auto auto;
+  grid-template-columns: minmax(6rem, 1fr) auto auto;
   gap: var(--gap);
   align-items: baseline;
-  padding: 0.55rem 0.7rem;
+  padding: 0.6rem 0.75rem;
   background: var(--surface);
-  font-size: 0.9rem;
+  font-size: 0.925rem;
 }
 
 .line-qty {

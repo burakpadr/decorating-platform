@@ -217,7 +217,8 @@
       "doorCountEstimated": "Kapı sayısı tahmini",
       "noElevator": "Asansör yok",
       "rush": "Acele iş"
-    }
+    },
+    "waiting": "Bilgileri girip Hesapla'ya basın. Sonra her değişiklikte kendiliğinden güncellenir."
   },
   "wallConditionShort": {
     "GOOD": "İyi",
