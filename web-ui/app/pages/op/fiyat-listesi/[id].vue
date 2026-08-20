@@ -215,6 +215,15 @@ function coefficient(key: string, value: number): string {
 
         <section class="panel">
           <h2>{{ t('priceBook.items.title') }}</h2>
+          <!-- On a wide screen the three labels are said once, at the top; on a phone each field
+               carries its own, because there is no room for a header row. -->
+          <div class="items-head" aria-hidden="true">
+            <span />
+            <span>{{ t('priceBook.items.labour') }}</span>
+            <span>{{ t('priceBook.items.material') }}</span>
+            <span>{{ t('priceBook.items.minutes') }}</span>
+          </div>
+
           <ul class="items">
             <li v-for="item in book.items" :key="item.code" :data-dirty="isDirty(item.code)">
               <div class="item-head">
@@ -345,7 +354,7 @@ function coefficient(key: string, value: number): string {
 }
 
 .bar-inner {
-  max-width: 46rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding: 0.6rem 1rem;
   display: flex;
@@ -391,7 +400,7 @@ h1 {
 .pill[data-tone='past'] { background: var(--surface-2); color: var(--ink-2); }
 
 .content {
-  max-width: 46rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding: 0.85rem 1rem 1rem;
   display: grid;
@@ -449,11 +458,65 @@ h2 {
   gap: var(--gap);
 }
 
+.items-head {
+  display: none;
+}
+
 .items > li {
   padding: 0.7rem;
-  background: var(--surface-sunken);
-  border: 1px solid transparent;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
+}
+
+/* Wider than a phone: the labels move to a single header row and the rows read as a table. */
+@media (min-width: 40rem) {
+  .items-head {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) 8rem 8rem 7rem;
+    gap: var(--gap);
+    padding: 0 0.7rem var(--gap-tight);
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .items-head > span:not(:first-child) {
+    text-align: right;
+  }
+
+  .items > li {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) 8rem 8rem 7rem;
+    align-items: center;
+    gap: var(--gap);
+  }
+
+  .item-head {
+    margin-bottom: 0;
+  }
+
+  /* Specificity, not order: the base .fields rule sits further down the sheet, so an equal-weight
+     selector inside this query loses to it. */
+  .items > li > .fields {
+    display: contents;
+  }
+
+  /* Said once in the header row; repeating it 42 times is what made the screen noisy. */
+  .items label > span:first-child {
+    display: none;
+  }
+
+  .field-error,
+  .item-actions,
+  .saved {
+    grid-column: 1 / -1;
+    /* Right, under the figures that changed, not under the name that did not. */
+    justify-self: end;
+    text-align: right;
+  }
 }
 
 /* An edited row is marked, so the operator can see what they have touched before saving it. */
@@ -492,11 +555,9 @@ h2 {
 
 label {
   display: grid;
-  gap: 0.2rem;
-  font-size: 0.72rem;
-  font-weight: 550;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--ink-3);
 }
 

@@ -87,27 +87,29 @@ async function activate(id: string) {
           class="card"
           :data-active="version.active"
         >
-          <div class="card-head">
-            <span class="code num">{{ version.versionCode }}</span>
-            <span class="pill" :data-tone="version.active ? 'live' : 'past'">
-              {{ version.active ? t('priceBook.state.active') : t('priceBook.state.superseded') }}
+          <!-- The whole card opens the version: one large target instead of a button that looked
+               like an empty field, and the only button left on the card is the one that changes
+               something. -->
+          <NuxtLink class="card-link" :to="`/op/fiyat-listesi/${version.id}`">
+            <span class="card-head">
+              <span class="code num">{{ version.versionCode }}</span>
+              <span class="pill" :data-tone="version.active ? 'live' : 'past'">
+                {{ version.active ? t('priceBook.state.active') : t('priceBook.state.superseded') }}
+              </span>
             </span>
-          </div>
-
-          <p class="age">{{ t('priceBook.age', { age: versionAge(version.createdAt) }) }}</p>
-
-          <div class="card-actions">
-            <NuxtLink class="btn ghost" :to="`/op/fiyat-listesi/${version.id}`">
-              {{ t('priceBook.actions.detail') }}
-              <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16">
+            <span class="age">
+              {{ t('priceBook.age', { age: versionAge(version.createdAt) }) }}
+              <svg class="chev" aria-hidden="true" viewBox="0 0 20 20" width="16" height="16">
                 <path
                   d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8"
                   stroke-linecap="round" stroke-linejoin="round"
                 />
               </svg>
-            </NuxtLink>
+            </span>
+          </NuxtLink>
+
+          <div v-if="!version.active" class="card-actions">
             <button
-              v-if="!version.active"
               class="btn primary"
               type="button"
               :disabled="busy === version.id"
@@ -210,7 +212,7 @@ h1 {
 
 .card {
   position: relative;
-  padding: 0.9rem 0.9rem 0.85rem 1.1rem;
+  padding: 0.15rem 0.9rem 0.85rem 1.1rem;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -254,6 +256,18 @@ h1 {
   to { background-position: 0 0; }
 }
 
+.card-link {
+  display: block;
+  padding: 0.75rem 0 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.card-link:hover .chev {
+  transform: translateX(2px);
+  color: var(--ink);
+}
+
 .card-head {
   display: flex;
   align-items: center;
@@ -288,14 +302,24 @@ h1 {
 }
 
 .age {
-  margin: 0.35rem 0 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.3rem 0 0;
   font-size: 0.85rem;
   color: var(--ink-2);
+}
+
+.chev {
+  flex: none;
+  color: var(--ink-3);
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .card-actions {
   display: flex;
   gap: var(--gap);
+  margin-top: 0.8rem;
 }
 
 /* 44px and full width on a phone: this is tapped with a thumb, outdoors, in a hurry. */
