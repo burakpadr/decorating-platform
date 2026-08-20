@@ -43,8 +43,33 @@ const LAYOUTS = ['STUDIO', 'ONE_PLUS_ONE', 'TWO_PLUS_ONE', 'THREE_PLUS_ONE', 'FO
   'FIVE_PLUS_ONE'] as const
 const CONDITIONS = ['GOOD', 'MINOR', 'MAJOR', 'UNSURE'] as const
 const FURNISHINGS = ['EMPTY', 'PARTIAL', 'FURNISHED'] as const
-const ROOM_TYPES = ['LIVING_ROOM', 'MASTER_BEDROOM', 'BEDROOM', 'STUDY', 'KITCHEN', 'BATHROOM',
-  'HALLWAY', 'BALCONY'] as const
+/**
+ * The areas this layout actually has, with their counts. Offering all eight room types instead was the
+ * thing that made this control unanswerable: a study checkbox in a 3+1 did nothing at all, and
+ * "Yatak odası" gave no clue that it meant two rooms.
+ */
+const areas = computed(() => areasFor(form.layout as LayoutCode))
+
+const selectedAreaCount = computed(() => areaCount(form.layout as LayoutCode, form.selectedRooms))
+
+const wholeHomeCount = computed(() => totalAreaCount(form.layout as LayoutCode))
+
+function toggleArea(type: Request['selectedRooms'] extends (infer T)[] | undefined ? T : never) {
+  const index = form.selectedRooms.indexOf(type)
+  if (index === -1) {
+    form.selectedRooms.push(type)
+  }
+  else {
+    form.selectedRooms.splice(index, 1)
+  }
+}
+
+// A selection the new layout cannot hold would sit there ticked and price nothing, which is exactly
+// how the old control misled: dropping it is louder than honouring it silently.
+watch(() => form.layout, () => {
+  form.selectedRooms = form.selectedRooms.filter(type =>
+    areas.value.some(area => area.type === type))
+})
 
 const result = ref<Result | null>(null)
 const failure = ref('')
@@ -175,13 +200,49 @@ const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFracti
               {{ t(`scope.${scope}`) }}
             </button>
           </div>
-          <div v-if="form.scope === 'SELECTED_ROOMS'" class="checks">
-            <label v-for="room in ROOM_TYPES" :key="room" class="check">
-              <input v-model="form.selectedRooms" :value="room" type="checkbox">
-              <span>{{ t(`rooms.${room}`) }}</span>
-            </label>
-          </div>
-          <p v-if="!roomsValid" class="field-error">En az bir alan seçilmeli.</p>
+
+          <!-- "Tüm ev" is four rooms to the person typing and seven areas to the engine, so the screen
+               says which seven before anything is priced. -->
+          <p v-if="form.scope === 'WHOLE_HOME'" class="scope">
+            {{ t('calculate.scopeWholeHome', {
+              layout: t(`layout.${form.layout}`), count: wholeHomeCount }) }}
+            <span class="areas">
+              <span v-for="area in areas" :key="area.type">
+                {{ t(`rooms.${area.type}`) }}<i v-if="area.count > 1"> ×{{ area.count }}</i>
+              </span>
+            </span>
+          </p>
+
+          <template v-else>
+            <div class="chips" role="group" :aria-label="t('calculate.selectRooms')">
+              <button
+                v-for="area in areas"
+                :key="area.type"
+                type="button"
+                :aria-pressed="form.selectedRooms.includes(area.type)"
+                @click="toggleArea(area.type)"
+              >
+                {{ t(`rooms.${area.type}`) }}<i v-if="area.count > 1"> ×{{ area.count }}</i>
+              </button>
+            </div>
+            <p class="scope">
+              <strong>{{ t('calculate.scopeSelected', { count: selectedAreaCount }) }}</strong>
+              — {{ t('calculate.scopeHint') }}
+              <button
+                v-if="selectedAreaCount < wholeHomeCount" class="link" type="button"
+                @click="form.selectedRooms = areas.map(area => area.type)"
+              >
+                {{ t('calculate.selectAll') }}
+              </button>
+              <button
+                v-if="form.selectedRooms.length" class="link" type="button"
+                @click="form.selectedRooms = []"
+              >
+                {{ t('calculate.clearSelection') }}
+              </button>
+            </p>
+            <p v-if="!roomsValid" class="field-error">{{ t('calculate.noAreas') }}</p>
+          </template>
         </fieldset>
 
         <fieldset>
@@ -494,6 +555,79 @@ fieldset {
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow);
+}
+
+/* Toggle chips rather than checkboxes: this is a different kind of choice from the four flags below,
+   and it should not look like them. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.chips button {
+  min-height: 2.5rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chips button:hover {
+  border-color: var(--brand);
+}
+
+.chips button[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.chips i,
+.areas i {
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.scope {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.scope strong {
+  color: var(--ink);
+}
+
+.areas {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--ink);
+}
+
+.areas > span:not(:last-child)::after {
+  content: ' · ';
+  color: var(--ink-3);
+}
+
+.link {
+  margin-left: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .checks {

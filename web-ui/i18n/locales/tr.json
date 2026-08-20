@@ -203,6 +203,12 @@
       "lines": "Kalem kırılımı",
       "quantity": "Miktar",
       "amount": "Tutar"
-    }
+    },
+    "scopeWholeHome": "{layout} bir evde {count} alan boyanır:",
+    "scopeSelected": "{count} alan seçilecek",
+    "scopeHint": "Bir tipi seçmek o tipteki bütün odaları kapsar — 3+1'de \"Yatak odası\" iki odadır.",
+    "selectAll": "Tümünü seç",
+    "clearSelection": "Temizle",
+    "noAreas": "En az bir alan seçilmeli."
   }
 }

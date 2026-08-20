@@ -105,6 +105,44 @@ describe('manual quote calculation', () => {
     expect(page.find('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
 
+  it('offers only the areas the layout has, with how many of each', async () => {
+    const page = await mountSuspended(CalculatePage)
+
+    await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
+
+    const chips = page.findAll('.chips button').map(chip => chip.text())
+    // A 3+1 has no study and no balcony, so offering them was offering a click that did nothing.
+    expect(chips).toEqual([
+      'Salon', 'Ebeveyn yatak odası', 'Yatak odası ×2', 'Mutfak', 'Banyo', 'Koridor',
+    ])
+  })
+
+  it('counts rooms rather than chips: two taps on a 3+1 can be three areas', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
+
+    const chips = page.findAll('.chips button')
+    await chips.find(chip => chip.text() === 'Salon')!.trigger('click')
+    await chips.find(chip => chip.text().startsWith('Yatak odası'))!.trigger('click')
+
+    expect(page.text()).toContain('3 alan seçilecek')
+  })
+
+  it('drops a selection the new layout cannot hold instead of pricing nothing for it', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.findAll('.segmented button').find(b => b.text() === 'Seçili alanlar')!.trigger('click')
+    await page.findAll('.chips button').find(c => c.text().startsWith('Yatak odası'))!.trigger('click')
+    expect(page.text()).toContain('2 alan seçilecek')
+
+    // A 1+1 has a master bedroom and no other bedroom: the tick would otherwise sit there pricing
+    // nothing, which is exactly how the old checkbox misled.
+    await page.findAll('select')[1]!.setValue('ONE_PLUS_ONE')
+    await page.find('form').trigger('submit')
+
+    expect(post).not.toHaveBeenCalled()
+    expect(page.text()).toContain('0 alan seçilecek')
+  })
+
   it('says so when the answer is that nobody is logged in', async () => {
     post.mockResolvedValue({ response: { ok: false, status: 401 }, data: undefined })
     const page = await mountSuspended(CalculatePage)
