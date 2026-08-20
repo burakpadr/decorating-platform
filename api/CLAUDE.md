@@ -221,7 +221,7 @@ The `openapi` Maven profile wires `spring-boot:start` → `springdoc-openapi:gen
 infrastructure is needed — fetches `/v3/api-docs` on port 18080, and writes it to
 `api-client/openapi.json`. CI regenerates and fails on a diff.
 
-Four things to preserve when touching it:
+Five things to preserve when touching it:
 
 - It stays a **profile**, not part of the default lifecycle. Otherwise every `mvn verify` starts the
   application.
@@ -233,6 +233,11 @@ Four things to preserve when touching it:
   every contract change is an unreadable diff.
 - The server URL is pinned in `OpenApiConfig`, otherwise the committed file churns with whatever
   port it happened to be generated on.
+- **Every persistence adapter carries `@Profile("!openapi")`.** The profile boots with no datasource,
+  so a bean needing a Spring Data repository cannot be created — and the failure surfaces as the Maven
+  plugin failing to reach JMX port 18081, which reads like a build problem rather than a missing
+  annotation. `OpenApiProfileContextTest` boots the profile in the normal suite so the real cause
+  shows up there instead.
 
 After changing any controller or DTO, run `make -C .. client` and commit the result.
 
