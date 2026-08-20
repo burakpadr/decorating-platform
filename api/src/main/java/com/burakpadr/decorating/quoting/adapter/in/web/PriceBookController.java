@@ -19,9 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Under {@code /api/op/**}, which is its own security realm — the panel's figures are internal and
  * a version list is the shape of the business's pricing.
  *
- * <p>Three endpoints and no fourth. There is deliberately no way to edit a version that has priced
- * anything: the flow is copy, edit the copy, activate. {@code POST /{id}/bulk-increase} joins them as
- * its own work item; it is the same shape — a new version, never an edit of the live one.
+ * <p>Four endpoints and no fifth. There is deliberately no way to edit a version that has priced
+ * anything: every change is a new version, reviewed while inactive, then activated. The bulk increase
+ * is the same shape rather than an exception to it.
  */
 @RestController
 @RequestMapping("/api/op/price-books")
@@ -43,6 +43,18 @@ class PriceBookController {
 	PriceBookSummaryResponse create(@Valid @RequestBody CreatePriceBookVersionRequest request) {
 		return PriceBookSummaryResponse.of(
 				versions.createVersionFrom(request.sourceId(), request.versionCode()));
+	}
+
+	/**
+	 * A percentage on every item cost, as a new version. The live list is not touched: the operator
+	 * reviews the produced version and activates it, which is the same two steps as any other change.
+	 */
+	@PostMapping("/{id}/bulk-increase")
+	@ResponseStatus(HttpStatus.CREATED)
+	PriceBookSummaryResponse bulkIncrease(
+			@PathVariable UUID id, @Valid @RequestBody BulkIncreaseRequest request) {
+		return PriceBookSummaryResponse.of(
+				versions.applyBulkIncrease(id, request.target(), request.percent()));
 	}
 
 	@PostMapping("/{id}/activate")

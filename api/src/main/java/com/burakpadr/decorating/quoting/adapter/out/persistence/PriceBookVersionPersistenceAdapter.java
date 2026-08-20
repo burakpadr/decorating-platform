@@ -1,8 +1,10 @@
 package com.burakpadr.decorating.quoting.adapter.out.persistence;
 
+import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import com.burakpadr.decorating.shared.Uuid7;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -106,6 +108,22 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 				""", id, sourceId);
 
 		return findById(id).orElseThrow();
+	}
+
+	@Override
+	public void increaseItemCosts(UUID priceBookId, IncreaseTarget target, BigDecimal percent) {
+		// One statement for all three targets: the half that is not being raised gets a factor of 1, and
+		// round(x * 1, 2) is x. Branching the SQL would give the three targets three chances to diverge.
+		BigDecimal factor = BigDecimal.ONE.add(percent.movePointLeft(2));
+		BigDecimal labour = target.raisesLabour() ? factor : BigDecimal.ONE;
+		BigDecimal material = target.raisesMaterial() ? factor : BigDecimal.ONE;
+
+		// round() rather than the column's own truncation: a rounding rule that differs from the
+		// engine's HALF_UP by a cent per item is one nobody can reconcile against a quote.
+		jdbc.update("UPDATE price_book_item SET labour_cost = round(labour_cost * ?, 2), "
+				+ "material_cost = round(material_cost * ?, 2) WHERE price_book_id = ?",
+				labour, material, priceBookId);
+		// labour_minutes is untouched on purpose — see the port.
 	}
 
 	@Override

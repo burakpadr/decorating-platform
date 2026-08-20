@@ -26,4 +26,13 @@ class OperatorErrorHandler {
 	ProblemDetail conflict(DuplicateVersionCode exception) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
 	}
+
+	/**
+	 * A refused argument the use case guards rather than the DTO — a percent outside its bounds, a
+	 * version code that cannot fit. The operator asked for something impossible, not something broken.
+	 */
+	@ExceptionHandler(IllegalArgumentException.class)
+	ProblemDetail badRequest(IllegalArgumentException exception) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+	}
 }

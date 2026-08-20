@@ -1,6 +1,8 @@
 package com.burakpadr.decorating.quoting.domain.port.in;
 
+import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,4 +26,11 @@ public interface ManagePriceBookVersions {
 
 	/** Makes a version the one quotes are priced against, switching off whichever was. */
 	PriceBookSummary activate(UUID id);
+
+	/**
+	 * The quarterly increase (workflow §6): copies a version, raises one or both halves of every item
+	 * cost by a percentage, and hands back the copy. The source is not touched — that is the whole shape
+	 * of it. Durations are not touched either: a price rise does not make the work slower.
+	 */
+	PriceBookSummary applyBulkIncrease(UUID sourceId, IncreaseTarget target, BigDecimal percent);
 }

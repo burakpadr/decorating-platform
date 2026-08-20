@@ -1,11 +1,13 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.burakpadr.decorating.TestcontainersConfiguration;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +45,8 @@ class PriceBookControllerTest {
 	@AfterEach
 	void restoreTheActiveVersion() {
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'WEB-%'");
+		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'REAL-2026-0%' "
+				+ "AND version_code <> 'REAL-2026-01'");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -93,6 +97,55 @@ class PriceBookControllerTest {
 		mvc.perform(get("/api/op/price-books"))
 				.andExpect(jsonPath("$[?(@.versionCode=='" + ACTIVE + "')].active")
 						.value(org.hamcrest.Matchers.hasItem(false)));
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("POST /{id}/bulk-increase produces a raised version and leaves the live one alone")
+	void appliesABulkIncrease() throws Exception {
+		mvc.perform(post("/api/op/price-books/" + idOf(ACTIVE) + "/bulk-increase")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"target\":\"LABOUR\",\"percent\":15}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.versionCode").value("REAL-2026-02"))
+				.andExpect(jsonPath("$.active").value(false));
+
+		assertThat(jdbc.queryForObject("SELECT labour_cost FROM price_book_item i "
+						+ "JOIN price_book b ON b.id = i.price_book_id "
+						+ "WHERE b.version_code = ? AND i.code = 'WALL_PAINT'",
+						BigDecimal.class, ACTIVE))
+				.as("the live list is what quotes are priced against; a zam must not reach it")
+				.isEqualByComparingTo("62.00");
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("a percent nobody meant to type is refused at the edge")
+	void rejectsAnAbsurdPercent() throws Exception {
+		mvc.perform(post("/api/op/price-books/" + idOf(ACTIVE) + "/bulk-increase")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"target\":\"ALL\",\"percent\":1500}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("a target the price book has no meaning for is refused")
+	void rejectsAnUnknownTarget() throws Exception {
+		mvc.perform(post("/api/op/price-books/" + idOf(ACTIVE) + "/bulk-increase")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"target\":\"EVERYTHING\",\"percent\":10}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@WithMockUser
+	@DisplayName("raising a version that does not exist is a 404")
+	void rejectsABulkIncreaseOnAnUnknownVersion() throws Exception {
+		mvc.perform(post("/api/op/price-books/" + UUID.randomUUID() + "/bulk-increase")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"target\":\"ALL\",\"percent\":10}"))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test

@@ -57,6 +57,43 @@
         }
       }
     },
+    "/api/op/price-books/{id}/bulk-increase" : {
+      "post" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "bulkIncrease",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkIncreaseRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books/{id}/activate" : {
       "post" : {
         "tags" : [ "price-book-controller" ],
@@ -121,6 +158,21 @@
             "format" : "date-time"
           }
         }
+      },
+      "BulkIncreaseRequest" : {
+        "type" : "object",
+        "properties" : {
+          "target" : {
+            "type" : "string",
+            "enum" : [ "LABOUR", "MATERIAL", "ALL" ]
+          },
+          "percent" : {
+            "type" : "number",
+            "maximum" : 200,
+            "minimum" : -50
+          }
+        },
+        "required" : [ "percent", "target" ]
       }
     }
   }

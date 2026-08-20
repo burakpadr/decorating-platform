@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.burakpadr.decorating.TestcontainersConfiguration;
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
+import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +54,7 @@ class PriceBookVersionManagementTest {
 		jdbc.update("DELETE FROM quote WHERE created_by = 'OPERATOR'");
 		jdbc.update("DELETE FROM quote_request WHERE status = 'QUOTE_SENT'");
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'TEST-%'");
+		jdbc.update("DELETE FROM price_book WHERE version_code IN ('REAL-2026-02', 'REAL-2026-03')");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -122,6 +126,93 @@ class PriceBookVersionManagementTest {
 		assertThat(books.findActive().orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.as("while new quotes price at the raised figure")
 				.isEqualByComparingTo("99.00");
+	}
+
+	@Test
+	@DisplayName("a bulk increase raises labour and leaves materials and durations alone")
+	void raisesLabourOnly() {
+		PriceBookSummary raised = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("15"));
+
+		PriceBook before = books.findByVersionCode(ACTIVE).orElseThrow();
+		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
+
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost())
+				.as("62.00 + 15%%")
+				.isEqualByComparingTo("71.30");
+		assertThat(after.item(ItemCode.WALL_PAINT).materialCost())
+				.as("paint did not get more expensive because labour did — §6 keeps the two apart")
+				.isEqualByComparingTo(before.item(ItemCode.WALL_PAINT).materialCost());
+		assertThat(after.item(ItemCode.WALL_PAINT).labourMinutes())
+				.as("a price rise does not make the work slower")
+				.isEqualByComparingTo(before.item(ItemCode.WALL_PAINT).labourMinutes());
+	}
+
+	@Test
+	@DisplayName("a bulk increase can raise materials alone, which is the common case after a paint rise")
+	void raisesMaterialOnly() {
+		PriceBookSummary raised = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.MATERIAL, new BigDecimal("10"));
+
+		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
+		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("41.80");
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("62.00");
+	}
+
+	@Test
+	@DisplayName("ALL raises both halves by the same percent")
+	void raisesBothHalves() {
+		PriceBookSummary raised = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.ALL, new BigDecimal("20"));
+
+		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
+		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("74.40");
+		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("45.60");
+		assertThat(after.item(ItemCode.MOBILIZATION).labourCost()).isEqualByComparingTo("2280.00");
+	}
+
+	@Test
+	@DisplayName("the increase rounds to the cent, half up, like every other figure")
+	void roundsToTheCent() {
+		PriceBookSummary raised = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("1.5"));
+
+		// Masking labour is 115.00; 1.5% of it is 116.725, which is a figure the column cannot hold.
+		assertThat(books.findByVersionCode(raised.versionCode()).orElseThrow()
+						.item(ItemCode.MASKING).labourCost())
+				.isEqualByComparingTo("116.73");
+	}
+
+	@Test
+	@DisplayName("the source version is not touched, and neither is the quote pointing at it")
+	void leavesTheSourceAlone() {
+		UUID source = idOf(ACTIVE);
+		UUID quote = insertSentQuote(source);
+
+		versions.applyBulkIncrease(source, IncreaseTarget.ALL, new BigDecimal("25"));
+
+		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
+				.as("the whole point of producing a version instead of editing one")
+				.isEqualByComparingTo("62.00");
+		assertThat(jdbc.queryForObject("SELECT price_book_id FROM quote WHERE id = ?", UUID.class, quote))
+				.isEqualTo(source);
+		assertThat(books.findActive().orElseThrow().versionCode())
+				.as("and the new version is not live until somebody activates it")
+				.isEqualTo(ACTIVE);
+	}
+
+	@Test
+	@DisplayName("the produced version is named after its source, and never collides")
+	void namesTheNewVersionAfterItsSource() {
+		PriceBookSummary first = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("5"));
+		PriceBookSummary second = versions.applyBulkIncrease(
+				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("5"));
+
+		assertThat(first.versionCode()).isEqualTo("REAL-2026-02");
+		assertThat(second.versionCode())
+				.as("a second increase from the same source must not fail on a name clash")
+				.isEqualTo("REAL-2026-03");
 	}
 
 	@Test
