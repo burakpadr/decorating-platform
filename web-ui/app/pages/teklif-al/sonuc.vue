@@ -176,7 +176,12 @@ const doors = computed(() => {
       </section>
 
       <section class="panel summary">
-        <h2>{{ t('quoteResult.summaryTitle') }}</h2>
+        <!-- The edit action lives here rather than at the foot of the page: the wish to change an answer
+             forms while reading the answers, and it used to be a grey line two panels further down. -->
+        <h2>
+          {{ t('quoteResult.summaryTitle') }}
+          <NuxtLink class="edit" :to="`/teklif-al?talep=${id}`">{{ t('quoteResult.edit') }}</NuxtLink>
+        </h2>
         <dl>
           <dt>{{ t('quoteResult.district') }}</dt>
           <dd>{{ districtName(draft!.districtCode) }}</dd>
@@ -256,11 +261,7 @@ const doors = computed(() => {
           </div>
         </template>
       </section>
-      <!-- With the draft, not without it. Sending the customer to a blank form was throwing away every
-           answer they had given — the answers are on the server for exactly this. -->
-      <NuxtLink class="quiet edit" :to="`/teklif-al?talep=${id}`">
-        {{ t('quoteResult.edit') }}
-      </NuxtLink>
+
     </template>
 
     <p v-else class="panel">{{ t('quoteResult.loading') }}</p>
@@ -521,8 +522,17 @@ h3 {
   color: var(--danger);
 }
 
-.edit {
-  justify-self: start;
+/* Brand-coloured and next to what it edits: discoverable where it is wanted, without arguing with
+   "Kesin fiyat al" — this is navigation, not the primary action. */
+.summary .edit {
+  color: var(--brand);
   font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid currentcolor;
+}
+
+.summary .edit:hover {
+  color: var(--brand-hover);
 }
 </style>

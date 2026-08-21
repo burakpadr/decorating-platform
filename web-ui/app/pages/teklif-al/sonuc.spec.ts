@@ -123,6 +123,17 @@ describe('stage 1 result', () => {
     expect(page.text()).not.toContain('Brüt alan verdiniz')
   })
 
+  it('puts the way to change an answer next to the answers', async () => {
+    const page = await mountSuspended(Result)
+
+    // It used to be a grey line at the foot of the page, two panels below the summary. The wish to
+    // change an answer forms while reading them, so that is where the link belongs — and it carries the
+    // draft, because a blank form was the original bug.
+    const edit = page.find('.summary .edit')
+    expect(edit.exists()).toBe(true)
+    expect(edit.attributes('href')).toBe('/teklif-al?talep=draft-1')
+  })
+
   it('summarises what was answered, so the number can be argued with', async () => {
     const page = await mountSuspended(Result)
 
