@@ -43,6 +43,9 @@ export default defineNuxtConfig({
     '/**-boya-badana-fiyatlari': { prerender: true },
 
     '/teklif-al/**': { ssr: false },
+    // The handoff link from an SMS or a QR code: it exchanges a token for a session, which is a
+    // client-side errand and must never be prerendered.
+    '/devam/**': { ssr: false },
     '/cekim/**': { ssr: false },
     '/teklifim/**': { ssr: false },
     // The operator app is kept out of the index by public/robots.txt, not by a route rule.

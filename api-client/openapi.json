@@ -163,6 +163,50 @@
         }
       }
     },
+    "/api/quote-requests/{id}/estimate-sms" : {
+      "post" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "Send the range to a phone, and keep the number",
+        "operationId" : "sendEstimateSms",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The draft this session owns",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendEstimateSmsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted. Queued — no provider is configured yet, so nothing claims to have been delivered."
+          },
+          "400" : {
+            "description" : "Not a Turkish mobile number"
+          },
+          "401" : {
+            "description" : "No session cookie"
+          },
+          "403" : {
+            "description" : "The session owns a different draft"
+          },
+          "409" : {
+            "description" : "No range has been computed yet"
+          }
+        }
+      }
+    },
     "/api/op/price-calculations" : {
       "post" : {
         "tags" : [ "quote-calculation-controller" ],
@@ -488,6 +532,44 @@
         }
       }
     },
+    "/api/quote-requests/resume/{token}" : {
+      "get" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "Exchange a handoff token for a session on this device",
+        "operationId" : "resume",
+        "parameters" : [ {
+          "name" : "token",
+          "in" : "path",
+          "description" : "From an SMS link or a QR code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The draft, with a session cookie for this device",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuoteRequestResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Unknown or expired token",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/QuoteRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books/{id}" : {
       "get" : {
         "tags" : [ "price-book-controller" ],
@@ -719,6 +801,17 @@
           }
         },
         "required" : [ "areaWasGross", "bandRatio", "high", "low", "netArea", "photoCount", "rooms" ]
+      },
+      "SendEstimateSmsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "phone" : {
+            "type" : "string",
+            "example" : "0555 123 45 67",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "phone" ]
       },
       "CalculateQuoteRequest" : {
         "type" : "object",

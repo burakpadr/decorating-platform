@@ -1,1 +1,1 @@
-Veri silme talebi onayınızı bekliyor: {link}
+Silme talebi onay bekliyor: {link}

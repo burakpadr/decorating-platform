@@ -54,6 +54,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests/{id}/estimate-sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the range to a phone, and keep the number */
+        post: operations["sendEstimateSms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-calculations": {
         parameters: {
             query?: never;
@@ -134,6 +151,23 @@ export interface paths {
         head?: never;
         /** Answer more of the eight questions */
         patch: operations["answer"];
+        trace?: never;
+    };
+    "/api/quote-requests/resume/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exchange a handoff token for a session on this device */
+        get: operations["resume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/op/price-books/{id}": {
@@ -238,6 +272,10 @@ export interface components {
             rooms: components["schemas"]["CalculatedRoomResponse"][];
             /** Format: int32 */
             photoCount: number;
+        };
+        SendEstimateSmsRequest: {
+            /** @example 0555 123 45 67 */
+            phone: string;
         };
         CalculateQuoteRequest: {
             districtCode: string;
@@ -498,6 +536,59 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["StageOneEstimateResponse"];
                 };
+            };
+        };
+    };
+    sendEstimateSms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendEstimateSmsRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted. Queued — no provider is configured yet, so nothing claims to have been delivered. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a Turkish mobile number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No range has been computed yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -766,6 +857,38 @@ export interface operations {
             };
             /** @description No longer a draft: the answers are fixed once the room list is confirmed */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    resume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description From an SMS link or a QR code */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft, with a session cookie for this device */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+            /** @description Unknown or expired token */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

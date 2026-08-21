@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -357,6 +359,79 @@ class QuoteRequestControllerTest {
 					  AND price_book_id = (SELECT id FROM price_book WHERE active = true)
 					""");
 		}
+	}
+
+	// =============================================================================================
+	// §1.5's third option, and the handoff it needs (BOYA-33)
+	// =============================================================================================
+
+	@Test
+	@DisplayName("POST /{id}/estimate-sms keeps the number and queues the message")
+	void sendsTheEstimateBySms() throws Exception {
+		UUID id = answered();
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)));
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate-sms", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"phone\":\"0555 123 45 67\"}"))
+				// 202, not 200: nothing has been delivered and nothing should claim it was.
+				.andExpect(status().isAccepted());
+
+		assertThat(jdbc.queryForObject(
+						"SELECT status FROM notification WHERE quote_request_id = ?", String.class, id))
+				.isEqualTo("QUEUED");
+	}
+
+	@Test
+	@DisplayName("a landline is refused before anything is stored")
+	void refusesANumberNoSmsReaches() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate-sms", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"phone\":\"02121234567\"}"))
+				.andExpect(status().isBadRequest());
+
+		assertThat(jdbc.queryForObject(
+						"SELECT pending_phone FROM quote_request WHERE id = ?", String.class, id))
+				.isNull();
+	}
+
+	@Test
+	@DisplayName("somebody else's draft cannot be sent to my phone")
+	void refusesSendingSomebodyElsesEstimate() throws Exception {
+		UUID mine = answered();
+		UUID theirs = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate-sms", theirs).cookie(owns(mine))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"phone\":\"05551234567\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@DisplayName("GET /resume/{token} grants a session on the device holding the link")
+	void resumeGrantsASession() throws Exception {
+		UUID id = answered();
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)));
+		mvc.perform(post("/api/quote-requests/{id}/estimate-sms", id).cookie(owns(id))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"05551234567\"}"));
+		String token = jdbc.queryForObject(
+				"SELECT resume_token FROM quote_request WHERE id = ?", String.class, id);
+
+		// No cookie on this request at all: that is the point — the phone has never seen one.
+		mvc.perform(get("/api/quote-requests/resume/{token}", token))
+				.andExpect(status().isOk())
+				.andExpect(header().exists(HttpHeaders.SET_COOKIE))
+				.andExpect(jsonPath("$.id").value(id.toString()))
+				.andExpect(jsonPath("$.districtCode").value("KADIKOY"));
+	}
+
+	@Test
+	@DisplayName("an invented token is 404, not somebody's draft")
+	void resumeRefusesAnUnknownToken() throws Exception {
+		mvc.perform(get("/api/quote-requests/resume/{token}", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+				.andExpect(status().isNotFound());
 	}
 
 	/** A draft with all of §2.1 answered, which is what the estimate needs. */

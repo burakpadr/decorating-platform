@@ -75,6 +75,52 @@ function districtName(code?: string | null): string {
   return DISTRICTS.find(district => district.code === code)?.name ?? code ?? ''
 }
 
+/**
+ * §1.5's third option, and the one it calls far more important than it looks: the customer who sees a
+ * range and leaves has given no number, so this is the last point at which they can be reached at all.
+ *
+ * The field appears only when the offer is taken. A phone input sitting on the screen next to the price
+ * reads as the catch, on the one screen where there is no catch.
+ */
+const smsOpen = ref(false)
+const phone = ref('')
+const smsBusy = ref(false)
+const smsDone = ref(false)
+const smsError = ref('')
+
+/** The same rule the server applies, so the answer is immediate; the server still decides. */
+const TURKISH_MOBILE = /^(?:\+?90|0)?5\d{9}$/
+
+async function sendSms() {
+  if (smsBusy.value) {
+    return
+  }
+  smsError.value = ''
+  if (!TURKISH_MOBILE.test(phone.value.replace(/[^0-9+]/g, ''))) {
+    smsError.value = t('quoteResult.smsInvalid')
+    return
+  }
+  smsBusy.value = true
+  try {
+    const { response } = await api.POST('/api/quote-requests/{id}/estimate-sms', {
+      params: { path: { id } },
+      body: { phone: phone.value },
+    })
+    if (!response.ok) {
+      smsError.value = t('quoteResult.smsFailed')
+      return
+    }
+    smsDone.value = true
+    smsOpen.value = false
+  }
+  catch {
+    smsError.value = t('quoteResult.smsFailed')
+  }
+  finally {
+    smsBusy.value = false
+  }
+}
+
 const doors = computed(() => {
   const count = draft.value?.doorCount
   if (!count) {
@@ -171,6 +217,38 @@ const doors = computed(() => {
         <NuxtLink class="quiet" to="/">{{ t('quoteResult.leave') }}</NuxtLink>
       </div>
       <p class="hint continue-note">{{ t('quoteResult.continueNote') }}</p>
+
+      <!-- §1.5: "bu aşamada numara bırakan müşteriye sonradan dönülebilir — göründüğünden çok daha
+           önemli". Offered as a quiet third way rather than a rival to the primary action. -->
+      <section v-if="smsDone" class="panel sms-done" role="status">
+        {{ t('quoteResult.smsDone') }}
+      </section>
+
+      <template v-else>
+        <button v-if="!smsOpen" class="sms-offer" type="button" @click="smsOpen = true">
+          {{ t('quoteResult.smsOffer') }}
+        </button>
+
+        <section v-else class="panel sms-form">
+          <p class="hint">{{ t('quoteResult.smsWhy') }}</p>
+          <label>
+            <span class="q">{{ t('quoteResult.smsPhone') }}</span>
+            <input
+              v-model="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel"
+              :placeholder="t('quoteResult.smsPlaceholder')"
+            >
+          </label>
+          <p v-if="smsError" class="err">{{ smsError }}</p>
+          <div class="sms-actions">
+            <button class="btn primary" type="button" :disabled="smsBusy" @click="sendSms">
+              {{ smsBusy ? t('quoteResult.smsSending') : t('quoteResult.smsSubmit') }}
+            </button>
+            <button class="quiet" type="button" @click="smsOpen = false">
+              {{ t('quoteResult.smsCancel') }}
+            </button>
+          </div>
+        </section>
+      </template>
       <NuxtLink class="quiet edit" to="/teklif-al">{{ t('quoteResult.edit') }}</NuxtLink>
     </template>
 
@@ -338,6 +416,80 @@ h3 {
 
 .continue-note {
   margin: 0;
+}
+
+.sms-offer {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.sms-offer:hover {
+  color: var(--ink);
+}
+
+.sms-form {
+  display: grid;
+  gap: var(--gap-loose);
+}
+
+.sms-form label {
+  display: grid;
+  gap: var(--gap);
+}
+
+.sms-form .q {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.sms-form input {
+  min-height: 3rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: inherit;
+  /* 16px floor: iOS zooms the page in on anything smaller. */
+  font: inherit;
+  font-size: 1rem;
+}
+
+.sms-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-section);
+}
+
+.sms-actions .btn {
+  border: 1px solid var(--brand);
+  cursor: pointer;
+}
+
+.sms-actions .quiet {
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sms-done {
+  color: var(--live);
+  font-size: 0.95rem;
+}
+
+.err {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--danger);
 }
 
 .edit {

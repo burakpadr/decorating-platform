@@ -68,8 +68,14 @@ decorating:
     open: "09:00"
     close: "18:00"
 
+  # Where the links in notifications point. The API cannot guess it: the SMS is read on a phone that has
+  # never talked to us, so a relative link is no link at all.
+  web:
+    base-url: ${WEB_BASE_URL:http://localhost:3000}
+
   quote:
     validity-days: 14
+    resume-token-ttl: P14D          # the same window the quote is valid for; a link outliving it is a link to nothing
     photo-retention-days: 30      # counted from close date, never from send date
 
   analysis:

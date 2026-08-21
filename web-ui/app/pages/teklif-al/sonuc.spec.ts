@@ -134,14 +134,63 @@ describe('stage 1 result', () => {
     expect(summary).toContain('Ufak çatlak')
   })
 
-  it('offers the way forward and the way out, and nothing that does not work yet', async () => {
+  it("offers §1.5's three options: continue, take it by SMS, leave", async () => {
     const page = await mountSuspended(Result)
 
     expect(page.find('.actions .btn.primary').attributes('href')).toBe('/cekim')
     expect(page.find('.actions .quiet').attributes('href')).toBe('/')
-    // The SMS option is §1.5's third and it needs a provider nobody has chosen yet (BOYA-6/33). A
-    // button that does nothing on the biggest loss point in the process is worse than no button.
-    expect(page.text()).not.toContain('SMS')
+    expect(page.find('.sms-offer').text()).toContain('SMS ile gönder')
+  })
+
+  it('asks for the number only once the SMS option is chosen', async () => {
+    const page = await mountSuspended(Result)
+
+    expect(page.find('input[name="phone"]').exists()).toBe(false)
+
+    await page.find('.sms-offer').trigger('click')
+
+    expect(page.find('input[name="phone"]').exists()).toBe(true)
+  })
+
+  it('sends the number and says it was kept', async () => {
+    const page = await mountSuspended(Result)
+    await page.find('.sms-offer').trigger('click')
+    await page.find('input[name="phone"]').setValue('0555 123 45 67')
+
+    await page.find('.sms-form .btn').trigger('click')
+
+    expect(post).toHaveBeenCalledWith('/api/quote-requests/{id}/estimate-sms', {
+      params: { path: { id: 'draft-1' } },
+      body: { phone: '0555 123 45 67' },
+    })
+    expect(page.text()).toContain('Numaranız kaydedildi')
+    // The field goes away with the offer: leaving it there invites a second send nobody meant.
+    expect(page.find('input[name="phone"]').exists()).toBe(false)
+  })
+
+  it('refuses a number no SMS can reach, before asking the server', async () => {
+    const page = await mountSuspended(Result)
+    await page.find('.sms-offer').trigger('click')
+    await page.find('input[name="phone"]').setValue('0212 123 45 67')
+
+    await page.find('.sms-form .btn').trigger('click')
+
+    // The same rule the server applies (PhoneNumber). Checked here as well so the customer is told
+    // immediately rather than after a round trip — and the server still decides.
+    expect(page.text()).toContain('Cep telefonu numarası girin')
+    expect(post).toHaveBeenCalledTimes(1)   // the estimate itself, and nothing else
+  })
+
+  it('says so when the send fails, and keeps the number on screen to retry', async () => {
+    const page = await mountSuspended(Result)
+    await page.find('.sms-offer').trigger('click')
+    await page.find('input[name="phone"]').setValue('05551234567')
+    post.mockResolvedValue({ response: { ok: false, status: 500 }, error: {} })
+
+    await page.find('.sms-form .btn').trigger('click')
+
+    expect(page.text()).toContain('Gönderilemedi')
+    expect(page.find('input[name="phone"]').exists()).toBe(true)
   })
 
   it('sends an unfinished draft back to the form rather than showing a number', async () => {

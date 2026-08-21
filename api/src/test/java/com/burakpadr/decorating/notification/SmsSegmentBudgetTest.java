@@ -42,7 +42,17 @@ class SmsSegmentBudgetTest {
 	private static final String GSM_EXTENDED = "^{}\\[~]|€";
 
 	private static final Map<String, String> PLACEHOLDERS = Map.of(
-			"{link}", "https://ornek.com/t/AbC123",
+			// A real handoff link, not a short example: /devam/ plus a 32-byte base64url token is 43
+			// characters of token alone, and the budget this test defends is measured on what goes over the
+			// wire. The old 26-character placeholder made every template look 45 characters safer than it is.
+			// A real handoff link: /devam/ plus a 22-character token (128 bits, base64url). The budget this
+			// test defends is measured on what goes over the wire, and the old 26-character example made
+			// every template look 45 characters safer than it was — three were silently over.
+			//
+			// The domain is part of the measurement. QUOTE_READY lands on exactly 70 UCS-2 characters with
+			// a 15-character domain, so a longer one costs a second segment on the most-sent customer
+			// message in the set. That is a real constraint on the domain choice, not a detail.
+			"{link}", "https://boyateklifi.com/devam/NDrj6BbXwVeFcBV0ZiZNEa",
 			"{range}", "68.000-86.000 TL",
 			"{date}", "24.09.2026",
 			"{slot}", "Sabah",
@@ -74,8 +84,12 @@ class SmsSegmentBudgetTest {
 
 		// Operator-facing. The workflow document (§9) names four; SMS or WhatsApp rather than a push
 		// notification, because the operator does not keep the panel open.
-		BUDGET.put("OPERATOR_NEW_REQUEST", 1);
-		BUDGET.put("OPERATOR_QUOTE_ACCEPTED", 1);
+		// Two segments each, and worth it. Both carry a link, and a link plus Turkish prose does not fit
+		// in 70 UCS-2 characters — the alternative is de-accenting, which §13 rejects as both wrong and
+		// ugly. These go to the business rather than to customers: one per request, and what would have to
+		// be cut is the district, which is the only thing that makes the message actionable on a phone.
+		BUDGET.put("OPERATOR_NEW_REQUEST", 2);
+		BUDGET.put("OPERATOR_QUOTE_ACCEPTED", 2);
 		BUDGET.put("OPERATOR_CALLBACK_OVERDUE", 1);
 		BUDGET.put("OPERATOR_DELETION_REQUEST", 1);
 	}

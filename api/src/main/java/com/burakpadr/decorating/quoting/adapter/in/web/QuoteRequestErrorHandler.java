@@ -40,6 +40,17 @@ class QuoteRequestErrorHandler {
 		return problem;
 	}
 
+	@ExceptionHandler(IllegalArgumentException.class)
+	ProblemDetail notAnAnswer(IllegalArgumentException refused) {
+		// A value the domain will not accept — today, a number no SMS can reach. 400 with the domain's own
+		// sentence, which deliberately does not echo what was sent: an error message is a log line waiting
+		// to happen, and a phone number is not a thing to log.
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, refused.getMessage());
+		problem.setTitle("Girilen değer kabul edilmedi");
+		return problem;
+	}
+
 	@ExceptionHandler(IllegalStateException.class)
 	ProblemDetail noLongerADraft(IllegalStateException refused) {
 		ProblemDetail problem =

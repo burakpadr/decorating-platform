@@ -5,6 +5,12 @@ import com.burakpadr.decorating.config.session.OwnedQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
+import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
+import com.burakpadr.decorating.quoting.domain.port.in.SendEstimateBySms;
+import com.burakpadr.decorating.quoting.domain.port.out.ResumeTokens;
+import com.burakpadr.decorating.shared.PhoneNumber;
+import java.util.UUID;
+import org.springframework.web.bind.annotation.PathVariable;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -46,12 +52,16 @@ class QuoteRequestController {
 
 	private final ManageQuoteRequests requests;
 	private final EstimateStageOne estimates;
+	private final SendEstimateBySms sms;
+	private final ResumeTokens resumeTokens;
 	private final AnonymousSessionCookie session;
 
 	QuoteRequestController(ManageQuoteRequests requests, EstimateStageOne estimates,
-			AnonymousSessionCookie session) {
+			SendEstimateBySms sms, ResumeTokens resumeTokens, AnonymousSessionCookie session) {
 		this.requests = requests;
 		this.estimates = estimates;
+		this.sms = sms;
+		this.resumeTokens = resumeTokens;
 		this.session = session;
 	}
 
@@ -109,6 +119,48 @@ class QuoteRequestController {
 			@Parameter(hidden = true) OwnedQuoteRequest owned,
 			@Valid @RequestBody PatchQuoteRequestRequest request) {
 		return QuoteRequestResponse.of(requests.answer(owned.id(), request.toAnswers()));
+	}
+
+	@PostMapping("/{id}/estimate-sms")
+	@Operation(summary = "Send the range to a phone, and keep the number")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "202",
+					description = "Accepted. Queued — no provider is configured yet, so nothing claims to "
+							+ "have been delivered.", content = {}),
+			@ApiResponse(responseCode = "400", description = "Not a Turkish mobile number", content = {}),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "409", description = "No range has been computed yet",
+					content = {})})
+	ResponseEntity<Void> sendEstimateSms(@Parameter(hidden = true) OwnedQuoteRequest owned,
+			@Valid @RequestBody SendEstimateSmsRequest request) {
+		// 202 rather than 200: the message is queued and, until BOYA-6 picks a provider, that is where it
+		// stays. Answering 200 would tell the browser something was delivered.
+		sms.send(owned.id(), PhoneNumber.of(request.phone()));
+		return ResponseEntity.accepted().build();
+	}
+
+	@GetMapping("/resume/{token}")
+	@Operation(summary = "Exchange a handoff token for a session on this device")
+	@Parameter(name = "token", in = ParameterIn.PATH, required = true,
+			description = "From an SMS link or a QR code", schema = @Schema(type = "string"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "200",
+					description = "The draft, with a session cookie for this device"),
+			@ApiResponse(responseCode = "404", description = "Unknown or expired token", content = {})})
+	ResponseEntity<QuoteRequestResponse> resume(@PathVariable String token) {
+		// The one route here that grants a session rather than requiring one — which is its whole purpose:
+		// the cookie is on the laptop and the customer is holding a phone. It takes no OwnedQuoteRequest
+		// for the same reason, and the token is the credential (§7).
+		UUID id = resumeTokens.resolve(token)
+				.orElseThrow(() -> new QuoteRequestNotFound(token));
+		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE, session.asCookie(id).toString())
+				.body(QuoteRequestResponse.of(requests.find(id)));
 	}
 
 	@PostMapping("/{id}/estimate")

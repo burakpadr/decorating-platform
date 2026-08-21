@@ -1,1 +1,1 @@
-Teklifiniz hazır. Görüntülemek için: {link}
+Teklifiniz hazır: {link}
