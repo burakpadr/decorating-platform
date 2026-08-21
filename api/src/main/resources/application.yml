@@ -44,6 +44,15 @@ springdoc:
     path: /swagger-ui.html
 
 decorating:
+  # The anonymous session (§7). No default for the secret on purpose: a default is a published secret,
+  # and a published secret signing this cookie lets anybody mint a session for any quote request. Left
+  # empty deliberately rather than omitted — an empty value reaches AnonymousSessionCookie, which fails
+  # with a sentence explaining what is missing, where a missing placeholder would fail with Spring's.
+  session:
+    secret: ${SESSION_SECRET:}
+    ttl: P14D                       # the quote validity window: a cookie outliving it is a cookie for nothing
+    cookie-domain: ${SESSION_COOKIE_DOMAIN:}   # empty in dev: host-only still reaches :8080 from :3000
+
   storage:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}
@@ -109,6 +118,12 @@ spring:
           allow_jdbc_metadata_access: false
   flyway:
     enabled: false
+
+# Constructing the session bean needs a secret, and this profile exists to print a JSON schema rather
+# than to serve a request. Not a secret: nothing signed with it is ever sent anywhere.
+decorating:
+  session:
+    secret: openapi-export-only-not-used-to-sign-anything
 
 # The Maven plugin writes the response body verbatim, so the pretty printing has to happen here.
 # Without it the committed openapi.json is a single line and every contract change is an unreadable

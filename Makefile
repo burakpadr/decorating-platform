@@ -25,6 +25,9 @@ dev: infra ## Start the API and the web app against local infrastructure
 # Local operator credentials. Override on the command line: make dev-api OPERATOR_PASSWORD=...
 OPERATOR_USER ?= operator
 OPERATOR_PASSWORD ?= boya123
+# Signs the anonymous session cookie (§7). Local only — deployment passes a real one, and there is no
+# default in application.yml because a default is a published secret.
+SESSION_SECRET ?= local-development-session-secret-not-for-deployment
 
 dev-api: ## Run the API with hot reload
 	# In development the web app is :3000 and the API is :8080, so every panel request is
@@ -36,7 +39,8 @@ dev-api: ## Run the API with hot reload
 	$(MVN) spring-boot:run -Dspring-boot.run.arguments="\
 	--spring.security.user.name=$(OPERATOR_USER) \
 	--spring.security.user.password=$(OPERATOR_PASSWORD) \
-	--decorating.cors.allowed-origins=http://localhost:3000"
+	--decorating.cors.allowed-origins=http://localhost:3000 \
+	--decorating.session.secret=$(SESSION_SECRET)"
 
 dev-web: ## Run the web app with hot reload
 	# The same credentials dev-api starts with. The operator realm is basic auth and the panel has no
