@@ -1,0 +1,176 @@
+// @vitest-environment nuxt
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Result from './sonuc.vue'
+
+/**
+ * Stage 1's result screen (BOYA-32, workflow §1.5).
+ *
+ * §1.5 calls this the biggest loss point in the process: the customer who sees a range and leaves has
+ * left no phone number and cannot be reached again. So the assertions are about the two things that
+ * decide whether they stay — that the range is shown as a range and not apologised for, and that the
+ * screen says *why* it is wide in terms of what they answered. A generic "tahmini fiyat" reads as a
+ * business that does not know its prices.
+ */
+const get = vi.fn()
+const post = vi.fn()
+
+mockNuxtImport('useApi', () => () => ({ GET: get, POST: post }))
+mockNuxtImport('useRoute', () => () => ({ query: { talep: 'draft-1' } }))
+
+const ANSWERS = {
+  id: 'draft-1',
+  status: 'DRAFT',
+  priceable: true,
+  districtCode: 'KADIKOY',
+  area: 92,
+  areaBasis: 'NET',
+  layout: 'THREE_PLUS_ONE',
+  scope: 'WHOLE_HOME',
+  furnishing: 'FURNISHED',
+  doorCount: 8,
+  doorColourChange: true,
+  wallCondition: 'MINOR',
+}
+
+const ESTIMATE = {
+  low: 45241.33,
+  high: 57579.88,
+  bandRatio: 0.12,
+  netArea: 92,
+  areaWasGross: false,
+  rooms: [
+    { type: 'LIVING_ROOM', label: 'Salon', requiredPhotos: 5 },
+    { type: 'KITCHEN', label: 'Mutfak', requiredPhotos: 3 },
+  ],
+  photoCount: 28,
+}
+
+describe('stage 1 result', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    clearNuxtData()
+    get.mockResolvedValue({ response: { ok: true, status: 200 }, data: ANSWERS })
+    post.mockResolvedValue({ response: { ok: true, status: 200 }, data: ESTIMATE })
+  })
+
+  it('leads with the range, both ends of it', async () => {
+    const page = await mountSuspended(Result)
+
+    const range = page.find('.range').text()
+    expect(range).toContain('45.241')
+    expect(range).toContain('57.580')
+  })
+
+  it('reads the draft and asks for the estimate, in that order', async () => {
+    await mountSuspended(Result)
+
+    expect(get).toHaveBeenCalledWith('/api/quote-requests/{id}',
+      { params: { path: { id: 'draft-1' } } })
+    expect(post).toHaveBeenCalledWith('/api/quote-requests/{id}/estimate',
+      { params: { path: { id: 'draft-1' } } })
+  })
+
+  it('§1: shows no cost and no margin', async () => {
+    const page = await mountSuspended(Result)
+
+    const text = page.text()
+    // The customer's screen carries a price. What the job costs the business is the operator's screen,
+    // and this response never contained it — asserted so that a later "just for debugging" cannot.
+    expect(text).not.toContain('Maliyet')
+    expect(text).not.toContain('Marj')
+    expect(page.html()).not.toContain('totalCost')
+  })
+
+  it('names the reason the band is wide, not just its width', async () => {
+    get.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ANSWERS, wallCondition: 'UNSURE' },
+    })
+    post.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ESTIMATE, bandRatio: 0.27 },
+    })
+    const page = await mountSuspended(Result)
+
+    // §1.5 requires the sentence, and requires it to be about what they said: "duvar durumunu
+    // bilmediğimiz için". A percentage on its own explains nothing to the person reading it.
+    expect(page.text()).toContain('emin olmadığınızı belirttiniz')
+    expect(page.text()).toContain('%27')
+  })
+
+  it('says a gross area was converted, because that is also why the band widened', async () => {
+    get.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ANSWERS, areaBasis: 'GROSS', area: 112 },
+    })
+    post.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ESTIMATE, areaWasGross: true, netArea: 91.84, bandRatio: 0.17 },
+    })
+    const page = await mountSuspended(Result)
+
+    expect(page.text()).toContain('Brüt alan verdiniz')
+    expect(page.text()).toContain('91,84')
+  })
+
+  it('does not invent a reason that does not apply', async () => {
+    const page = await mountSuspended(Result)
+
+    // Wall condition MINOR and a net area: the only widening is the base band, so neither of the two
+    // specific sentences belongs on the screen.
+    expect(page.text()).not.toContain('emin olmadığınızı belirttiniz')
+    expect(page.text()).not.toContain('Brüt alan verdiniz')
+  })
+
+  it('summarises what was answered, so the number can be argued with', async () => {
+    const page = await mountSuspended(Result)
+
+    const summary = page.find('.summary').text()
+    expect(summary).toContain('Kadıköy')
+    expect(summary).toContain('3+1')
+    expect(summary).toContain('Eşyalı')
+    expect(summary).toContain('8 kapı')
+    expect(summary).toContain('Ufak çatlak')
+  })
+
+  it('offers the way forward and the way out, and nothing that does not work yet', async () => {
+    const page = await mountSuspended(Result)
+
+    expect(page.find('.actions .btn.primary').attributes('href')).toBe('/cekim')
+    expect(page.find('.actions .quiet').attributes('href')).toBe('/')
+    // The SMS option is §1.5's third and it needs a provider nobody has chosen yet (BOYA-6/33). A
+    // button that does nothing on the biggest loss point in the process is worse than no button.
+    expect(page.text()).not.toContain('SMS')
+  })
+
+  it('sends an unfinished draft back to the form rather than showing a number', async () => {
+    get.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ANSWERS, priceable: false, wallCondition: null },
+    })
+    const page = await mountSuspended(Result)
+
+    expect(post).not.toHaveBeenCalled()
+    expect(page.text()).toContain('cevaplanmamış')
+    expect(page.find('a[href="/teklif-al"]').exists()).toBe(true)
+  })
+
+  it('says so when the draft itself cannot be read, rather than waiting for ever', async () => {
+    // The failure mode that looks most like a working page: a spinner with nothing behind it. This is
+    // how the missing GET endpoint presented — 405 from the API, "Hesaplanıyor…" on screen.
+    get.mockResolvedValue({ response: { ok: false, status: 405 }, error: {} })
+    const page = await mountSuspended(Result)
+
+    expect(page.text()).toContain('hesaplanamadı')
+    expect(page.text()).not.toContain('Hesaplanıyor')
+  })
+
+  it('says so when the estimate cannot be computed, rather than showing an empty range', async () => {
+    post.mockResolvedValue({ response: { ok: false, status: 500 }, error: {} })
+    const page = await mountSuspended(Result)
+
+    expect(page.text()).toContain('hesaplanamadı')
+    expect(page.find('.range').exists()).toBe(false)
+  })
+})

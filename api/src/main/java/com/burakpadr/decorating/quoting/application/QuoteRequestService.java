@@ -25,6 +25,12 @@ class QuoteRequestService implements ManageQuoteRequests {
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public QuoteRequest find(UUID id) {
+		return requests.findById(id).orElseThrow(() -> new QuoteRequestNotFound(id.toString()));
+	}
+
+	@Override
 	@Transactional
 	public QuoteRequest createDraft() {
 		// UUIDv7 (§4): time-ordered, so drafts cluster on disk in the order they were started, and a

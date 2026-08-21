@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,6 +67,26 @@ class QuoteRequestController {
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.header(HttpHeaders.SET_COOKIE, session.asCookie(draft.id()).toString())
 				.body(QuoteRequestResponse.of(draft));
+	}
+
+	@GetMapping("/{id}")
+	@Operation(summary = "The draft as stored, for a screen that has to survive a reload")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "The draft"),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "404", description = "No such draft", content = {})})
+	QuoteRequestResponse show(@Parameter(hidden = true) OwnedQuoteRequest owned) {
+		// §7 does not list this route, and the result screen cannot work without it: it shows the answers
+		// back to the customer (workflow §1.5) and has to survive a reload, a back button and the SMS
+		// resume link. The alternative is carrying the answers in client state, which fails at exactly the
+		// moment §8 cares about — the customer who comes back on another device. Same reasoning as
+		// docs/decisions/0015.
+		return QuoteRequestResponse.of(requests.find(owned.id()));
 	}
 
 	@PatchMapping("/{id}")

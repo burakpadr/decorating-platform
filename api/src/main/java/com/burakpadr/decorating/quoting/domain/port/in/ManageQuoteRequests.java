@@ -14,6 +14,14 @@ import java.util.UUID;
  */
 public interface ManageQuoteRequests {
 
+	/**
+	 * One draft, as stored.
+	 *
+	 * @throws com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound if there is no such
+	 *     request
+	 */
+	QuoteRequest find(UUID id);
+
 	/** A new empty draft. The caller is responsible for handing back the session that owns it. */
 	QuoteRequest createDraft();
 

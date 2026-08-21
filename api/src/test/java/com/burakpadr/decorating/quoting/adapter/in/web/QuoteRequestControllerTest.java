@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -201,6 +202,29 @@ class QuoteRequestControllerTest {
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.districtCode").value("KADIKOY"));
+	}
+
+	@Test
+	@DisplayName("GET answers the draft, so the result screen survives a reload")
+	void showAnswersTheDraft() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(get("/api/quote-requests/{id}", id).cookie(owns(id)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.districtCode").value("KADIKOY"))
+				.andExpect(jsonPath("$.wallCondition").value("MINOR"))
+				.andExpect(jsonPath("$.priceable").value(true));
+	}
+
+	@Test
+	@DisplayName("GET is scoped like every other route: the session, or nothing")
+	void showNeedsTheSession() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(get("/api/quote-requests/{id}", id))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/quote-requests/{id}", id).cookie(owns(draft())))
+				.andExpect(status().isForbidden());
 	}
 
 	@Test
