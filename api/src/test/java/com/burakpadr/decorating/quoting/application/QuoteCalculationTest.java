@@ -51,8 +51,10 @@ class QuoteCalculationTest {
 		// that example's arithmetic belongs to the seed's item costs, which PricingEngineTest still holds
 		// to the letter. What this asserts is that the live list prices the worked example's shape.
 		assertThat(result.quote().totalCost()).isEqualByComparingTo("32955.51");
-		assertThat(result.quote().billableDays()).isEqualTo(3);
-		assertThat(result.priceBookVersion()).isEqualTo("REAL-2026-02");
+		assertThat(result.quote().billableDays())
+				.as("two painters, not three (V6): the same work, half again as many days, same money")
+				.isEqualTo(5);
+		assertThat(result.priceBookVersion()).isEqualTo("REAL-2026-03");
 
 		assertThat(result.netArea())
 				.as("a net area is used as it stands")

@@ -48,7 +48,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @Import(TestcontainersConfiguration.class)
 class PriceBookPersistenceAdapterTest {
 
-	private static final String ACTIVE = "REAL-2026-02";
+	private static final String ACTIVE = "REAL-2026-03";
 	private static final String SUPERSEDED = "SEED-2026-01";
 
 	@Autowired
@@ -73,9 +73,11 @@ class PriceBookPersistenceAdapterTest {
 		assertThat(book.stage1OpeningRatio()).isEqualByComparingTo("0.12");
 		assertThat(book.doorOpeningM2()).isEqualByComparingTo("1.90");
 		assertThat(book.windowOpeningM2()).isEqualByComparingTo("2.20");
-		assertThat(book.crewSize()).isEqualTo(3);
+		assertThat(book.crewSize())
+				.as("two painters go to a job (V6), and the same person-day still costs 2,500")
+				.isEqualTo(2);
 		assertThat(book.crewHoursPerDay()).isEqualByComparingTo("8.00");
-		assertThat(book.crewDayCost()).isEqualByComparingTo("7500.00");
+		assertThat(book.crewDayCost()).isEqualByComparingTo("5000.00");
 		assertThat(book.dayRoundingTolerance()).isEqualByComparingTo("0.25");
 		assertThat(book.marginRatio()).isEqualByComparingTo("0.30");
 		assertThat(book.marginAlertThreshold()).isEqualByComparingTo("0.20");
@@ -207,8 +209,12 @@ class PriceBookPersistenceAdapterTest {
 		// PricingEngineTest still asserts against the fixture. Here the point is that the version the
 		// database hands back prices a whole job without a missing row — 4,176.85 person-minutes over a
 		// three-person crew is 2.90 days, so the 22,500 TL floor does not bind.
+		// The cost is V5's to the kuruş: labour is derived per person-minute, so spreading the same work
+		// over two people instead of three changes how long it takes and not what it costs (V6).
 		assertThat(quote.totalCost()).isEqualByComparingTo("32955.51");
-		assertThat(quote.billableDays()).isEqualTo(3);
+		assertThat(quote.billableDays())
+				.as("4,176.85 person-minutes over two people is 4.35 days, and §5.8 rounds it to 5")
+				.isEqualTo(5);
 		assertThat(quote.lines()).extracting(line -> line.code())
 				.contains(ItemCode.WALL_PAINT, ItemCode.CEILING_PAINT, ItemCode.PATCH_FILLING,
 						ItemCode.DOOR_PAINT, ItemCode.MASKING, ItemCode.MOBILIZATION);

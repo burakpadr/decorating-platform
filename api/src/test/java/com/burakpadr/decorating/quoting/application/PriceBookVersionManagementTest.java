@@ -39,9 +39,13 @@ import org.springframework.test.annotation.DirtiesContext;
 class PriceBookVersionManagementTest {
 
 	/** The reconciled book (V5). Its items agree with its own crew rate, and the tests below rely on it. */
-	private static final String ACTIVE = "REAL-2026-02";
+	private static final String ACTIVE = "REAL-2026-03";
 
-	/** WALL_PAINT at 6 person-minutes, priced at REAL-2026-02's 7,500 TL crew day: 6 × 7500 / 1440. */
+	/**
+	 * WALL_PAINT at 6 person-minutes, priced at REAL-2026-03's 5,000 TL crew day over two people:
+	 * 6 × 5000 / 960. The same 31.25 REAL-2026-02 carried at 7,500 over three — a person-minute costs
+	 * what it costs, whoever is in the van (V6).
+	 */
 	private static final String WALL_PAINT_LABOUR = "31.25";
 
 	@Autowired
@@ -59,8 +63,8 @@ class PriceBookVersionManagementTest {
 		jdbc.update("DELETE FROM quote WHERE created_by = 'OPERATOR'");
 		jdbc.update("DELETE FROM quote_request WHERE status = 'QUOTE_SENT'");
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'TEST-%'");
-		// REAL-2026-02 is a migration, not a fixture: only the versions these tests produce go.
-		jdbc.update("DELETE FROM price_book WHERE version_code IN ('REAL-2026-03', 'REAL-2026-04')");
+		// REAL-2026-02 and -03 are migrations, not fixtures: only the versions these tests produce go.
+		jdbc.update("DELETE FROM price_book WHERE version_code IN ('REAL-2026-04', 'REAL-2026-05')");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -147,7 +151,7 @@ class PriceBookVersionManagementTest {
 		// (ADR 0016). 7,500 → 8,625, and WALL_PAINT's 6 minutes are worth 6 × 8625 / 1440.
 		assertThat(after.crewDayCost())
 				.as("the rise lands on the figure that explains it")
-				.isEqualByComparingTo("8625.00");
+				.isEqualByComparingTo("5750.00");
 		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("35.94");
 		assertThat(after.item(ItemCode.WALL_PAINT).materialCost())
 				.as("paint did not get more expensive because labour did — §6 keeps the two apart")
@@ -167,7 +171,7 @@ class PriceBookVersionManagementTest {
 
 		// The labour column is rewritten by the same statement whichever target ran, so this is the test
 		// that the rewrite is a re-derivation and not a rise: 40% on paint must not move a single hour.
-		assertThat(after.crewDayCost()).isEqualByComparingTo("7500.00");
+		assertThat(after.crewDayCost()).isEqualByComparingTo("5000.00");
 		assertThat(after.item(ItemCode.WALL_PAINT).labourCost())
 				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 		assertThat(after.item(ItemCode.MASKING).labourCost()).isEqualByComparingTo("130.21");
@@ -192,7 +196,7 @@ class PriceBookVersionManagementTest {
 				idOf(ACTIVE), IncreaseTarget.ALL, new BigDecimal("20"));
 
 		PriceBook after = books.findByVersionCode(raised.versionCode()).orElseThrow();
-		assertThat(after.crewDayCost()).isEqualByComparingTo("9000.00");
+		assertThat(after.crewDayCost()).isEqualByComparingTo("6000.00");
 		assertThat(after.item(ItemCode.WALL_PAINT).labourCost()).isEqualByComparingTo("37.50");
 		assertThat(after.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("26.40");
 		assertThat(after.item(ItemCode.MOBILIZATION).labourCost())
@@ -209,7 +213,7 @@ class PriceBookVersionManagementTest {
 		PriceBookSummary raised = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("1.5"));
 
-		// The crew day becomes 7,612.50, and masking's 25 minutes are worth 132.161458… of it — a figure
+		// The crew day becomes 5,075.00, and masking's 25 minutes are worth 132.161458… of it — a figure
 		// the column cannot hold. Rounding at the derivation, half up, like every other figure.
 		assertThat(books.findByVersionCode(raised.versionCode()).orElseThrow()
 						.item(ItemCode.MASKING).labourCost())
@@ -242,10 +246,10 @@ class PriceBookVersionManagementTest {
 		PriceBookSummary second = versions.applyBulkIncrease(
 				idOf(ACTIVE), IncreaseTarget.LABOUR, new BigDecimal("5"));
 
-		assertThat(first.versionCode()).isEqualTo("REAL-2026-03");
+		assertThat(first.versionCode()).isEqualTo("REAL-2026-04");
 		assertThat(second.versionCode())
 				.as("a second increase from the same source must not fail on a name clash")
-				.isEqualTo("REAL-2026-04");
+				.isEqualTo("REAL-2026-05");
 	}
 
 	@Test
@@ -262,7 +266,7 @@ class PriceBookVersionManagementTest {
 				.isEqualByComparingTo("7.00");
 		assertThat(edited.item(ItemCode.WALL_PAINT).materialCost()).isEqualByComparingTo("40.00");
 		assertThat(edited.item(ItemCode.WALL_PAINT).labourCost())
-				.as("the caller never sent a labour cost: 7 minutes at 7,500 a crew day is 36.46")
+				.as("the caller never sent a labour cost: 7 minutes at 2,500 a person-day is 36.46")
 				.isEqualByComparingTo("36.46");
 		assertThat(books.findByVersionCode(ACTIVE).orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.isEqualByComparingTo(WALL_PAINT_LABOUR);

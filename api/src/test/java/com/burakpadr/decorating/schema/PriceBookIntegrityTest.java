@@ -204,6 +204,25 @@ class PriceBookIntegrityTest {
 				.isEmpty();
 	}
 
+	@Test
+	@DisplayName("the active book pays a painter 2,500 TL a day, however many of them go")
+	void theActiveBookKeepsItsPersonDayCost() {
+		// crew_day_cost and crew_size are two halves of one figure: the cost of a person for a day. Change
+		// crew_size alone — because the crew turned out to be two people, which is what V6 is — and every
+		// item's labour is silently rewritten, because ADR 0016 derives it from
+		// crew_day_cost / (crew_size × hours × 60). This is the guard: the pair moves together or the
+		// build says so. 2,500 TL is the figure the business gave (V5's header).
+		java.util.Map<String, Object> book = jdbc.queryForMap(
+				"SELECT crew_size, crew_day_cost FROM price_book WHERE active = true");
+
+		BigDecimal perPersonDay = ((BigDecimal) book.get("crew_day_cost"))
+				.divide(new BigDecimal((Integer) book.get("crew_size")));
+
+		assertThat(perPersonDay)
+				.as("crew_day_cost %s over %s people", book.get("crew_day_cost"), book.get("crew_size"))
+				.isEqualByComparingTo("2500.00");
+	}
+
 	private List<String> activeBookColumn(String sql) {
 		UUID activeId = jdbc.queryForObject(
 				"SELECT id FROM price_book WHERE active = true", UUID.class);

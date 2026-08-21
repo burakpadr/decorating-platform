@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(TestcontainersConfiguration.class)
 class PriceBookControllerTest {
 
-	private static final String ACTIVE = "REAL-2026-02";
+	private static final String ACTIVE = "REAL-2026-03";
 
 	@Autowired
 	private MockMvc mvc;
@@ -47,7 +47,7 @@ class PriceBookControllerTest {
 	void restoreTheActiveVersion() {
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'WEB-%'");
 		jdbc.update("DELETE FROM price_book WHERE version_code LIKE 'REAL-2026-0%' "
-				+ "AND version_code NOT IN ('REAL-2026-01', 'REAL-2026-02')");
+				+ "AND version_code NOT IN ('REAL-2026-01', 'REAL-2026-02', 'REAL-2026-03')");
 		jdbc.update("UPDATE price_book SET active = false WHERE active = true");
 		jdbc.update("UPDATE price_book SET active = true WHERE version_code = ?", ACTIVE);
 	}
@@ -108,7 +108,7 @@ class PriceBookControllerTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"target\":\"LABOUR\",\"percent\":15}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.versionCode").value("REAL-2026-03"))
+				.andExpect(jsonPath("$.versionCode").value("REAL-2026-04"))
 				.andExpect(jsonPath("$.active").value(false));
 
 		assertThat(jdbc.queryForObject("SELECT labour_cost FROM price_book_item i "
@@ -163,7 +163,7 @@ class PriceBookControllerTest {
 						.value(org.hamcrest.Matchers.hasItem("SQM")))
 				.andExpect(jsonPath("$.items[?(@.code=='MOBILIZATION')].unit")
 						.value(org.hamcrest.Matchers.hasItem("LUMP_SUM")))
-				.andExpect(jsonPath("$.coefficients.crewDayCost").value(7500.00))
+				.andExpect(jsonPath("$.coefficients.crewDayCost").value(5000.00))
 				.andExpect(jsonPath("$.coefficients.marginRatio").value(0.3000));
 	}
 

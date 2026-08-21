@@ -48,7 +48,7 @@ class QuoteCalculationControllerTest {
 		mvc.perform(post("/api/op/price-calculations")
 						.contentType(MediaType.APPLICATION_JSON).content(WORKED_EXAMPLE))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.priceBookVersion").value("REAL-2026-02"))
+				.andExpect(jsonPath("$.priceBookVersion").value("REAL-2026-03"))
 				.andExpect(jsonPath("$.netArea").value(92.00))
 				.andExpect(jsonPath("$.areaWasGross").value(false))
 				.andExpect(jsonPath("$.rooms.length()").value(7))
@@ -59,7 +59,7 @@ class QuoteCalculationControllerTest {
 				// margin and VAT for itself (ADR 0016 is what that would repeat).
 				.andExpect(jsonPath("$.labour.total").value(33937.59))
 				.andExpect(jsonPath("$.material.total").value(17473.02))
-				.andExpect(jsonPath("$.billableDays").value(3))
+				.andExpect(jsonPath("$.billableDays").value(5))
 				.andExpect(jsonPath("$.bandRatio").value(0.12))
 				.andExpect(jsonPath("$.lines[?(@.code=='WALL_PAINT')].unit")
 						.value(org.hamcrest.Matchers.hasItem("SQM")))
