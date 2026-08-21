@@ -463,6 +463,28 @@
           }
         }
       }
+    },
+    "/api/districts" : {
+      "get" : {
+        "tags" : [ "district-controller" ],
+        "summary" : "The districts stage 1 offers, from the live price book",
+        "operationId" : "served",
+        "responses" : {
+          "200" : {
+            "description" : "Served districts, by name",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DistrictResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -994,6 +1016,20 @@
           }
         },
         "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
+      },
+      "DistrictResponse" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "example" : "KADIKOY"
+          },
+          "name" : {
+            "type" : "string",
+            "example" : "Kadıköy"
+          }
+        },
+        "required" : [ "code", "name" ]
       }
     }
   }

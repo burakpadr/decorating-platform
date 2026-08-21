@@ -257,6 +257,84 @@ class QuoteRequestControllerTest {
 				.andExpect(status().isForbidden());
 	}
 
+	// =============================================================================================
+	// Service area (BOYA-27)
+	// =============================================================================================
+
+	@Test
+	@DisplayName("acceptance: a district we do not serve cannot be answered at all")
+	void refusesAnUnservedDistrict() throws Exception {
+		UUID id = draft();
+
+		mvc.perform(patch("/api/quote-requests/{id}", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"districtCode\":\"MARS\",\"area\":92}"))
+				.andExpect(status().isUnprocessableEntity())
+				// The client has to recognise this without matching on a Turkish sentence: workflow §8
+				// turns this screen into the waitlist offer.
+				.andExpect(jsonPath("$.type").value("urn:decorating:district-not-served"))
+				.andExpect(jsonPath("$.districtCode").value("MARS"));
+
+		assertThat(requests.findById(id).orElseThrow().answers().areaInput())
+				.as("and nothing else in the same patch was written on the way to being refused")
+				.isNull();
+	}
+
+	@Test
+	@DisplayName("a district that has been switched off is refused like one that never existed")
+	void refusesAClosedDistrict() throws Exception {
+		UUID id = draft();
+		jdbc.update("""
+				INSERT INTO service_district (id, price_book_id, district_code, display_name, active,
+				  district_factor)
+				SELECT ?, id, 'TEST_CLOSED', 'Kapalı İlçe', false, 1.0000
+				FROM price_book WHERE active = true
+				""", UUID.randomUUID());
+		try {
+			mvc.perform(patch("/api/quote-requests/{id}", id).cookie(owns(id))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("{\"districtCode\":\"TEST_CLOSED\"}"))
+					.andExpect(status().isUnprocessableEntity());
+		} finally {
+			jdbc.update("DELETE FROM service_district WHERE district_code = 'TEST_CLOSED'");
+		}
+	}
+
+	@Test
+	@DisplayName("a patch about something else does not have to name a district")
+	void aPatchWithoutADistrictIsFine() throws Exception {
+		UUID id = draft();
+
+		mvc.perform(patch("/api/quote-requests/{id}", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"area\":92}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	@DisplayName("the estimate refuses a district that closed after it was answered")
+	void estimateRefusesADistrictThatClosed() throws Exception {
+		UUID id = answered();
+		// The draft was answered while Kadıköy was open; the business closes it while the customer is
+		// still on the form. PriceBook.districtFactor would price an unlisted district at 1.0000, so
+		// without the second check the customer is quoted for an area nobody will drive to.
+		jdbc.update("""
+				UPDATE service_district SET active = false
+				WHERE district_code = 'KADIKOY'
+				  AND price_book_id = (SELECT id FROM price_book WHERE active = true)
+				""");
+		try {
+			mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)))
+					.andExpect(status().isUnprocessableEntity())
+					.andExpect(jsonPath("$.type").value("urn:decorating:district-not-served"));
+		} finally {
+			jdbc.update("""
+					UPDATE service_district SET active = true
+					WHERE district_code = 'KADIKOY'
+					  AND price_book_id = (SELECT id FROM price_book WHERE active = true)
+					""");
+		}
+	}
+
 	/** A draft with all of §2.1 answered, which is what the estimate needs. */
 	private UUID answered() {
 		UUID id = draft();

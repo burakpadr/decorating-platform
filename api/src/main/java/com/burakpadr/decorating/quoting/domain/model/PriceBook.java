@@ -1,6 +1,10 @@
 package com.burakpadr.decorating.quoting.domain.model;
 
 import java.math.BigDecimal;
+import java.text.Collator;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -34,6 +38,12 @@ public record PriceBook(
 		Map<ModifierCode, PriceModifier> modifiers,
 		Map<RoomType, RoomTypeConfig> roomTypes,
 		Map<String, ServiceDistrict> districts) {
+
+	/**
+	 * Turkish collation, because a Latin sort puts Ç after Z and Ş after Z — so Çekmeköy and Şişli would
+	 * land at the bottom of a list a customer is scanning for their own district.
+	 */
+	private static final Collator TURKISH = Collator.getInstance(new Locale("tr", "TR"));
 
 	public PriceBook {
 		items = Map.copyOf(items);
@@ -69,8 +79,32 @@ public record PriceBook(
 	 * of stage 1, long before pricing; a quote already taken for a district since switched off must
 	 * still price the way it was quoted.
 	 */
+	/**
+	 * §5.10's step 10. An unlisted district prices at 1.0000 rather than failing, which is deliberate and
+	 * is <b>not</b> a service check: the operator's tool prices hypothetical addresses, and
+	 * {@link #serves} is what a customer-facing path has to ask first.
+	 */
 	public BigDecimal districtFactor(String districtCode) {
 		ServiceDistrict district = districts.get(districtCode);
 		return district == null ? BigDecimal.ONE : district.districtFactor();
+	}
+
+	/**
+	 * Whether this is an area the business works in (workflow §7 decision 1).
+	 *
+	 * <p>Switched off, not deleted: a district that closes keeps its factor and its history, and the
+	 * quotes priced while it was open stay readable. So "served" is the flag, not the presence of a row.
+	 */
+	public boolean serves(String districtCode) {
+		ServiceDistrict district = districts.get(districtCode);
+		return district != null && district.active();
+	}
+
+	/** The districts a customer may choose, by display name — the order the list is read in. */
+	public List<ServiceDistrict> servedDistricts() {
+		return districts.values().stream()
+				.filter(ServiceDistrict::active)
+				.sorted(Comparator.comparing(ServiceDistrict::displayName, TURKISH))
+				.toList();
 	}
 }

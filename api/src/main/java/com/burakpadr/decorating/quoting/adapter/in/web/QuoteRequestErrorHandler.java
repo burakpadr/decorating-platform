@@ -1,5 +1,6 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
+import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -23,6 +24,19 @@ class QuoteRequestErrorHandler {
 		// request retention), because the session check already refused every other id.
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
 		problem.setTitle("Talep bulunamadı");
+		return problem;
+	}
+
+	@ExceptionHandler(DistrictNotServed.class)
+	ProblemDetail notServed(DistrictNotServed refused) {
+		// 422 rather than 400: the request is well formed and the answer is a real answer — it is the area
+		// we cannot take. Workflow §8 turns this screen into the waitlist offer (BOYA-28), which is the
+		// only way a visitor we cannot serve is ever heard from again, so the client has to be able to
+		// recognise this case without matching on a Turkish sentence.
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNPROCESSABLE_ENTITY);
+		problem.setType(java.net.URI.create("urn:decorating:district-not-served"));
+		problem.setTitle("Bu ilçede henüz hizmet vermiyoruz");
+		problem.setProperty("districtCode", refused.districtCode());
 		return problem;
 	}
 

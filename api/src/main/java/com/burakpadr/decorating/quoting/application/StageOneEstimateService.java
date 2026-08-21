@@ -1,5 +1,6 @@
 package com.burakpadr.decorating.quoting.application;
 
+import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
 import com.burakpadr.decorating.quoting.domain.model.QuoteCalculation;
 import com.burakpadr.decorating.quoting.domain.model.QuoteCalculationCommand;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
@@ -8,6 +9,7 @@ import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.StageOneEstimate;
 import com.burakpadr.decorating.quoting.domain.port.in.CalculateQuote;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
+import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.StageOneEstimateWriter;
 import java.util.Set;
@@ -33,12 +35,14 @@ class StageOneEstimateService implements EstimateStageOne {
 	private final QuoteRequestRepository requests;
 	private final CalculateQuote calculator;
 	private final StageOneEstimateWriter estimates;
+	private final PriceBookRepository priceBooks;
 
 	StageOneEstimateService(QuoteRequestRepository requests, CalculateQuote calculator,
-			StageOneEstimateWriter estimates) {
+			StageOneEstimateWriter estimates, PriceBookRepository priceBooks) {
 		this.requests = requests;
 		this.calculator = calculator;
 		this.estimates = estimates;
+		this.priceBooks = priceBooks;
 	}
 
 	@Override
@@ -52,6 +56,14 @@ class StageOneEstimateService implements EstimateStageOne {
 			// three screens. The form knows which question is which, and priceable is what it asks.
 			throw new IllegalStateException(
 					"this draft cannot be priced yet: §2.1's questions are not all answered");
+		}
+
+		// Checked again here, and not only when the district was answered: a draft can sit for days and a
+		// district can be switched off in between. PriceBook.districtFactor prices an unlisted district at
+		// 1.0000 by design (the operator tool quotes hypothetical addresses), so without this the customer
+		// would be quoted for an area nobody will drive to.
+		if (!priceBooks.findActive().orElseThrow().serves(answers.districtCode())) {
+			throw new DistrictNotServed(answers.districtCode());
 		}
 
 		QuoteCalculation calculation = calculator.calculate(new QuoteCalculationCommand(
