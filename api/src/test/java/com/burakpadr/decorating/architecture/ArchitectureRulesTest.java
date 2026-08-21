@@ -1,5 +1,10 @@
 package com.burakpadr.decorating.architecture;
 
+import com.burakpadr.decorating.quoting.domain.model.CloseOutcome;
+import com.burakpadr.decorating.quoting.domain.model.ContactReason;
+import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
+import com.burakpadr.decorating.quoting.domain.model.QuoteStatus;
+import java.util.UUID;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -140,6 +145,25 @@ class ArchitectureRulesTest {
 						"..quoting.domain..")
 				.because("PricingEngine must be unit-testable without a Spring context or a "
 						+ "database — the most important testability requirement in the system")
+				.allowEmptyShould(true);
+
+		rule.check(classes);
+	}
+
+	@Test
+	@DisplayName("Rule 4 — only the persistence adapter may rebuild a quote request from a status")
+	void onlyPersistenceRehydratesAQuoteRequest() {
+		// §3: "Do not let adapters set status directly." QuoteRequest has no status argument except
+		// rehydrate(), which exists because a request outlives the process that made it. This is what
+		// stops that door being used as a shortcut — an application service that rehydrates instead of
+		// calling the event it means has just written a status by hand, with the state machine watching.
+		ArchRule rule = noClasses()
+				.that().resideOutsideOfPackages("..quoting.adapter.out.persistence..")
+				.and().resideOutsideOfPackages("..quoting.domain.model..")
+				.should().callMethod(QuoteRequest.class, "rehydrate", UUID.class, QuoteStatus.class,
+						int.class, ContactReason.class, CloseOutcome.class)
+				.because("a status set from outside the state machine is a request in a state nobody "
+						+ "can explain, and the row keeps it forever")
 				.allowEmptyShould(true);
 
 		rule.check(classes);
