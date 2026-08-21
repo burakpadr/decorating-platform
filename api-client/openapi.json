@@ -518,6 +518,12 @@
           "total" : {
             "type" : "number"
           },
+          "labour" : {
+            "$ref" : "#/components/schemas/QuotePortionResponse"
+          },
+          "material" : {
+            "$ref" : "#/components/schemas/QuotePortionResponse"
+          },
           "bandRatio" : {
             "type" : "number"
           },
@@ -528,7 +534,7 @@
             "type" : "number"
           }
         },
-        "required" : [ "areaWasGross", "bandHigh", "bandLow", "bandRatio", "billableDays", "lines", "minimumBinding", "minimumCost", "netArea", "photoCount", "priceBookVersion", "rooms", "subtotalExVat", "total", "totalCost", "totalMinutes", "vatAmount" ]
+        "required" : [ "areaWasGross", "bandHigh", "bandLow", "bandRatio", "billableDays", "labour", "lines", "material", "minimumBinding", "minimumCost", "netArea", "photoCount", "priceBookVersion", "rooms", "subtotalExVat", "total", "totalCost", "totalMinutes", "vatAmount" ]
       },
       "QuoteLineResponse" : {
         "type" : "object",
@@ -555,6 +561,24 @@
           }
         },
         "required" : [ "code", "labourCost", "lineTotal", "materialCost", "quantity", "unit" ]
+      },
+      "QuotePortionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "totalCost" : {
+            "type" : "number"
+          },
+          "subtotalExVat" : {
+            "type" : "number"
+          },
+          "vatAmount" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "subtotalExVat", "total", "totalCost", "vatAmount" ]
       },
       "CreatePriceBookVersionRequest" : {
         "type" : "object",

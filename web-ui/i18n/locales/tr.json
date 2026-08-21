@@ -206,7 +206,20 @@
       "pricedWith": "Fiyat listesi",
       "lines": "Kalem kırılımı",
       "quantity": "Miktar",
-      "amount": "Tutar"
+      "amount": "Tutar",
+      "priceScope": "Fiyat kapsamı",
+      "priceScopes": {
+        "ALL": "Tümü",
+        "LABOUR": "İşçilik",
+        "MATERIAL": "Malzeme"
+      },
+      "priceScopeNotes": {
+        "ALL": "Anahtar teslim — boyayı da biz alıyoruz.",
+        "LABOUR": "Boyayı müşteri alıyor; bu rakam yalnızca işçilik.",
+        "MATERIAL": "Yalnızca malzeme; işçilik bu rakamın dışında."
+      },
+      "lineLabour": "İşçilik payı",
+      "lineMaterial": "Malzeme payı"
     },
     "scopeWholeHome": "{layout} bir evde {count} alan boyanır:",
     "scopeSelected": "{count} alan seçilecek",

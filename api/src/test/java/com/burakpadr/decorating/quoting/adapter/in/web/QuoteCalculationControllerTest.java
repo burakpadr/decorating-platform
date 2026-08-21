@@ -55,6 +55,10 @@ class QuoteCalculationControllerTest {
 				.andExpect(jsonPath("$.rooms[0].label").value("Salon"))
 				.andExpect(jsonPath("$.photoCount").value(28))
 				.andExpect(jsonPath("$.totalCost").value(32955.51))
+				// The two halves, so the screen can say which price it is showing without recomputing
+				// margin and VAT for itself (ADR 0016 is what that would repeat).
+				.andExpect(jsonPath("$.labour.total").value(33937.59))
+				.andExpect(jsonPath("$.material.total").value(17473.02))
 				.andExpect(jsonPath("$.billableDays").value(3))
 				.andExpect(jsonPath("$.bandRatio").value(0.12))
 				.andExpect(jsonPath("$.lines[?(@.code=='WALL_PAINT')].unit")

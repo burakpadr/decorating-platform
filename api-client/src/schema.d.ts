@@ -175,6 +175,8 @@ export interface components {
             subtotalExVat: number;
             vatAmount: number;
             total: number;
+            labour: components["schemas"]["QuotePortionResponse"];
+            material: components["schemas"]["QuotePortionResponse"];
             bandRatio: number;
             bandLow: number;
             bandHigh: number;
@@ -188,6 +190,12 @@ export interface components {
             labourCost: number;
             materialCost: number;
             lineTotal: number;
+        };
+        QuotePortionResponse: {
+            totalCost: number;
+            subtotalExVat: number;
+            vatAmount: number;
+            total: number;
         };
         CreatePriceBookVersionRequest: {
             /** Format: uuid */

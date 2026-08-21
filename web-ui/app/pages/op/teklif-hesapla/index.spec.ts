@@ -35,15 +35,105 @@ const ANSWER = {
   subtotalExVat: 65012.21,
   vatAmount: 13002.44,
   total: 78014.65,
+  // Each half rounded from its own chain, as the engine emits it: 35,390.94 × 1.3 × 1.2 is
+  // 55,209.8664, so the labour total is 55,209.87 and the two halves sit a kuruş off the whole.
+  labour: {
+    totalCost: 35390.94, subtotalExVat: 46008.22, vatAmount: 9201.64, total: 55209.87,
+  },
+  material: {
+    totalCost: 14618.45, subtotalExVat: 19003.99, vatAmount: 3800.80, total: 22804.78,
+  },
   bandRatio: 0.12,
   bandLow: 68652.89,
   bandHigh: 87376.41,
+}
+
+/** The three segments of the scope selector, in the order the template writes them. */
+function scopeButtons(page: { findAll: (s: string) => { text: () => string, trigger: (e: string) => Promise<void>, attributes: (a: string) => string | undefined }[] }) {
+  return page.findAll('[data-group="price-scope"] button')
 }
 
 describe('manual quote calculation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     post.mockResolvedValue({ response: { ok: true, status: 200 }, data: ANSWER })
+  })
+
+  it('opens on the whole job, and says so', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+
+    const chosen = scopeButtons(page).filter(b => b.attributes('aria-pressed') === 'true')
+    expect(chosen).toHaveLength(1)
+    expect(chosen[0]!.text()).toBe('Tümü')
+    expect(page.find('.answer-total strong').text()).toContain('78.015')
+  })
+
+  it('shows the labour half when the customer buys the paint', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+
+    await scopeButtons(page)[1]!.trigger('click')
+
+    // The server's labour half, not a fraction of the total worked out on screen.
+    expect(page.find('.answer-total strong').text()).toContain('55.210')
+    const figures = page.findAll('.figures dd').map(node => node.text())
+    expect(figures[0]).toContain('35.391')
+    expect(figures[2]).toContain('46.008')
+    expect(figures[3]).toContain('9.202')
+  })
+
+  it('shows the material half, and drops the labour floor from it', async () => {
+    post.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: { ...ANSWER, minimumBinding: true },
+    })
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+
+    // The floor binds, so the whole job reports it.
+    expect(page.find('.banner.note').exists()).toBe(true)
+
+    await scopeButtons(page)[2]!.trigger('click')
+
+    expect(page.find('.answer-total strong').text()).toContain('22.805')
+    // ADR 0013's floor exists because a crew turned up; it says nothing about paint.
+    expect(page.find('.banner.note').exists()).toBe(false)
+  })
+
+  it('keeps the margin honest for the half on screen', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+    await scopeButtons(page)[1]!.trigger('click')
+
+    // 46,008.22 on 35,390.94 is 30%, the same margin the whole job carries — a half that reported a
+    // different margin would mean the split had been taken somewhere other than the cost.
+    expect(page.findAll('.figures dd')[1]!.text()).toBe('%30')
+  })
+
+  it('narrows the band with the figure, at the ratio the engine gave', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+    await scopeButtons(page)[1]!.trigger('click')
+
+    // ±12% of 55,209.86 → 48,584.68 – 61,835.04. The band follows the money; the ratio does not change,
+    // because leaving out the paint tells us nothing new about the walls.
+    const band = page.find('.band').text()
+    expect(band).toContain('48.585')
+    expect(band).toContain('61.835')
+  })
+
+  it('breaks the lines down by the same half', async () => {
+    const page = await mountSuspended(CalculatePage)
+    await page.find('form').trigger('submit')
+
+    expect(page.findAll('.line-total').map(n => n.text())[0]).toContain('25.506')
+
+    await scopeButtons(page)[1]!.trigger('click')
+    expect(page.findAll('.line-total').map(n => n.text())[0]).toContain('17.114')
+
+    await scopeButtons(page)[2]!.trigger('click')
+    expect(page.findAll('.line-total').map(n => n.text())[0]).toContain('8.392')
   })
 
   it('posts the typed job as numbers, not as the strings the form holds', async () => {

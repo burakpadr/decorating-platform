@@ -9,6 +9,10 @@ import java.util.List;
  * <p>{@code totalCost} and the margin are internal figures — §1's rule keeps them off customer
  * DTOs, which is the adapter's job and not this record's.
  *
+ * <p>{@code labour} and {@code material} are the same job seen one half at a time, and they add back to
+ * the whole at every stage. The business quotes labour alone, so that half is not a subtotal for
+ * information — it is a price somebody says out loud.
+ *
  * <p>{@code bandLow} and {@code bandHigh} sit symmetrically around {@code total} by construction.
  * Low confidence widens the band and never shifts the midpoint: painting surprises are
  * one-directional, so pulling an uncertain estimate toward an average underquotes systematically.
@@ -24,6 +28,8 @@ public record PricedQuote(
 		BigDecimal subtotalExVat,
 		BigDecimal vatAmount,
 		BigDecimal total,
+		QuotePortion labour,
+		QuotePortion material,
 		BigDecimal bandRatio,
 		BigDecimal bandLow,
 		BigDecimal bandHigh) {

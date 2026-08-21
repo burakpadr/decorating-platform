@@ -122,14 +122,60 @@ async function calculate() {
   result.value = data
 }
 
-/** The margin the figures imply, so the operator does not have to divide two numbers on screen. */
-const marginRatio = computed(() => {
+/*
+ * Which price is on screen. The business quotes labour on its own — the customer buys the paint — so
+ * the engine's turnkey total is not always the number being compared with. The two halves arrive
+ * computed (margin and both VAT rates already applied), so this only chooses between them; working
+ * a half out here would be ADR 0016's mistake in a new place.
+ *
+ * ALL is the default because it is the whole job, and a screen that opened on a partial figure would
+ * be quietly answering a question nobody asked.
+ */
+type PriceScope = 'ALL' | 'LABOUR' | 'MATERIAL'
+const priceScope = ref<PriceScope>('ALL')
+
+const shown = computed(() => {
   const quote = result.value
-  if (!quote || Number(quote.totalCost) === 0) {
+  if (!quote) {
     return null
   }
-  return (Number(quote.subtotalExVat) - Number(quote.totalCost)) / Number(quote.totalCost)
+  const half = priceScope.value === 'LABOUR'
+    ? quote.labour
+    : priceScope.value === 'MATERIAL' ? quote.material : null
+  const figures = half ?? {
+    totalCost: quote.totalCost,
+    subtotalExVat: quote.subtotalExVat,
+    vatAmount: quote.vatAmount,
+    total: quote.total,
+  }
+  // §5.9's band is a proportion of the figure it surrounds, so it follows the scope. The ratio itself
+  // is the engine's — uncertainty about the walls does not shrink because the paint was left out.
+  const ratio = Number(quote.bandRatio)
+  const total = Number(figures.total)
+  return {
+    ...figures,
+    bandLow: total * (1 - ratio),
+    bandHigh: total * (1 + ratio),
+    // The floor is a labour floor (ADR 0013): a crew turned up. It has nothing to say about paint.
+    showsMinimum: quote.minimumBinding && priceScope.value !== 'MATERIAL',
+  }
 })
+
+/** The margin the figures imply, so the operator does not have to divide two numbers on screen. */
+const marginRatio = computed(() => {
+  const figures = shown.value
+  if (!figures || Number(figures.totalCost) === 0) {
+    return null
+  }
+  return (Number(figures.subtotalExVat) - Number(figures.totalCost)) / Number(figures.totalCost)
+})
+
+/** What one line contributes to the figure on screen — the same half, line by line. */
+function lineAmount(line: { lineTotal: unknown, labourCost: unknown, materialCost: unknown }): number {
+  return Number(priceScope.value === 'LABOUR'
+    ? line.labourCost
+    : priceScope.value === 'MATERIAL' ? line.materialCost : line.lineTotal)
+}
 
 const PERCENT = new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFractionDigits: 1 })
 
@@ -327,13 +373,26 @@ watch(() => JSON.stringify(form), () => {
       <aside class="answer-pane">
       <template v-if="result">
         <section class="panel answer">
+          <!-- Above the figure, not below it: it says what the figure means, and a caption that arrives
+               after the number has already been read is a caption nobody reads. -->
+          <p class="answer-label">{{ t('calculate.result.priceScope') }}</p>
+          <div class="segmented scope-select" data-group="price-scope">
+            <button
+              v-for="option in (['ALL', 'LABOUR', 'MATERIAL'] as const)" :key="option" type="button"
+              :aria-pressed="priceScope === option" @click="priceScope = option"
+            >
+              {{ t(`calculate.result.priceScopes.${option}`) }}
+            </button>
+          </div>
+          <p class="hint scope-note">{{ t(`calculate.result.priceScopeNotes.${priceScope}`) }}</p>
+
           <p class="answer-label">{{ t('calculate.result.band') }}</p>
           <p class="band num">
-            {{ formatPriceRange(Number(result.bandLow), Number(result.bandHigh)) }}
+            {{ formatPriceRange(shown!.bandLow, shown!.bandHigh) }}
           </p>
           <p class="answer-total">
             {{ t('calculate.result.total') }}
-            <strong class="num">{{ formatAmount(Number(result.total)) }}</strong>
+            <strong class="num">{{ formatAmount(Number(shown!.total)) }}</strong>
           </p>
           <p class="hint">
             {{ t('calculate.result.bandWhy', { ratio: (Number(result.bandRatio) * 100).toFixed(0) }) }}
@@ -341,17 +400,17 @@ watch(() => JSON.stringify(form), () => {
 
           <dl class="figures">
             <dt>{{ t('calculate.result.cost') }}</dt>
-            <dd class="num">{{ formatAmount(Number(result.totalCost)) }}</dd>
+            <dd class="num">{{ formatAmount(Number(shown!.totalCost)) }}</dd>
             <dt>{{ t('calculate.result.margin') }}</dt>
             <dd class="num">{{ marginRatio === null ? '—' : PERCENT.format(marginRatio) }}</dd>
             <dt>{{ t('calculate.result.subtotal') }}</dt>
-            <dd class="num">{{ formatAmount(Number(result.subtotalExVat)) }}</dd>
+            <dd class="num">{{ formatAmount(Number(shown!.subtotalExVat)) }}</dd>
             <dt>{{ t('calculate.result.vat') }}</dt>
-            <dd class="num">{{ formatAmount(Number(result.vatAmount)) }}</dd>
+            <dd class="num">{{ formatAmount(Number(shown!.vatAmount)) }}</dd>
             <dt>{{ t('calculate.result.days') }}</dt>
             <dd class="num">{{ result.billableDays }}</dd>
           </dl>
-          <p v-if="result.minimumBinding" class="banner note">
+          <p v-if="shown!.showsMinimum" class="banner note">
             {{ t('calculate.result.minimumBinding') }}: {{ formatAmount(Number(result.minimumCost)) }}
           </p>
         </section>
@@ -378,13 +437,18 @@ watch(() => JSON.stringify(form), () => {
 
         <section class="panel">
           <h2>{{ t('calculate.result.lines') }}</h2>
+          <p v-if="priceScope !== 'ALL'" class="hint">
+            {{ priceScope === 'LABOUR'
+              ? t('calculate.result.lineLabour')
+              : t('calculate.result.lineMaterial') }}
+          </p>
           <ul class="lines">
             <li v-for="line in result.lines" :key="line.code">
               <span class="line-name">{{ t(`priceBook.codes.${line.code}`) }}</span>
               <span class="line-qty num">
                 {{ formatDecimal(Number(line.quantity)) }} {{ t(`priceBook.units.${line.unit}`) }}
               </span>
-              <span class="line-total num">{{ formatAmount(Number(line.lineTotal)) }}</span>
+              <span class="line-total num">{{ formatAmount(lineAmount(line)) }}</span>
             </li>
           </ul>
         </section>
@@ -612,6 +676,16 @@ fieldset {
 .segmented.small {
   flex: none;
   width: 7.75rem;
+}
+
+/* Full width, unlike .small: this one is a statement about the whole answer below it, not a unit
+   toggle sitting inside a field. */
+.scope-select {
+  margin-bottom: var(--gap-tight);
+}
+
+.scope-note {
+  margin: 0 0 var(--gap);
 }
 
 .segmented button {

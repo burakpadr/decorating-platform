@@ -10,6 +10,7 @@ import com.burakpadr.decorating.quoting.domain.model.PricedQuote;
 import com.burakpadr.decorating.quoting.domain.model.PricingInput;
 import com.burakpadr.decorating.quoting.domain.model.PricingSource;
 import com.burakpadr.decorating.quoting.domain.model.QuoteLine;
+import com.burakpadr.decorating.quoting.domain.model.QuotePortion;
 import com.burakpadr.decorating.quoting.domain.model.RoomInput;
 import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
 import com.burakpadr.decorating.quoting.domain.model.SurfaceInput;
@@ -139,10 +140,28 @@ public final class PricingEngine {
 
 		// Step 12 — margin. Step 13 — VAT, at each portion's own rate.
 		Money sale = cost.scale(BigDecimal.ONE.add(book.marginRatio()));
-		BigDecimal vat = sale.labour().multiply(book.labourVatRate())
-				.add(sale.material().multiply(book.materialVatRate()));
+		BigDecimal labourVat = sale.labour().multiply(book.labourVatRate());
+		BigDecimal materialVat = sale.material().multiply(book.materialVatRate());
+		BigDecimal vat = labourVat.add(materialVat);
 		BigDecimal subtotalExVat = sale.total();
 		BigDecimal total = subtotalExVat.add(vat);
+
+		// The two halves, as figures rather than as an internal accumulator. Each is rounded from its own
+		// unrounded chain, so each is the figure that half is actually worth. Deriving one by subtracting
+		// the other from the whole would make them add up to the cent, but at a worse price: the material
+		// half would then absorb labour's rounding and move when only labour changed — a material cost
+		// that shifts by a kuruş because the home is furnished is a figure nobody can explain. See
+		// QuotePortion.
+		QuotePortion labourPortion = new QuotePortion(
+				money(cost.labour()),
+				money(sale.labour()),
+				money(labourVat),
+				money(sale.labour().add(labourVat)));
+		QuotePortion materialPortion = new QuotePortion(
+				money(cost.material()),
+				money(sale.material()),
+				money(materialVat),
+				money(sale.material().add(materialVat)));
 
 		BigDecimal bandRatio = bandRatio(input, book, measured);
 		return new PricedQuote(
@@ -156,6 +175,8 @@ public final class PricingEngine {
 				money(subtotalExVat),
 				money(vat),
 				money(total),
+				labourPortion,
+				materialPortion,
 				bandRatio,
 				money(total.multiply(BigDecimal.ONE.subtract(bandRatio))),
 				money(total.multiply(BigDecimal.ONE.add(bandRatio))));

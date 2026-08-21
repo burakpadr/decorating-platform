@@ -55,6 +55,104 @@ class PricingEngineTest {
 	// catch a misreading of the algorithm.
 	// =============================================================================================
 
+	// =============================================================================================
+	// The two halves. §5.8 already taxes labour and material at their own rates, so the engine has
+	// carried the split all the way through — these expose it, because the business quotes labour on
+	// its own (the customer buys the paint) and a screen that can only show the sum cannot answer that.
+	// =============================================================================================
+
+	@Test
+	@DisplayName("§5.10's total splits into a labour half and a material half at every stage")
+	void splitsTheTotalIntoItsTwoHalves() {
+		PricedQuote quote = engine.price(workedExample(), book());
+
+		// Labour: 35,390.94 of line labour at Kadıköy's 1.05, then margin, then labour VAT.
+		assertThat(quote.labour().cost()).isEqualByComparingTo("37160.49");
+		assertThat(quote.labour().subtotalExVat()).isEqualByComparingTo("48308.64");
+		assertThat(quote.labour().vatAmount()).isEqualByComparingTo("9661.73");
+		assertThat(quote.labour().total()).isEqualByComparingTo("57970.37");
+
+		// Material: 14,618.45 of line material, the same way.
+		assertThat(quote.material().cost()).isEqualByComparingTo("15349.37");
+		assertThat(quote.material().subtotalExVat()).isEqualByComparingTo("19954.18");
+		assertThat(quote.material().vatAmount()).isEqualByComparingTo("3990.84");
+		assertThat(quote.material().total()).isEqualByComparingTo("23945.02");
+	}
+
+	@Test
+	@DisplayName("the halves account for the whole, within the kuruş each of them is rounded to")
+	void theHalvesAccountForTheWhole() {
+		PricedQuote quote = engine.price(workedExample(), book());
+
+		// Both halves are rounded from their own chains, so their sum can sit a kuruş off the whole —
+		// on this example the VAT line does. What must never happen is a half going missing: a bound
+		// this tight fails on a portion that dropped mobilization, took the wrong VAT rate, or lost the
+		// district factor, while tolerating only the rounding that is unavoidable.
+		assertThat(quote.labour().cost().add(quote.material().cost()))
+				.isCloseTo(quote.totalCost(), within(CENT));
+		assertThat(quote.labour().subtotalExVat().add(quote.material().subtotalExVat()))
+				.isCloseTo(quote.subtotalExVat(), within(CENT));
+		assertThat(quote.labour().vatAmount().add(quote.material().vatAmount()))
+				.isCloseTo(quote.vatAmount(), within(CENT));
+		assertThat(quote.labour().total().add(quote.material().total()))
+				.isCloseTo(quote.total(), within(CENT));
+	}
+
+	@Test
+	@DisplayName("each half is taxed at its own rate, which is the whole reason the split is kept")
+	void eachHalfIsTaxedAtItsOwnRate() {
+		// 20% on labour, 10% on material: a single blended rate would reproduce neither half.
+		PricedQuote quote = engine.price(workedExample(), PriceBookFixture.seedWithVat("0.20", "0.10"));
+
+		assertThat(quote.labour().vatAmount())
+				.isCloseTo(quote.labour().subtotalExVat().multiply(new BigDecimal("0.20")), within(CENT));
+		assertThat(quote.material().vatAmount())
+				.isCloseTo(quote.material().subtotalExVat().multiply(new BigDecimal("0.10")),
+						within(CENT));
+		assertThat(quote.labour().total().add(quote.material().total()))
+				.isCloseTo(quote.total(), within(CENT));
+	}
+
+	@Test
+	@DisplayName("a furnished home raises the labour half and leaves the material half untouched")
+	void furnishingMovesOnlyTheLabourHalf() {
+		PricingInput empty = new PricingInput(
+				"UNLISTED", new BigDecimal("92.00"), false, workedExample().rooms(),
+				Furnishing.EMPTY, 8, true, false, true, false, PricingSource.STAGE_1);
+		PricingInput furnished = new PricingInput(
+				"UNLISTED", new BigDecimal("92.00"), false, workedExample().rooms(),
+				Furnishing.FURNISHED, 8, true, false, true, false, PricingSource.STAGE_1);
+
+		PricedQuote without = engine.price(empty, book());
+		PricedQuote with = engine.price(furnished, book());
+
+		assertThat(with.material().cost())
+				.as("§6 keeps the two apart: moving furniture does not consume more paint")
+				.isEqualByComparingTo(without.material().cost());
+		assertThat(with.labour().cost())
+				.as("and the 25%% lands entirely on the half that is labour")
+				.isGreaterThan(without.labour().cost());
+	}
+
+	@Test
+	@DisplayName("when the minimum binds, the uplift is labour — a crew turned up, no paint was used")
+	void theMinimumUpliftLandsOnTheLabourHalf() {
+		// One bathroom: minutes nowhere near a day, so the floor decides the price (ADR 0013).
+		PricingInput tiny = new PricingInput(
+				"UNLISTED", new BigDecimal("6.00"), false,
+				List.of(RoomInput.declared(RoomType.BATHROOM, WallCondition.GOOD)),
+				Furnishing.EMPTY, 1, false, false, true, false, PricingSource.STAGE_1);
+
+		PricedQuote quote = engine.price(tiny, book());
+
+		assertThat(quote.minimumBinding()).isTrue();
+		assertThat(quote.labour().cost().add(quote.material().cost()))
+				.isCloseTo(quote.minimumCost(), within(CENT));
+		assertThat(quote.labour().vatAmount())
+				.as("§5.8 taxes the uplift as labour, so it must be in the labour half to be taxed at all")
+				.isGreaterThan(BigDecimal.ZERO);
+	}
+
 	@Test
 	@DisplayName("§5.10: 3+1, 92 m² net, Kadıköy, furnished, 8 doors with a colour change, MINOR walls")
 	void reproducesTheWorkedExample() {
