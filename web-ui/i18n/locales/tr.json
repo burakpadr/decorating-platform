@@ -358,7 +358,7 @@
     "continueNote": "Yaklaşık 8 dakika, telefonla oda oda fotoğraf. Numaranız hâlâ istenmiyor.",
     "leave": "Şimdilik yeterli",
     "edit": "Cevapları değiştir",
-    "smsOffer": "Aralığı SMS ile gönder",
+    "smsOffer": "Aralığı telefonunuza gönderelim",
     "smsWhy": "Şimdi devam etmek istemiyorsanız, aralığı telefonunuza gönderelim. Kaldığınız yerden devam etmek için bir bağlantı da ekliyoruz.",
     "smsPhone": "Telefon numaranız",
     "smsPlaceholder": "0555 123 45 67",
@@ -367,6 +367,7 @@
     "smsDone": "Numaranız kaydedildi. Fiyat aralığınızı SMS ile ileteceğiz.",
     "smsInvalid": "Cep telefonu numarası girin (5xx ile başlayan).",
     "smsFailed": "Gönderilemedi. Numaranızı kontrol edip tekrar deneyin.",
-    "smsCancel": "Vazgeç"
+    "smsCancel": "Vazgeç",
+    "smsButton": "SMS ile gönder"
   }
 }

@@ -219,36 +219,43 @@ const doors = computed(() => {
       <p class="hint continue-note">{{ t('quoteResult.continueNote') }}</p>
 
       <!-- §1.5: "bu aşamada numara bırakan müşteriye sonradan dönülebilir — göründüğünden çok daha
-           önemli". Offered as a quiet third way rather than a rival to the primary action. -->
-      <section v-if="smsDone" class="panel sms-done" role="status">
-        {{ t('quoteResult.smsDone') }}
-      </section>
+           önemli". So it is a panel of its own with the reason on it, not a link under the fold: the
+           customer about to leave is the one this is for, and they are not reading carefully. It stays
+           an outline button so it does not compete with "Kesin fiyat al" — second, not quiet. -->
+      <section class="panel sms" :data-open="smsOpen || smsDone">
+        <template v-if="smsDone">
+          <p class="sms-done" role="status">{{ t('quoteResult.smsDone') }}</p>
+        </template>
 
-      <template v-else>
-        <button v-if="!smsOpen" class="sms-offer" type="button" @click="smsOpen = true">
-          {{ t('quoteResult.smsOffer') }}
-        </button>
-
-        <section v-else class="panel sms-form">
+        <template v-else>
+          <h2>{{ t('quoteResult.smsOffer') }}</h2>
+          <!-- Before the click, not after: the reason is what makes somebody click. -->
           <p class="hint">{{ t('quoteResult.smsWhy') }}</p>
-          <label>
-            <span class="q">{{ t('quoteResult.smsPhone') }}</span>
-            <input
-              v-model="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel"
-              :placeholder="t('quoteResult.smsPlaceholder')"
-            >
-          </label>
-          <p v-if="smsError" class="err">{{ smsError }}</p>
-          <div class="sms-actions">
-            <button class="btn primary" type="button" :disabled="smsBusy" @click="sendSms">
-              {{ smsBusy ? t('quoteResult.smsSending') : t('quoteResult.smsSubmit') }}
-            </button>
-            <button class="quiet" type="button" @click="smsOpen = false">
-              {{ t('quoteResult.smsCancel') }}
-            </button>
+
+          <button v-if="!smsOpen" class="sms-offer btn outline" type="button" @click="smsOpen = true">
+            {{ t('quoteResult.smsButton') }}
+          </button>
+
+          <div v-else class="sms-form">
+            <label>
+              <span class="q">{{ t('quoteResult.smsPhone') }}</span>
+              <input
+                v-model="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel"
+                :placeholder="t('quoteResult.smsPlaceholder')"
+              >
+            </label>
+            <p v-if="smsError" class="err">{{ smsError }}</p>
+            <div class="sms-actions">
+              <button class="btn primary" type="button" :disabled="smsBusy" @click="sendSms">
+                {{ smsBusy ? t('quoteResult.smsSending') : t('quoteResult.smsSubmit') }}
+              </button>
+              <button class="quiet" type="button" @click="smsOpen = false">
+                {{ t('quoteResult.smsCancel') }}
+              </button>
+            </div>
           </div>
-        </section>
-      </template>
+        </template>
+      </section>
       <NuxtLink class="quiet edit" to="/teklif-al">{{ t('quoteResult.edit') }}</NuxtLink>
     </template>
 
@@ -418,26 +425,42 @@ h3 {
   margin: 0;
 }
 
-.sms-offer {
+/* Its own card, with the brand edge the form uses for a derived answer. Enough presence to be seen by
+   somebody who has already decided to leave, and not enough to argue with the primary action. */
+.sms {
+  display: grid;
+  gap: var(--gap);
+  border-left: 3px solid var(--brand);
+}
+
+.sms h2 {
+  display: block;
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.sms .hint {
+  margin: 0;
+}
+
+/* Outline, not filled: second in the hierarchy rather than absent from it. */
+.btn.outline {
   justify-self: start;
-  padding: 0;
-  border: 0;
-  border-bottom: 1px solid var(--line-strong);
-  background: none;
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 550;
+  margin-top: var(--gap-tight);
+  border-color: var(--brand);
+  background: var(--surface);
+  color: var(--brand);
   cursor: pointer;
 }
 
-.sms-offer:hover {
-  color: var(--ink);
+.btn.outline:hover {
+  background: var(--brand-soft);
 }
 
 .sms-form {
   display: grid;
   gap: var(--gap-loose);
+  margin-top: var(--gap);
 }
 
 .sms-form label {
@@ -482,8 +505,10 @@ h3 {
 }
 
 .sms-done {
+  margin: 0;
   color: var(--live);
   font-size: 0.95rem;
+  font-weight: 550;
 }
 
 .err {
