@@ -11,7 +11,9 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import java.math.BigDecimal;
+import java.util.Set;
 
 /**
  * More of §2.1's answers. Every field optional, because the form sends what the screen just collected.
@@ -34,10 +36,13 @@ record PatchQuoteRequestRequest(
 		// quote. Zero is allowed: it means the doors are not in scope.
 		@Min(0) @Max(50) Integer doorCount,
 		Boolean doorColourChange,
-		WallCondition wallCondition) {
+		WallCondition wallCondition,
+		@Schema(description = "Areas to paint when scope is SELECTED_ROOMS. Ignored for WHOLE_HOME, "
+				+ "where the layout derives the list.")
+		Set<RoomType> selectedRooms) {
 
 	StageOneAnswers toAnswers() {
 		return new StageOneAnswers(districtCode, area, areaBasis, layout, scope, furnishing,
-				doorCount, doorColourChange, wallCondition);
+				doorCount, doorColourChange, wallCondition, selectedRooms);
 	}
 }

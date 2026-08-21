@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.domain.model;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 /**
  * What the customer has answered so far (§2.1's eight questions, §4.2's stage 1 columns).
@@ -24,10 +25,20 @@ public record StageOneAnswers(
 		Furnishing furnishing,
 		Integer doorCount,
 		Boolean doorColourChange,
-		WallCondition wallCondition) {
+		WallCondition wallCondition,
+		/**
+		 * Which areas the customer chose, when {@code scope} is {@code SELECTED_ROOMS}. Null until the
+		 * question is answered — an empty selection is a different answer and §5.1 refuses it, because a
+		 * quote for no rooms is not a cheap quote.
+		 */
+		Set<RoomType> selectedRooms) {
 
 	private static final StageOneAnswers EMPTY =
-			new StageOneAnswers(null, null, null, null, null, null, null, null, null);
+			new StageOneAnswers(null, null, null, null, null, null, null, null, null, null);
+
+	public StageOneAnswers {
+		selectedRooms = selectedRooms == null ? null : Set.copyOf(selectedRooms);
+	}
 
 	/** A request that has been created and answered nothing. */
 	public static StageOneAnswers empty() {
@@ -58,7 +69,8 @@ public record StageOneAnswers(
 				pick(patch.furnishing, furnishing),
 				pick(patch.doorCount, doorCount),
 				pick(patch.doorColourChange, doorColourChange),
-				pick(patch.wallCondition, wallCondition));
+				pick(patch.wallCondition, wallCondition),
+				pick(patch.selectedRooms, selectedRooms));
 	}
 
 	/**
@@ -69,8 +81,14 @@ public record StageOneAnswers(
 	 * default would be the engine answering a question nobody asked.
 	 */
 	public boolean isPriceable() {
-		return districtCode != null && areaInput != null && areaBasis != null && layout != null
-				&& scope != null && furnishing != null && wallCondition != null;
+		if (districtCode == null || areaInput == null || areaBasis == null || layout == null
+				|| scope == null || furnishing == null || wallCondition == null) {
+			return false;
+		}
+		// A selection of nothing is not a smaller job, it is no job — and WHOLE_HOME needs no selection
+		// at all, because the layout derives the list (§2.1).
+		return scope != QuoteScope.SELECTED_ROOMS
+				|| (selectedRooms != null && !selectedRooms.isEmpty());
 	}
 
 	private static <T> T pick(T patched, T current) {

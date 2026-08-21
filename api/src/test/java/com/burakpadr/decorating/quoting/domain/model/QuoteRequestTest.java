@@ -195,9 +195,9 @@ class QuoteRequestTest {
 	@DisplayName("answering keeps the request in DRAFT and keeps what was answered before")
 	void answeringAccumulates() {
 		QuoteRequest answered = fresh()
-				.answer(new StageOneAnswers("KADIKOY", null, null, null, null, null, null, null, null))
+				.answer(new StageOneAnswers("KADIKOY", null, null, null, null, null, null, null, null, null))
 				.answer(new StageOneAnswers(null, null, null, Layout.THREE_PLUS_ONE, null, null, null,
-						null, null));
+						null, null, null));
 
 		assertThat(answered.status()).isEqualTo(QuoteStatus.DRAFT);
 		assertThat(answered.answers().districtCode()).isEqualTo("KADIKOY");
@@ -212,7 +212,7 @@ class QuoteRequestTest {
 		// named, and gets a price built on both. An answer changed after that point silently invalidates
 		// everything downstream of it, and nothing in the request would show that it had happened.
 		assertThatThrownBy(() -> at(from).answer(
-						new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null)))
+						new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null, null)))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -221,7 +221,7 @@ class QuoteRequestTest {
 	void transitionsKeepTheAnswers() {
 		StageOneAnswers answers = new StageOneAnswers("USKUDAR", new BigDecimal("92"), AreaBasis.NET,
 				Layout.THREE_PLUS_ONE, QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true,
-				WallCondition.MINOR);
+				WallCondition.MINOR, null);
 
 		QuoteRequest confirmed = fresh().answer(answers).confirmRoomList();
 
@@ -233,7 +233,7 @@ class QuoteRequestTest {
 	@DisplayName("rehydration brings the answers back with the state")
 	void rehydrationRestoresTheAnswers() {
 		StageOneAnswers answers = new StageOneAnswers("KADIKOY", null, null, Layout.STUDIO, null, null,
-				null, null, null);
+				null, null, null, null);
 
 		QuoteRequest restored = QuoteRequest.rehydrate(
 				UUID.randomUUID(), QuoteStatus.DRAFT, 0, null, null, answers);

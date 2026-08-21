@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.adapter.in.web;
 import com.burakpadr.decorating.config.session.AnonymousSessionCookie;
 import com.burakpadr.decorating.config.session.OwnedQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
+import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,10 +34,13 @@ import org.springframework.web.bind.annotation.RestController;
 class QuoteRequestController {
 
 	private final ManageQuoteRequests requests;
+	private final EstimateStageOne estimates;
 	private final AnonymousSessionCookie session;
 
-	QuoteRequestController(ManageQuoteRequests requests, AnonymousSessionCookie session) {
+	QuoteRequestController(ManageQuoteRequests requests, EstimateStageOne estimates,
+			AnonymousSessionCookie session) {
 		this.requests = requests;
+		this.estimates = estimates;
 		this.session = session;
 	}
 
@@ -70,5 +74,19 @@ class QuoteRequestController {
 			OwnedQuoteRequest owned,
 			@Valid @RequestBody PatchQuoteRequestRequest request) {
 		return QuoteRequestResponse.of(requests.answer(owned.id(), request.toAnswers()));
+	}
+
+	@PostMapping("/{id}/estimate")
+	@Operation(summary = "The instant range for the answers given so far")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200",
+					description = "The range, the areas it assumed, and how wide the band is"),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "409",
+					description = "Not all of §2.1's questions are answered yet", content = {})})
+	StageOneEstimateResponse estimate(OwnedQuoteRequest owned) {
+		return StageOneEstimateResponse.of(estimates.estimate(owned.id()));
 	}
 }

@@ -7,12 +7,14 @@ import com.burakpadr.decorating.quoting.domain.model.Layout;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteScope;
 import com.burakpadr.decorating.quoting.domain.model.QuoteStatus;
+import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.WallCondition;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -52,8 +54,9 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 		jdbc.update("""
 				INSERT INTO quote_request (
 				  id, status, district_code, area_input, area_basis, layout, scope, furnishing,
-				  door_count, door_colour_change, wall_condition, recapture_count, close_outcome)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				  door_count, door_colour_change, wall_condition, selected_rooms, recapture_count,
+				  close_outcome)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)
 				ON CONFLICT (id) DO UPDATE SET
 				  status = excluded.status,
 				  district_code = excluded.district_code,
@@ -65,6 +68,7 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 				  door_count = excluded.door_count,
 				  door_colour_change = excluded.door_colour_change,
 				  wall_condition = excluded.wall_condition,
+				  selected_rooms = excluded.selected_rooms,
 				  recapture_count = excluded.recapture_count,
 				  close_outcome = excluded.close_outcome,
 				  -- BOYA-36 measures abandonment from this column, so a save that did not move it would
@@ -82,6 +86,7 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 				answers.doorCount(),
 				answers.doorColourChange(),
 				name(answers.wallCondition()),
+				asJson(answers.selectedRooms()),
 				request.recaptureCount(),
 				name(request.closeOutcome()));
 	}
@@ -90,7 +95,8 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 	public Optional<QuoteRequest> findById(UUID id) {
 		return jdbc.query("""
 				SELECT id, status, district_code, area_input, area_basis, layout, scope, furnishing,
-				       door_count, door_colour_change, wall_condition, recapture_count, close_outcome
+				       door_count, door_colour_change, wall_condition, selected_rooms, recapture_count,
+				       close_outcome
 				FROM quote_request WHERE id = ?
 				""", this::toDomain, id).stream().findFirst();
 	}
@@ -107,7 +113,8 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 				// to be asked whether it was null before the value is believed.
 				box(row, "door_count"),
 				(Boolean) row.getObject("door_colour_change"),
-				value(row.getString("wall_condition"), WallCondition::valueOf));
+				value(row.getString("wall_condition"), WallCondition::valueOf),
+				roomTypes(row.getString("selected_rooms")));
 
 		return QuoteRequest.rehydrate(
 				row.getObject("id", UUID.class),
@@ -116,6 +123,36 @@ class QuoteRequestPersistenceAdapter implements QuoteRequestRepository {
 				null,
 				value(row.getString("close_outcome"), CloseOutcome::valueOf),
 				answers);
+	}
+
+	/**
+	 * A JSON array of {@code RoomType} names, or null when the question has not been answered.
+	 *
+	 * <p>Written by hand rather than with Jackson: the values are enum names, so the only characters
+	 * that can appear are {@code [A-Z_]} and there is nothing to escape. An unknown name coming back is
+	 * a migration this code has not been taught about, and {@code valueOf} fails rather than dropping a
+	 * room the customer asked for — a selection quietly missing one area is a quote for a different job.
+	 */
+	private static String asJson(Set<RoomType> rooms) {
+		if (rooms == null) {
+			return null;
+		}
+		return rooms.stream().map(Enum::name)
+				.sorted()                                  // stable, so a re-save is not a diff
+				.collect(java.util.stream.Collectors.joining("\", \"", "[\"", "\"]"));
+	}
+
+	private static Set<RoomType> roomTypes(String json) {
+		if (json == null) {
+			return null;
+		}
+		String inner = json.replaceAll("[\\[\\]\"\\s]", "");
+		if (inner.isEmpty()) {
+			return Set.of();
+		}
+		return java.util.Arrays.stream(inner.split(","))
+				.map(RoomType::valueOf)
+				.collect(java.util.stream.Collectors.toUnmodifiableSet());
 	}
 
 	private static Integer box(ResultSet row, String column) throws SQLException {

@@ -18,13 +18,13 @@ class StageOneAnswersTest {
 
 	private static final StageOneAnswers FIRST_SCREEN = StageOneAnswers.empty()
 			.mergedWith(new StageOneAnswers("KADIKOY", new BigDecimal("92"), AreaBasis.NET,
-					Layout.THREE_PLUS_ONE, null, null, null, null, null));
+					Layout.THREE_PLUS_ONE, null, null, null, null, null, null));
 
 	@Test
 	@DisplayName("an answer from a later screen joins the ones already given")
 	void laterAnswersJoinEarlierOnes() {
 		StageOneAnswers both = FIRST_SCREEN.mergedWith(new StageOneAnswers(
-				null, null, null, null, QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, null, null, null));
+				null, null, null, null, QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, null, null, null, null));
 
 		assertThat(both.districtCode()).isEqualTo("KADIKOY");
 		assertThat(both.layout()).isEqualTo(Layout.THREE_PLUS_ONE);
@@ -37,7 +37,7 @@ class StageOneAnswersTest {
 	void absentFieldsChangeNothing() {
 		StageOneAnswers full = StageOneAnswers.empty().mergedWith(new StageOneAnswers(
 				"USKUDAR", new BigDecimal("112"), AreaBasis.GROSS, Layout.FOUR_PLUS_ONE,
-				QuoteScope.SELECTED_ROOMS, Furnishing.PARTIAL, 6, true, WallCondition.MAJOR));
+				QuoteScope.SELECTED_ROOMS, Furnishing.PARTIAL, 6, true, WallCondition.MAJOR, null));
 
 		assertThat(full.mergedWith(StageOneAnswers.empty()))
 				.as("a PATCH that sends nothing is a PATCH that changes nothing, field by field")
@@ -48,7 +48,7 @@ class StageOneAnswersTest {
 	@DisplayName("an answer can be corrected: the customer goes back and picks a different one")
 	void anAnswerCanBeChanged() {
 		StageOneAnswers corrected = FIRST_SCREEN.mergedWith(new StageOneAnswers(
-				null, new BigDecimal("104"), null, Layout.FOUR_PLUS_ONE, null, null, null, null, null));
+				null, new BigDecimal("104"), null, Layout.FOUR_PLUS_ONE, null, null, null, null, null, null));
 
 		assertThat(corrected.areaInput()).isEqualByComparingTo("104");
 		assertThat(corrected.layout()).isEqualTo(Layout.FOUR_PLUS_ONE);
@@ -61,10 +61,10 @@ class StageOneAnswersTest {
 	@DisplayName("false and zero are answers, not absences")
 	void falseAndZeroSurviveTheMerge() {
 		StageOneAnswers withDoors = FIRST_SCREEN.mergedWith(new StageOneAnswers(
-				null, null, null, null, null, null, 8, true, null));
+				null, null, null, null, null, null, 8, true, null, null));
 
 		StageOneAnswers withoutDoors = withDoors.mergedWith(new StageOneAnswers(
-				null, null, null, null, null, null, 0, false, null));
+				null, null, null, null, null, null, 0, false, null, null));
 
 		// Boxed on purpose. A primitive int would make "no doors" indistinguishable from "did not say",
 		// and a primitive boolean would make "no colour change" the same as silence — so the one customer
@@ -97,14 +97,14 @@ class StageOneAnswersTest {
 	void priceableNeedsEveryEngineInput() {
 		StageOneAnswers almost = StageOneAnswers.empty().mergedWith(new StageOneAnswers(
 				"KADIKOY", new BigDecimal("92"), AreaBasis.NET, Layout.THREE_PLUS_ONE,
-				QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true, null));
+				QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true, null, null));
 
 		assertThat(almost.isPriceable())
 				.as("wall condition still missing, and §5.6 turns it into filler quantities — an estimate "
 						+ "without it is not a cheaper estimate, it is a different job")
 				.isFalse();
 		assertThat(almost.mergedWith(new StageOneAnswers(
-						null, null, null, null, null, null, null, null, WallCondition.MINOR))
+						null, null, null, null, null, null, null, null, WallCondition.MINOR, null))
 				.isPriceable())
 				.isTrue();
 	}
@@ -114,7 +114,7 @@ class StageOneAnswersTest {
 	void doorsCanBeLeftOut() {
 		StageOneAnswers noDoors = StageOneAnswers.empty().mergedWith(new StageOneAnswers(
 				"KADIKOY", new BigDecimal("92"), AreaBasis.NET, Layout.THREE_PLUS_ONE,
-				QuoteScope.WHOLE_HOME, Furnishing.EMPTY, 0, false, WallCondition.GOOD));
+				QuoteScope.WHOLE_HOME, Furnishing.EMPTY, 0, false, WallCondition.GOOD, null));
 
 		assertThat(noDoors.isPriceable()).isTrue();
 		assertThat(noDoors.doorCount()).isZero();

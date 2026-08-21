@@ -37,6 +37,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests/{id}/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The instant range for the answers given so far */
+        post: operations["estimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-calculations": {
         parameters: {
             query?: never;
@@ -185,6 +202,28 @@ export interface components {
             doorColourChange?: boolean;
             /** @enum {string} */
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
+            selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
+        };
+        OwnedQuoteRequest: {
+            /** Format: uuid */
+            id?: string;
+        };
+        CalculatedRoomResponse: {
+            /** @enum {string} */
+            type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
+            label: string;
+            /** Format: int32 */
+            requiredPhotos: number;
+        };
+        StageOneEstimateResponse: {
+            low: number;
+            high: number;
+            bandRatio: number;
+            netArea: number;
+            areaWasGross: boolean;
+            rooms: components["schemas"]["CalculatedRoomResponse"][];
+            /** Format: int32 */
+            photoCount: number;
         };
         CalculateQuoteRequest: {
             districtCode: string;
@@ -206,13 +245,6 @@ export interface components {
             doorCountEstimated?: boolean;
             hasElevator?: boolean;
             rush?: boolean;
-        };
-        CalculatedRoomResponse: {
-            /** @enum {string} */
-            type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
-            label: string;
-            /** Format: int32 */
-            requiredPhotos: number;
         };
         QuoteCalculationResponse: {
             priceBookVersion: string;
@@ -271,10 +303,6 @@ export interface components {
             target: "LABOUR" | "MATERIAL" | "ALL";
             percent: number;
         };
-        OwnedQuoteRequest: {
-            /** Format: uuid */
-            id?: string;
-        };
         PatchQuoteRequestRequest: {
             /** @example KADIKOY */
             districtCode?: string;
@@ -292,6 +320,8 @@ export interface components {
             doorColourChange?: boolean;
             /** @enum {string} */
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
+            /** @description Areas to paint when scope is SELECTED_ROOMS. Ignored for WHOLE_HOME, where the layout derives the list. */
+            selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
         };
         Coefficients: {
             ceilingHeightM: number;
@@ -397,6 +427,55 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    estimate: {
+        parameters: {
+            query: {
+                owned: components["schemas"]["OwnedQuoteRequest"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The range, the areas it assumed, and how wide the band is */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StageOneEstimateResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StageOneEstimateResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StageOneEstimateResponse"];
+                };
+            };
+            /** @description Not all of §2.1's questions are answered yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StageOneEstimateResponse"];
                 };
             };
         };

@@ -9,7 +9,9 @@ import com.burakpadr.decorating.quoting.domain.model.QuoteStatus;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.WallCondition;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -34,7 +36,8 @@ record QuoteRequestResponse(
 		Furnishing furnishing,
 		Integer doorCount,
 		Boolean doorColourChange,
-		WallCondition wallCondition) {
+		WallCondition wallCondition,
+		Set<RoomType> selectedRooms) {
 
 	static QuoteRequestResponse of(QuoteRequest request) {
 		StageOneAnswers answers = request.answers();
@@ -50,6 +53,7 @@ record QuoteRequestResponse(
 				answers.furnishing(),
 				answers.doorCount(),
 				answers.doorColourChange(),
-				answers.wallCondition());
+				answers.wallCondition(),
+				answers.selectedRooms());
 	}
 }

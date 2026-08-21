@@ -9,6 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.burakpadr.decorating.TestcontainersConfiguration;
 import com.burakpadr.decorating.config.session.AnonymousSessionCookie;
+import com.burakpadr.decorating.quoting.domain.model.AreaBasis;
+import com.burakpadr.decorating.quoting.domain.model.Furnishing;
+import com.burakpadr.decorating.quoting.domain.model.Layout;
+import com.burakpadr.decorating.quoting.domain.model.QuoteScope;
+import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
+import com.burakpadr.decorating.quoting.domain.model.WallCondition;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
 import com.burakpadr.decorating.shared.Uuid7;
@@ -195,6 +201,69 @@ class QuoteRequestControllerTest {
 						.contentType(MediaType.APPLICATION_JSON).content("{}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.districtCode").value("KADIKOY"));
+	}
+
+	@Test
+	@DisplayName("POST /{id}/estimate answers a range, the areas, and how wide the band is")
+	void estimateAnswersTheRange() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.low").isNumber())
+				.andExpect(jsonPath("$.high").isNumber())
+				.andExpect(jsonPath("$.bandRatio").value(0.12))
+				.andExpect(jsonPath("$.netArea").value(92.00))
+				.andExpect(jsonPath("$.areaWasGross").value(false))
+				.andExpect(jsonPath("$.rooms.length()").value(7))
+				.andExpect(jsonPath("$.rooms[0].label").value("Salon"))
+				.andExpect(jsonPath("$.photoCount").value(28));
+	}
+
+	@Test
+	@DisplayName("§1: the customer's answer carries no cost and no margin")
+	void estimateLeaksNoCost() throws Exception {
+		UUID id = answered();
+
+		String body = mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)))
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString();
+
+		// Asserted rather than assumed. The field that leaks is the one somebody adds while debugging,
+		// and this response is one screenshot away from a conversation about what the job costs us.
+		assertThat(body).doesNotContain("totalCost").doesNotContain("margin")
+				.doesNotContain("subtotal").doesNotContain("vat").doesNotContain("lines")
+				.doesNotContain("labour").doesNotContain("material").doesNotContain("minimum")
+				.doesNotContain("billableDays").doesNotContain("priceBookVersion");
+	}
+
+	@Test
+	@DisplayName("an unfinished draft cannot be priced: 409, not a number built on a default")
+	void estimateRefusesAnUnfinishedDraft() throws Exception {
+		UUID id = draft();
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	@DisplayName("the estimate needs the session like every other scoped route")
+	void estimateNeedsTheSession() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(draft())))
+				.andExpect(status().isForbidden());
+	}
+
+	/** A draft with all of §2.1 answered, which is what the estimate needs. */
+	private UUID answered() {
+		UUID id = draft();
+		requests.save(requests.findById(id).orElseThrow().answer(new StageOneAnswers(
+				"KADIKOY", new java.math.BigDecimal("92"), AreaBasis.NET, Layout.THREE_PLUS_ONE,
+				QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true, WallCondition.MINOR, null)));
+		return id;
 	}
 
 	/** A stored draft, made directly rather than through the endpoint the test is not asserting about. */

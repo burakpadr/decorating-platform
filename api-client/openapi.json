@@ -104,6 +104,63 @@
         }
       }
     },
+    "/api/quote-requests/{id}/estimate" : {
+      "post" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "The instant range for the answers given so far",
+        "operationId" : "estimate",
+        "parameters" : [ {
+          "name" : "owned",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/OwnedQuoteRequest"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The range, the areas it assumed, and how wide the band is",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StageOneEstimateResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StageOneEstimateResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The session owns a different draft",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StageOneEstimateResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Not all of §2.1's questions are answered yet",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StageOneEstimateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-calculations" : {
       "post" : {
         "tags" : [ "quote-calculation-controller" ],
@@ -520,9 +577,74 @@
           "wallCondition" : {
             "type" : "string",
             "enum" : [ "GOOD", "MINOR", "MAJOR", "UNSURE" ]
+          },
+          "selectedRooms" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+            },
+            "uniqueItems" : true
           }
         },
         "required" : [ "id", "priceable", "status" ]
+      },
+      "OwnedQuoteRequest" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "CalculatedRoomResponse" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "requiredPhotos" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "label", "requiredPhotos", "type" ]
+      },
+      "StageOneEstimateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "low" : {
+            "type" : "number"
+          },
+          "high" : {
+            "type" : "number"
+          },
+          "bandRatio" : {
+            "type" : "number"
+          },
+          "netArea" : {
+            "type" : "number"
+          },
+          "areaWasGross" : {
+            "type" : "boolean"
+          },
+          "rooms" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CalculatedRoomResponse"
+            }
+          },
+          "photoCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "areaWasGross", "bandRatio", "high", "low", "netArea", "photoCount", "rooms" ]
       },
       "CalculateQuoteRequest" : {
         "type" : "object",
@@ -583,23 +705,6 @@
           }
         },
         "required" : [ "area", "areaBasis", "districtCode", "furnishing", "layout", "scope", "wallCondition" ]
-      },
-      "CalculatedRoomResponse" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string",
-            "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
-          },
-          "label" : {
-            "type" : "string"
-          },
-          "requiredPhotos" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        },
-        "required" : [ "label", "requiredPhotos", "type" ]
       },
       "QuoteCalculationResponse" : {
         "type" : "object",
@@ -767,15 +872,6 @@
         },
         "required" : [ "percent", "target" ]
       },
-      "OwnedQuoteRequest" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }
-      },
       "PatchQuoteRequestRequest" : {
         "type" : "object",
         "properties" : {
@@ -815,6 +911,15 @@
           "wallCondition" : {
             "type" : "string",
             "enum" : [ "GOOD", "MINOR", "MAJOR", "UNSURE" ]
+          },
+          "selectedRooms" : {
+            "type" : "array",
+            "description" : "Areas to paint when scope is SELECTED_ROOMS. Ignored for WHOLE_HOME, where the layout derives the list.",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+            },
+            "uniqueItems" : true
           }
         }
       },

@@ -53,7 +53,7 @@ class QuoteRequestPersistenceAdapterTest {
 
 	private static final StageOneAnswers FULL = new StageOneAnswers(
 			"TEST-DISTRICT", new BigDecimal("92.00"), AreaBasis.NET, Layout.THREE_PLUS_ONE,
-			QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true, WallCondition.MINOR);
+			QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true, WallCondition.MINOR, null);
 
 	@Test
 	@DisplayName("a draft survives the round trip with every answer it was given")
@@ -73,10 +73,10 @@ class QuoteRequestPersistenceAdapterTest {
 	void savingTwiceUpdates() {
 		UUID id = Uuid7.generate();
 		requests.save(QuoteRequest.draft(id).answer(
-				new StageOneAnswers("TEST-DISTRICT", null, null, null, null, null, null, null, null)));
+				new StageOneAnswers("TEST-DISTRICT", null, null, null, null, null, null, null, null, null)));
 
 		requests.save(requests.findById(id).orElseThrow().answer(
-				new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null)));
+				new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null, null)));
 
 		QuoteRequest read = requests.findById(id).orElseThrow();
 		assertThat(read.answers().districtCode())
@@ -139,7 +139,7 @@ class QuoteRequestPersistenceAdapterTest {
 
 		Thread.sleep(10);
 		requests.save(requests.findById(id).orElseThrow().answer(
-				new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null)));
+				new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null, null)));
 
 		assertThat(read(id))
 				.as("BOYA-36 measures abandonment from this column; a draft that never looks touched "
