@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 import com.burakpadr.decorating.quoting.domain.PriceBookFixture;
+import com.burakpadr.decorating.quoting.domain.model.CeilingFinding;
 import com.burakpadr.decorating.quoting.domain.model.Coating;
 import com.burakpadr.decorating.quoting.domain.model.FillerBand;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
@@ -54,6 +55,97 @@ class PricingEngineTest {
 	// rather than 220.83). Both are asserted — the exact values catch drift, the published figures
 	// catch a misreading of the algorithm.
 	// =============================================================================================
+
+	// =============================================================================================
+	// BOYA-11a — ceiling findings. room_analysis has carried ceiling_staining and ceiling_filler since
+	// V1 and §5.6's quantity table used neither, so a stained ceiling produced no primer at all: the
+	// one case where a decorator certainly primes. Both now price over the CEILING's own area, which
+	// is the point — a leak is above your head, not on the walls. See docs/decisions/0017.
+	// =============================================================================================
+
+	@Test
+	@DisplayName("BOYA-11a: a stained ceiling is primed over the ceiling, and the walls stay out of it")
+	void aStainedCeilingIsPrimed() {
+		// A single 20 m² room whose walls are spotless: every gram of stain block here is the ceiling's.
+		PricedQuote quote = engine.price(
+				stage2(new BigDecimal("20.00"), RoomInput.analysed(
+						RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 0, 0, 0, 0, false,
+						new CeilingFinding(Moisture.STAIN, FillerBand.NONE))),
+				book());
+
+		assertThat(quote.line(ItemCode.STAIN_BLOCK_PRIMER).quantity())
+				.as("the room's whole ceiling — 20 m² of floor is 20 m² of ceiling")
+				.isCloseTo(new BigDecimal("20.00"), within(CENT));
+	}
+
+	@Test
+	@DisplayName("the whole ceiling is primed, not the painted share of the walls")
+	void theWholeCeilingIsPrimedRegardlessOfTheWalls() {
+		// Half the walls are tiled, so wall quantities are halved. The ceiling is not: it is one plane,
+		// and a ceiling primed in patches shows every patch back through the paint.
+		PricedQuote quote = engine.price(
+				stage2(new BigDecimal("20.00"), RoomInput.analysed(
+						RoomType.LIVING_ROOM, List.of(clean("WALL_1"), tiled("WALL_2")), 0, 0, 0, 0, false,
+						new CeilingFinding(Moisture.ACTIVE, FillerBand.NONE))),
+				book());
+
+		assertThat(quote.line(ItemCode.STAIN_BLOCK_PRIMER).quantity())
+				.isCloseTo(new BigDecimal("20.00"), within(CENT));
+	}
+
+	@Test
+	@DisplayName("a ceiling filler band is filled over the ceiling, on top of whatever the walls need")
+	void aCeilingFillerBandAddsToTheFiller() {
+		BigDecimal wallOnly = engine.price(
+				stage2(new BigDecimal("20.00"), RoomInput.analysed(
+						RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 0, 0, 0, 0, false,
+						CeilingFinding.none())),
+				book()).hasLine(ItemCode.PATCH_FILLING)
+				? BigDecimal.ONE : BigDecimal.ZERO;
+
+		assertThat(wallOnly)
+				.as("clean walls and a clean ceiling need no filler at all, so the next figure is the "
+						+ "ceiling's alone")
+				.isEqualByComparingTo(BigDecimal.ZERO);
+
+		PricedQuote quote = engine.price(
+				stage2(new BigDecimal("20.00"), RoomInput.analysed(
+						RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 0, 0, 0, 0, false,
+						new CeilingFinding(Moisture.NONE, FillerBand.MEDIUM))),
+				book());
+
+		// MEDIUM is 0.35 of the plane, the same band table the walls use (§5.6).
+		assertThat(quote.line(ItemCode.PATCH_FILLING).quantity())
+				.isCloseTo(new BigDecimal("7.00"), within(CENT));
+	}
+
+	@Test
+	@DisplayName("a clean ceiling prices exactly as it did before ceilings were read at all")
+	void aCleanCeilingChangesNothing() {
+		PricedQuote quote = engine.price(
+				stage2(new BigDecimal("20.00"), RoomInput.analysed(
+						RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 0, 0, 0, 0, false,
+						CeilingFinding.none())),
+				book());
+
+		assertThat(quote.hasLine(ItemCode.STAIN_BLOCK_PRIMER))
+				.as("a line for work nobody will do is a line the operator has to explain")
+				.isFalse();
+		assertThat(quote.hasLine(ItemCode.PATCH_FILLING)).isFalse();
+	}
+
+	@Test
+	@DisplayName("stage 1 has no ceiling findings, because the customer is never asked about the ceiling")
+	void stageOneCarriesNoCeilingFindings() {
+		// §2.1's eight questions ask about walls. Inventing a ceiling finding from a wall answer would be
+		// the engine deciding something nobody told it — MAJOR walls do not imply a leak overhead.
+		PricedQuote quote = engine.price(workedExample(), book());
+
+		assertThat(quote.hasLine(ItemCode.STAIN_BLOCK_PRIMER)).isFalse();
+		assertThat(quote.line(ItemCode.PATCH_FILLING).quantity())
+				.as("MINOR walls only: 220.83 × 0.15, with nothing added overhead")
+				.isCloseTo(new BigDecimal("33.12"), within(CENT));
+	}
 
 	// =============================================================================================
 	// The two halves. §5.8 already taxes labour and material at their own rates, so the engine has
@@ -246,7 +338,7 @@ class PricingEngineTest {
 				.line(ItemCode.WALL_PAINT).quantity();
 		BigDecimal counted = engine
 				.price(stage2(new BigDecimal("40.00"),
-						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 1, 1, 0, 0, false)), book())
+						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 1, 1, 0, 0, false, CeilingFinding.none())), book())
 				.line(ItemCode.WALL_PAINT).quantity();
 
 		assertThat(declared).isCloseTo(new BigDecimal("61.6113"), within(CENT));
@@ -261,7 +353,7 @@ class PricingEngineTest {
 	void theSixtyPercentFloorHoldsWhenOpeningsAreImplausible() {
 		PricedQuote quote = engine.price(
 				stage2(new BigDecimal("12.00"),
-						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 6, 4, 0, 0, false)),
+						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(clean("WALL_1")), 6, 4, 0, 0, false, CeilingFinding.none())),
 				book());
 
 		// 38.35 m² of wall, 20.20 m² of claimed openings: without the guard the room loses 53% of its
@@ -276,7 +368,8 @@ class PricingEngineTest {
 		PricedQuote quote = engine.price(
 				stage2(new BigDecimal("40.00"),
 						RoomInput.analysed(RoomType.LIVING_ROOM,
-								List.of(clean("WALL_1"), tiled("WALL_2")), 0, 0, 0, 0, false)),
+								List.of(clean("WALL_1"), tiled("WALL_2")), 0, 0, 0, 0, false,
+								CeilingFinding.none())),
 				book());
 
 		assertThat(quote.line(ItemCode.WALL_PAINT).quantity())
@@ -295,7 +388,7 @@ class PricingEngineTest {
 				true, Moisture.STAIN, true, new BigDecimal("0.90"));
 		PricingInput input = new PricingInput("TEST", new BigDecimal("40.00"), false,
 				List.of(RoomInput.analysed(RoomType.LIVING_ROOM, List.of(damaged, clean("WALL_2")),
-						0, 2, 1, 3, true)),
+						0, 2, 1, 3, true, CeilingFinding.none())),
 				Furnishing.EMPTY, 5, false, false, true, false, PricingSource.STAGE_2);
 
 		PricedQuote quote = engine.price(input, book());
@@ -333,7 +426,7 @@ class PricingEngineTest {
 				FillerBand.valueOf(band), false, Moisture.NONE, false, new BigDecimal("0.90"));
 		PricedQuote quote = engine.price(
 				stage2(new BigDecimal("40.00"),
-						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(surface), 0, 0, 0, 0, false)),
+						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(surface), 0, 0, 0, 0, false, CeilingFinding.none())),
 				book());
 
 		BigDecimal expected = quote.line(ItemCode.WALL_PAINT).quantity().multiply(new BigDecimal(ratio));
@@ -424,11 +517,13 @@ class PricingEngineTest {
 	void darkToLightScalesWithTheDarkShareOfTheWalls() {
 		BigDecimal light = engine.price(
 						stage2(new BigDecimal("40.00"), RoomInput.analysed(RoomType.LIVING_ROOM,
-								List.of(clean("WALL_1"), clean("WALL_2")), 0, 0, 0, 0, false)), book())
+								List.of(clean("WALL_1"), clean("WALL_2")), 0, 0, 0, 0, false,
+								CeilingFinding.none())), book())
 				.line(ItemCode.WALL_PAINT).lineTotal();
 		BigDecimal halfDark = engine.price(
 						stage2(new BigDecimal("40.00"), RoomInput.analysed(RoomType.LIVING_ROOM,
-								List.of(dark("WALL_1"), clean("WALL_2")), 0, 0, 0, 0, false)), book())
+								List.of(dark("WALL_1"), clean("WALL_2")), 0, 0, 0, 0, false,
+								CeilingFinding.none())), book())
 				.line(ItemCode.WALL_PAINT).lineTotal();
 
 		assertThat(halfDark)
@@ -571,7 +666,7 @@ class PricingEngineTest {
 				false, Moisture.NONE, false, new BigDecimal("0.50"));
 		PricedQuote quote = engine.price(
 				stage2(new BigDecimal("40.00"),
-						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(unsure), 0, 0, 0, 0, false)),
+						RoomInput.analysed(RoomType.LIVING_ROOM, List.of(unsure), 0, 0, 0, 0, false, CeilingFinding.none())),
 				book());
 
 		assertThat(quote.bandRatio()).isEqualByComparingTo("0.32");

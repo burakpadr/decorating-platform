@@ -13,6 +13,10 @@ import java.util.List;
  * <p>The counts are per room and they deduct openings (§5.5). They are not what {@code DOOR_PAINT} is
  * priced on — that is the customer's declared total, which §5.6 keeps at the top level.
  *
+ * <p>{@code ceiling} is stated, not defaulted, and the stage 2 factory takes it. §5.6 had the ceiling
+ * columns available and read neither for the length of the project; a parameter a caller must name is
+ * the cheapest guard against the same omission (BOYA-11a, {@code docs/decisions/0017}).
+ *
  * <p>{@code downlightCount} and {@code cornice} are not in §5.1's record, but §5.6 prices both and
  * {@code room_analysis} carries both. §5.1 is the section that is short.
  */
@@ -24,15 +28,19 @@ public record RoomInput(
 		int windowCount,
 		int radiatorCount,
 		int downlightCount,
-		boolean cornice) {
+		boolean cornice,
+		CeilingFinding ceiling) {
 
 	public RoomInput {
 		surfaces = List.copyOf(surfaces);
+		if (ceiling == null) {
+			throw new IllegalArgumentException("a room states its ceiling: see CeilingFinding.none()");
+		}
 	}
 
-	/** A stage 1 room: a type and what the customer said about the walls. */
+	/** A stage 1 room: a type and what the customer said about the walls. The ceiling is not asked. */
 	public static RoomInput declared(RoomType type, WallCondition condition) {
-		return new RoomInput(type, condition, List.of(), 0, 0, 0, 0, false);
+		return new RoomInput(type, condition, List.of(), 0, 0, 0, 0, false, CeilingFinding.none());
 	}
 
 	/** A stage 2 room: what the analysis found, plus what it counted. */
@@ -43,8 +51,9 @@ public record RoomInput(
 			int windowCount,
 			int radiatorCount,
 			int downlightCount,
-			boolean cornice) {
-		return new RoomInput(
-				type, null, surfaces, doorCount, windowCount, radiatorCount, downlightCount, cornice);
+			boolean cornice,
+			CeilingFinding ceiling) {
+		return new RoomInput(type, null, surfaces, doorCount, windowCount, radiatorCount,
+				downlightCount, cornice, ceiling);
 	}
 }

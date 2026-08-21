@@ -1,5 +1,6 @@
 package com.burakpadr.decorating.quoting.domain.service;
 
+import com.burakpadr.decorating.quoting.domain.model.CeilingFinding;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.ModifierCode;
@@ -213,7 +214,7 @@ public final class PricingEngine {
 			if (input.source() == PricingSource.STAGE_1) {
 				measureDeclared(room, config, book, wallGross, totals);
 			} else {
-				measureAnalysed(room, book, wallGross, totals);
+				measureAnalysed(room, book, wallGross, area, totals);
 			}
 
 			totals.trim = totals.trim.add(new BigDecimal(room.windowCount()));
@@ -279,9 +280,16 @@ public final class PricingEngine {
 	 * <p>Two things §5.5 leaves to the reader, both recorded in {@code docs/decisions/0014}: a room's
 	 * wall area is split equally across its analysed surfaces, and a surface whose coating is not
 	 * {@code PAINTED} is dropped before the split rather than discounted after it.
+	 *
+	 * <p>The ceiling is measured here too, over its own area rather than the walls' — see
+	 * {@link #measureCeiling}.
 	 */
 	private void measureAnalysed(
-			RoomInput room, PriceBook book, BigDecimal wallGross, Totals totals) {
+			RoomInput room, PriceBook book, BigDecimal wallGross, BigDecimal ceilingArea, Totals totals) {
+		// The ceiling first, because it is priced whatever the walls turn out to be — including in a
+		// fully tiled room, where the walls drop out below and the ceiling still needs what it needs.
+		measureCeiling(room.ceiling(), ceilingArea, totals);
+
 		List<SurfaceInput> surfaces = room.surfaces();
 		if (surfaces.isEmpty()) {
 			throw new IllegalArgumentException(
@@ -336,6 +344,26 @@ public final class PricingEngine {
 	}
 
 	/** §5.6's stage 1 table: a declared condition becomes a filler ratio on every surface. */
+	/**
+	 * §5.6's filler and stain block, over the ceiling (BOYA-11a, {@code docs/decisions/0017}).
+	 *
+	 * <p>Two quantities, and the difference between them is the point. Filler is proportional, on the
+	 * same band table the walls use: a ceiling with a MEDIUM band needs 35% of it filled, wherever the
+	 * cracks happen to be. Stain block is not proportional — it takes the WHOLE ceiling. A ceiling
+	 * primed only where the stain shows comes back through the finish as a patch, so a decorator seals
+	 * the plane; charging for a fraction of it would be an underquote with a plausible-looking number
+	 * on it, which is the failure this whole item is about.
+	 *
+	 * <p>The ceiling area is the room's floor area (§5.3, step 1), untouched by openings or coating: a
+	 * ceiling has no doors, and a tiled wall says nothing about what is overhead.
+	 */
+	private void measureCeiling(CeilingFinding ceiling, BigDecimal ceilingArea, Totals totals) {
+		totals.filler = totals.filler.add(ceilingArea.multiply(ceiling.filler().ratio()));
+		if (ceiling.staining().needsStainBlock()) {
+			totals.stainBlock = totals.stainBlock.add(ceilingArea);
+		}
+	}
+
 	private BigDecimal fillerRatio(WallCondition condition) {
 		return switch (condition) {
 			case GOOD -> BigDecimal.ZERO;

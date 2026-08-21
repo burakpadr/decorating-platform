@@ -791,10 +791,10 @@ In STAGE_2, `paintableRatio` comes from `surface_finding.coating` rather than th
 |---|---|
 | `WALL_PAINT` | Σ wallNet |
 | `CEILING_PAINT` | Σ ceilingArea |
-| `PATCH_FILLING` | Σ wallNet(i) × fillerRatio(i) |
+| `PATCH_FILLING` | Σ wallNet(i) × fillerRatio(i) **+ Σ ceilingArea(r) × fillerRatio(ceiling_filler(r))** |
 | `SKIM_COAT` | Σ wallNet(i) where `skim_coat_required` |
 | `PRIMER` | Σ wallNet(i) where skim coat applied or tone is `DARK` |
-| `STAIN_BLOCK_PRIMER` | Σ wallNet(i) where `moisture != NONE` |
+| `STAIN_BLOCK_PRIMER` | Σ wallNet(i) where `moisture != NONE` **+ Σ ceilingArea(r) where `ceiling_staining != NONE`** |
 | `WALLPAPER_STRIPPING` | Σ wallNet(i) where `wallpaper` |
 | `DOOR_PAINT` | declared `door_count` |
 | `TRIM_PAINT` | Σ window counts (stage 2 only, optional upsell) |
@@ -803,6 +803,19 @@ In STAGE_2, `paintableRatio` comes from `surface_finding.coating` rather than th
 | `CORNICE_CUTTING` | count of rooms with `cornice = true` |
 | `MASKING` | room count |
 | `MOBILIZATION` | 1 |
+
+The two ceiling terms are stage 2 only: `room_analysis` reports `ceiling_staining` and
+`ceiling_filler`, and §2.1's stage 1 questions never ask about the ceiling, so a declared room carries
+neither. They are measured over `ceilingArea` — the room's floor area from step 1 — and not over
+`wallNet`: a ceiling has no door and window openings to deduct, and a tiled wall says nothing about
+what is overhead.
+
+Filler is proportional, on the band table below, exactly as it is on a wall. **Stain block is not
+proportional: it takes the whole ceiling.** A ceiling sealed only where the stain shows reads back
+through the finish as a patch, so the plane is sealed or it is not; a fraction of it would be an
+underquote wearing a plausible number. `ceiling_staining == ACTIVE` is additionally a `riskFinding` for
+§5.9 — an active leak is not a painting job until somebody has been up there. See
+`docs/decisions/0017`.
 
 Filler ratio band → numeric:
 
@@ -1024,10 +1037,15 @@ otherwise                                             → AUTO
 
 riskFinding =
      any surface moisture == ACTIVE
+  || any room ceiling_staining == ACTIVE
   || any surface crackLevel == STRUCTURAL
   || skimCoatArea / totalWallArea > 0.40
   || any room missing required photos
 ```
+
+The ceiling line was missing until BOYA-11a: a ceiling is not a surface, so "any surface moisture ==
+ACTIVE" read past the one place a leak is most likely to be. `CeilingFinding.isRisk()` is the predicate
+to call — the engine does not, because deciding to survey is not the engine's job.
 
 `AUTO` still means `PENDING_REVIEW` — it is not auto-send. Automatic sending is a phase 3 decision.
 
