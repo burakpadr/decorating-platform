@@ -150,8 +150,9 @@ describe('stage 1 result', () => {
     const page = await mountSuspended(Result)
 
     expect(page.find('.actions .btn.primary').attributes('href')).toBe('/cekim')
-    expect(page.find('.actions .quiet').attributes('href')).toBe('/')
     expect(page.find('.sms-offer').text()).toContain('SMS ile gönder')
+    // Leaving is not one of the decisions: it is the corner link, present whatever the page is showing.
+    expect(page.find('.back-home').attributes('href')).toBe('/')
   })
 
   it('asks for the number only once the SMS option is chosen', async () => {
@@ -233,5 +234,7 @@ describe('stage 1 result', () => {
 
     expect(page.text()).toContain('hesaplanamadı')
     expect(page.find('.range').exists()).toBe(false)
+    // Whoever is looking at a failure needs the way out more than whoever is looking at a price.
+    expect(page.find('.back-home').exists()).toBe(true)
   })
 })

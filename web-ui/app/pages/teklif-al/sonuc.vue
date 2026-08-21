@@ -134,6 +134,11 @@ const doors = computed(() => {
 
 <template>
   <main>
+    <!-- The way out lives where a way out lives, and above every state: somebody looking at
+         "hesaplanamadı" needs it more than somebody looking at a price. Leaving is not one of the
+         decisions on this screen — the row further down is for the two that are. -->
+    <NuxtLink class="back-home" to="/">{{ t('quoteResult.leave') }}</NuxtLink>
+
     <!-- A draft that cannot be read at all: without this the screen says "Hesaplanıyor…" for ever,
          which is the failure mode that looks most like a working page. -->
     <template v-if="draftError">
@@ -220,7 +225,6 @@ const doors = computed(() => {
         <NuxtLink class="btn outline edit" :to="`/teklif-al?talep=${id}`">
           {{ t('quoteResult.edit') }}
         </NuxtLink>
-        <NuxtLink class="quiet" to="/">{{ t('quoteResult.leave') }}</NuxtLink>
       </div>
       <p class="hint continue-note">{{ t('quoteResult.continueNote') }}</p>
 
@@ -387,6 +391,24 @@ h3 {
   margin: var(--gap) 0 0;
   font-size: 0.85rem;
   color: var(--ink-3);
+}
+
+/* Small, quiet, and first in the reading order — a corner link, not a choice. The arrow carries the
+   affordance; the words are for anybody who does not read arrows. */
+.back-home {
+  justify-self: start;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.back-home::before {
+  content: '← ';
+}
+
+.back-home:hover {
+  color: var(--ink);
 }
 
 .actions {
