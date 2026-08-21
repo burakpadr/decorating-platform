@@ -55,17 +55,42 @@ export function labelAreas<T extends string>(
 }
 
 /**
- * Adds an area beside the ones of its kind, or at the end if the list has none.
+ * Capture order, for the kinds of area §2.2 lets the customer add.
+ *
+ * `RoomListDeriver` orders the derived list this way and says why: the living room first because it is
+ * the largest and sets the expectation of how long a room takes, the wet rooms and the hallway last
+ * because they need the fewest frames and are the easiest to finish on. A study and a balcony are in
+ * no layout, so this is the only place their position can be decided — and appending them after the
+ * hallway would send the customer back into the part of the flat they had just finished.
+ */
+const CAPTURE_ORDER = [
+  'LIVING_ROOM', 'MASTER_BEDROOM', 'BEDROOM', 'STUDY', 'KITCHEN', 'BATHROOM', 'HALLWAY', 'BALCONY',
+]
+
+/**
+ * Adds an area beside the ones of its kind, or where the capture order puts it.
  *
  * Capture order is reading order (§2.4 works down the list), so "Banyo 1" and "Banyo 2" three rows
- * apart would be two lists rather than one.
+ * apart would be two lists rather than one. A kind neither the list nor the order knows goes at the
+ * end, which is the only honest place for it.
  */
 export function addArea<T extends string>(types: readonly T[], type: T): T[] {
   const last = types.lastIndexOf(type)
-  if (last < 0) {
+  if (last >= 0) {
+    return [...types.slice(0, last + 1), type, ...types.slice(last + 1)]
+  }
+
+  const rank = CAPTURE_ORDER.indexOf(type)
+  const before = rank < 0
+    ? -1
+    : types.findIndex((area) => {
+      const at = CAPTURE_ORDER.indexOf(area)
+      return at < 0 ? false : at > rank
+    })
+  if (before < 0) {
     return [...types, type]
   }
-  return [...types.slice(0, last + 1), type, ...types.slice(last + 1)]
+  return [...types.slice(0, before), type, ...types.slice(before)]
 }
 
 /** Removes the one that was pressed. By position, because a kind of area can be on the list twice. */

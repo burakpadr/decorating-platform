@@ -73,7 +73,17 @@ describe('editing the list', () => {
     ])
   })
 
-  it('appends a kind of area the list does not have yet', () => {
+  it('puts a new kind of area where the capture order wants it, not at the end', () => {
+    // §2.1 orders the list on purpose: rooms first, the wet rooms and the hallway last because they
+    // need the fewest frames and are the easiest to finish on. A study photographed after the hallway
+    // is the customer walking back into the flat they had just finished.
+    expect(addArea(THREE_PLUS_ONE, 'STUDY')).toEqual([
+      'LIVING_ROOM', 'MASTER_BEDROOM', 'BEDROOM', 'BEDROOM', 'STUDY',
+      'KITCHEN', 'BATHROOM', 'HALLWAY',
+    ])
+  })
+
+  it('leaves the balcony last, because it is', () => {
     expect(addArea(THREE_PLUS_ONE, 'BALCONY').at(-1)).toBe('BALCONY')
   })
 
