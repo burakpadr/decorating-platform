@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.domain.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -181,6 +182,66 @@ class QuoteRequestTest {
 	}
 
 	// =============================================================================================
+	// The answers (BOYA-25)
+	// =============================================================================================
+
+	@Test
+	@DisplayName("a fresh draft has answered nothing")
+	void aDraftStartsEmpty() {
+		assertThat(fresh().answers()).isEqualTo(StageOneAnswers.empty());
+	}
+
+	@Test
+	@DisplayName("answering keeps the request in DRAFT and keeps what was answered before")
+	void answeringAccumulates() {
+		QuoteRequest answered = fresh()
+				.answer(new StageOneAnswers("KADIKOY", null, null, null, null, null, null, null, null))
+				.answer(new StageOneAnswers(null, null, null, Layout.THREE_PLUS_ONE, null, null, null,
+						null, null));
+
+		assertThat(answered.status()).isEqualTo(QuoteStatus.DRAFT);
+		assertThat(answered.answers().districtCode()).isEqualTo("KADIKOY");
+		assertThat(answered.answers().layout()).isEqualTo(Layout.THREE_PLUS_ONE);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = QuoteStatus.class, names = "DRAFT", mode = EnumSource.Mode.EXCLUDE)
+	@DisplayName("once the draft is confirmed the answers are fixed — every later state refuses them")
+	void answersAreFixedOnceTheDraftIsConfirmed(QuoteStatus from) {
+		// The customer confirms a room list derived from these answers, photographs the rooms that list
+		// named, and gets a price built on both. An answer changed after that point silently invalidates
+		// everything downstream of it, and nothing in the request would show that it had happened.
+		assertThatThrownBy(() -> at(from).answer(
+						new StageOneAnswers(null, null, null, Layout.STUDIO, null, null, null, null, null)))
+				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	@DisplayName("a transition carries the answers forward untouched")
+	void transitionsKeepTheAnswers() {
+		StageOneAnswers answers = new StageOneAnswers("USKUDAR", new BigDecimal("92"), AreaBasis.NET,
+				Layout.THREE_PLUS_ONE, QuoteScope.WHOLE_HOME, Furnishing.FURNISHED, 8, true,
+				WallCondition.MINOR);
+
+		QuoteRequest confirmed = fresh().answer(answers).confirmRoomList();
+
+		assertThat(confirmed.answers()).isEqualTo(answers);
+		assertThat(confirmed.status()).isEqualTo(QuoteStatus.PHOTOS_PENDING);
+	}
+
+	@Test
+	@DisplayName("rehydration brings the answers back with the state")
+	void rehydrationRestoresTheAnswers() {
+		StageOneAnswers answers = new StageOneAnswers("KADIKOY", null, null, Layout.STUDIO, null, null,
+				null, null, null);
+
+		QuoteRequest restored = QuoteRequest.rehydrate(
+				UUID.randomUUID(), QuoteStatus.DRAFT, 0, null, null, answers);
+
+		assertThat(restored.answers()).isEqualTo(answers);
+	}
+
+	// =============================================================================================
 	// Everything the diagram does not draw
 	// =============================================================================================
 
@@ -263,7 +324,8 @@ class QuoteRequestTest {
 		UUID id = UUID.randomUUID();
 
 		QuoteRequest restored = QuoteRequest.rehydrate(
-				id, QuoteStatus.AWAITING_CONTACT, 1, ContactReason.QUESTION, null);
+				id, QuoteStatus.AWAITING_CONTACT, 1, ContactReason.QUESTION, null,
+				StageOneAnswers.empty());
 
 		assertThat(restored.status()).isEqualTo(QuoteStatus.AWAITING_CONTACT);
 		assertThat(restored.recaptureCount())

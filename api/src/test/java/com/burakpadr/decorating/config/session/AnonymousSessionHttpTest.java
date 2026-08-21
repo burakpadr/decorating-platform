@@ -49,7 +49,9 @@ class AnonymousSessionHttpTest {
 				return owned.id().toString();
 			}
 
-			@PatchMapping("/api/quote-requests/{id}")
+			// Its own path: the real PATCH /api/quote-requests/{id} exists now (BOYA-25) and two handlers
+			// on one mapping is an ambiguous mapping, not a test.
+			@PatchMapping("/api/quote-requests/{id}/probe")
 			String update(OwnedQuoteRequest owned) {
 				return owned.id().toString();
 			}
@@ -80,12 +82,14 @@ class AnonymousSessionHttpTest {
 	}
 
 	@Test
-	@DisplayName("acceptance: without the cookie, PATCH does not work")
-	void patchNeedsTheCookie() throws Exception {
-		mvc.perform(patch("/api/quote-requests/{id}", MINE))
+	@DisplayName("a write needs the cookie as much as a read does")
+	void writesNeedTheCookie() throws Exception {
+		// The same assertion against the real PATCH lives in QuoteRequestControllerTest. This one keeps
+		// the mechanism covered on its own, so a change here fails next to the code it broke.
+		mvc.perform(patch("/api/quote-requests/{id}/probe", MINE))
 				.andExpect(status().isUnauthorized());
 
-		mvc.perform(patch("/api/quote-requests/{id}", MINE).cookie(session(MINE)))
+		mvc.perform(patch("/api/quote-requests/{id}/probe", MINE).cookie(session(MINE)))
 				.andExpect(status().isOk());
 	}
 

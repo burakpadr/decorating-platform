@@ -17,11 +17,9 @@ import java.util.UUID;
  * that moved in place would be ahead of its row the moment a save failed, and the in-memory object
  * would keep answering questions with a status the database never accepted.
  *
- * <p><b>What is not here yet.</b> Stage 1's answers — district, area, layout, furnishing, the door
- * count — are columns on {@code quote_request} and belong to the draft-saving work (BOYA-25). This
- * class carries identity and the state the transitions actually guard: the recapture counter, the
- * contact reason and the close outcome. Fields with no use case to fill them would be a guess about
- * their shape, and every one of them would have to be threaded through eleven transitions.
+ * <p>Stage 1's answers live in {@link StageOneAnswers} rather than as nine more fields here: they
+ * accumulate across three screens and the state machine does not care what they say, so the two change
+ * for different reasons and at different times. Every transition carries them forward untouched.
  */
 public final class QuoteRequest {
 
@@ -44,9 +42,10 @@ public final class QuoteRequest {
 	private final int recaptureCount;
 	private final ContactReason contactReason;
 	private final CloseOutcome closeOutcome;
+	private final StageOneAnswers answers;
 
 	private QuoteRequest(UUID id, QuoteStatus status, int recaptureCount,
-			ContactReason contactReason, CloseOutcome closeOutcome) {
+			ContactReason contactReason, CloseOutcome closeOutcome, StageOneAnswers answers) {
 		if (id == null) {
 			throw new IllegalArgumentException("a quote request needs an id");
 		}
@@ -55,11 +54,12 @@ public final class QuoteRequest {
 		this.recaptureCount = recaptureCount;
 		this.contactReason = contactReason;
 		this.closeOutcome = closeOutcome;
+		this.answers = answers == null ? StageOneAnswers.empty() : answers;
 	}
 
-	/** A new request, before the customer has confirmed anything. */
+	/** A new request, before the customer has answered or confirmed anything. */
 	public static QuoteRequest draft(UUID id) {
-		return new QuoteRequest(id, QuoteStatus.DRAFT, 0, null, null);
+		return new QuoteRequest(id, QuoteStatus.DRAFT, 0, null, null, StageOneAnswers.empty());
 	}
 
 	/**
@@ -71,16 +71,30 @@ public final class QuoteRequest {
 	 * rows unloadable. {@code ArchitectureRulesTest} keeps every caller but the persistence adapter out.
 	 */
 	public static QuoteRequest rehydrate(UUID id, QuoteStatus status, int recaptureCount,
-			ContactReason contactReason, CloseOutcome closeOutcome) {
+			ContactReason contactReason, CloseOutcome closeOutcome, StageOneAnswers answers) {
 		if (status == null) {
 			throw new IllegalArgumentException("a stored request has a status");
 		}
-		return new QuoteRequest(id, status, recaptureCount, contactReason, closeOutcome);
+		return new QuoteRequest(id, status, recaptureCount, contactReason, closeOutcome, answers);
 	}
 
 	// -----------------------------------------------------------------------------------------------
 	// §3's events
 	// -----------------------------------------------------------------------------------------------
+
+	/**
+	 * More of §2.1's answers, merged over the ones already given (BOYA-25).
+	 *
+	 * <p>DRAFT only. The customer confirms a room list derived from these answers, photographs the rooms
+	 * that list named, and is quoted on both — so an answer changed after the draft is confirmed
+	 * invalidates everything downstream of it, and nothing on the request would show it had happened.
+	 * Correcting an answer later is a new request, which is also what the customer means by it.
+	 */
+	public QuoteRequest answer(StageOneAnswers patch) {
+		require(QuoteStatus.DRAFT);
+		return new QuoteRequest(
+				id, status, recaptureCount, contactReason, closeOutcome, answers.mergedWith(patch));
+	}
 
 	/** The customer accepted the derived room list, so there is something to photograph. */
 	public QuoteRequest confirmRoomList() {
@@ -105,8 +119,8 @@ public final class QuoteRequest {
 			throw new IllegalStateException(
 					"recapture has already been requested once; a second failure goes to the operator");
 		}
-		return new QuoteRequest(
-				id, QuoteStatus.RECAPTURE_REQUIRED, recaptureCount + 1, contactReason, closeOutcome);
+		return new QuoteRequest(id, QuoteStatus.RECAPTURE_REQUIRED, recaptureCount + 1, contactReason,
+				closeOutcome, answers);
 	}
 
 	/** The customer uploaded the replacements. */
@@ -141,7 +155,7 @@ public final class QuoteRequest {
 		if (reason == null) {
 			throw new IllegalArgumentException("a call-back has a reason");
 		}
-		return new QuoteRequest(id, QuoteStatus.AWAITING_CONTACT, recaptureCount, reason, null);
+		return new QuoteRequest(id, QuoteStatus.AWAITING_CONTACT, recaptureCount, reason, null, answers);
 	}
 
 	/** The operator made the call and knows how it went. */
@@ -150,7 +164,7 @@ public final class QuoteRequest {
 		if (outcome == null) {
 			throw new IllegalArgumentException("a closed request has an outcome");
 		}
-		return new QuoteRequest(id, QuoteStatus.CLOSED, recaptureCount, contactReason, outcome);
+		return new QuoteRequest(id, QuoteStatus.CLOSED, recaptureCount, contactReason, outcome, answers);
 	}
 
 	/** The operator stops it, from wherever it is. */
@@ -185,6 +199,10 @@ public final class QuoteRequest {
 		return closeOutcome;
 	}
 
+	public StageOneAnswers answers() {
+		return answers;
+	}
+
 	private QuoteRequest terminate(CloseOutcome outcome) {
 		if (!OPEN.contains(status)) {
 			// A cancelled request that was already WON is a number the business cannot reconcile, and a
@@ -192,12 +210,12 @@ public final class QuoteRequest {
 			throw new IllegalStateException(
 					"a request in " + status + " has already ended; it cannot end again as " + outcome);
 		}
-		return new QuoteRequest(id, QuoteStatus.CLOSED, recaptureCount, contactReason, outcome);
+		return new QuoteRequest(id, QuoteStatus.CLOSED, recaptureCount, contactReason, outcome, answers);
 	}
 
 	private QuoteRequest moveTo(QuoteStatus target, QuoteStatus... from) {
 		require(from);
-		return new QuoteRequest(id, target, recaptureCount, contactReason, closeOutcome);
+		return new QuoteRequest(id, target, recaptureCount, contactReason, closeOutcome, answers);
 	}
 
 	private void require(QuoteStatus... allowed) {

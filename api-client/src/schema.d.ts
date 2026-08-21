@@ -20,6 +20,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a draft and take ownership of it */
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-calculations": {
         parameters: {
             query?: never;
@@ -45,7 +62,7 @@ export interface paths {
         };
         get: operations["list"];
         put?: never;
-        post: operations["create"];
+        post: operations["create_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -82,6 +99,23 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/quote-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Answer more of the eight questions */
+        patch: operations["answer"];
         trace?: never;
     };
     "/api/op/price-books/{id}": {
@@ -129,6 +163,28 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+        };
+        QuoteRequestResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PHOTOS_PENDING" | "ANALYZING" | "RECAPTURE_REQUIRED" | "PENDING_REVIEW" | "SURVEY_REQUIRED" | "QUOTE_SENT" | "AWAITING_CONTACT" | "CLOSED";
+            priceable: boolean;
+            districtCode?: string;
+            area?: number;
+            /** @enum {string} */
+            areaBasis?: "GROSS" | "NET";
+            /** @enum {string} */
+            layout?: "STUDIO" | "ONE_PLUS_ONE" | "TWO_PLUS_ONE" | "THREE_PLUS_ONE" | "FOUR_PLUS_ONE" | "FIVE_PLUS_ONE";
+            /** @enum {string} */
+            scope?: "WHOLE_HOME" | "SELECTED_ROOMS";
+            /** @enum {string} */
+            furnishing?: "EMPTY" | "PARTIAL" | "FURNISHED";
+            /** Format: int32 */
+            doorCount?: number;
+            doorColourChange?: boolean;
+            /** @enum {string} */
+            wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
         };
         CalculateQuoteRequest: {
             districtCode: string;
@@ -214,6 +270,28 @@ export interface components {
             /** @enum {string} */
             target: "LABOUR" | "MATERIAL" | "ALL";
             percent: number;
+        };
+        OwnedQuoteRequest: {
+            /** Format: uuid */
+            id?: string;
+        };
+        PatchQuoteRequestRequest: {
+            /** @example KADIKOY */
+            districtCode?: string;
+            area?: number;
+            /** @enum {string} */
+            areaBasis?: "GROSS" | "NET";
+            /** @enum {string} */
+            layout?: "STUDIO" | "ONE_PLUS_ONE" | "TWO_PLUS_ONE" | "THREE_PLUS_ONE" | "FOUR_PLUS_ONE" | "FIVE_PLUS_ONE";
+            /** @enum {string} */
+            scope?: "WHOLE_HOME" | "SELECTED_ROOMS";
+            /** @enum {string} */
+            furnishing?: "EMPTY" | "PARTIAL" | "FURNISHED";
+            /** Format: int32 */
+            doorCount?: number;
+            doorColourChange?: boolean;
+            /** @enum {string} */
+            wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
         };
         Coefficients: {
             ceilingHeightM: number;
@@ -303,6 +381,26 @@ export interface operations {
             };
         };
     };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created. Carries the session cookie every later call needs. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
     calculate: {
         parameters: {
             query?: never;
@@ -356,7 +454,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -469,6 +567,59 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    answer: {
+        parameters: {
+            query: {
+                owned: components["schemas"]["OwnedQuoteRequest"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchQuoteRequestRequest"];
+            };
+        };
+        responses: {
+            /** @description The draft as stored, after the merge */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+            /** @description No longer a draft: the answers are fixed once the room list is confirmed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QuoteRequestResponse"];
                 };
             };
         };
