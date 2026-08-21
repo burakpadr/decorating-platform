@@ -221,7 +221,9 @@ const doors = computed(() => {
            action rather than a line of text inside a card — showing somebody a summary and then making
            the way to correct it the faintest thing on the screen is an invitation nobody accepts. -->
       <div class="actions">
-        <NuxtLink class="btn primary" to="/cekim">{{ t('quoteResult.continue') }}</NuxtLink>
+        <NuxtLink class="btn primary" :to="`/cekim?talep=${id}`">
+          {{ t('quoteResult.continue') }}
+        </NuxtLink>
         <NuxtLink class="btn outline edit" :to="`/teklif-al?talep=${id}`">
           {{ t('quoteResult.edit') }}
         </NuxtLink>

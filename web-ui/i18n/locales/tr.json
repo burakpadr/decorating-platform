@@ -371,5 +371,30 @@
     "smsFailed": "Gönderilemedi. Numaranızı kontrol edip tekrar deneyin.",
     "smsCancel": "Vazgeç",
     "smsButton": "SMS ile gönder"
+  },
+  "roomList": {
+    "eyebrow": "Aşama 2 · Fotoğraf çekimi",
+    "title": "Çekilecek alanlar",
+    "intro": "\"3+1\" dört oda demek, ama tüm ev boyanacaksa mutfak, banyo ve koridor da listeye giriyor. Listeyi baştan görün, çekim ortada kalmasın.",
+    "promise": "{areas} alan · {photos} fotoğraf · yaklaşık {minutes} dakika",
+    "frames": "{count} kare",
+    "remove": "Çıkar",
+    "addTitle": "Listede olmayan bir alan var mı?",
+    "add": "{area} ekle",
+    "addSecond": "İkinci {area} ekle",
+    "addAnother": "Bir {area} daha ekle",
+    "empty": "Listede alan kalmadı. Fotoğraf çekimi için en az bir alan gerekiyor.",
+    "confirm": "Listeyi onayla",
+    "confirming": "Onaylanıyor…",
+    "confirmNote": "Liste bu cevaplara göre çıktı, o yüzden onaydan sonra cevaplar değiştirilemez.",
+    "confirmFailed": "Liste onaylanamadı. Tekrar deneyin.",
+    "edit": "Cevapları değiştir",
+    "leave": "Ana sayfaya dön",
+    "loading": "Liste hazırlanıyor…",
+    "failed": "Çekilecek alanların listesi hazırlanamadı. Sayfayı yenileyin.",
+    "incomplete": "Formda cevaplanmamış sorular var.",
+    "goToForm": "Forma dön",
+    "already": "Bu listeyi onayladınız. Kaldığınız yerden devam edin.",
+    "continue": "Çekime devam et"
   }
 }

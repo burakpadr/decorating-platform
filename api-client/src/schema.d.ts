@@ -315,6 +315,10 @@ export interface components {
             rooms: components["schemas"]["CalculatedRoomResponse"][];
             /** Format: int32 */
             photoCount: number;
+            /** @description How many frames each kind of area needs, in the version that priced this range. §2.2 lets the customer add an area the layout did not imply. */
+            requiredPhotosByType: {
+                [key: string]: number;
+            };
         };
         SendEstimateSmsRequest: {
             /** @example 0555 123 45 67 */

@@ -149,7 +149,9 @@ describe('stage 1 result', () => {
   it("offers §1.5's three options: continue, take it by SMS, leave", async () => {
     const page = await mountSuspended(Result)
 
-    expect(page.find('.actions .btn.primary').attributes('href')).toBe('/cekim')
+    // With the draft on it: §2.2's screen has to read the answers the list is derived from, and the
+    // session cookie names a draft to the API, not to the next page.
+    expect(page.find('.actions .btn.primary').attributes('href')).toBe('/cekim?talep=draft-1')
     expect(page.find('.sms-offer').text()).toContain('SMS ile gönder')
     // Leaving is not one of the decisions: it is the corner link, present whatever the page is showing.
     expect(page.find('.back-home').attributes('href')).toBe('/')

@@ -144,6 +144,26 @@ class EstimateStageOneTest {
 	}
 
 	@Test
+	@DisplayName("§2.2: every kind of area comes back with the frames it needs")
+	void answersWithTheFramesEachKindOfAreaNeeds() {
+		StageOneEstimate estimate = estimates.estimate(draftWith(answers(WallCondition.GOOD)));
+
+		// Workflow §2.2 lets the customer add a second bathroom, a study or a balcony, and the screen has
+		// to keep telling the truth about how many photographs that comes to. The frames belong to the
+		// price book version (§5.3), so they are answered here rather than copied into the client, where a
+		// second copy would be free to drift from the version that priced the range.
+		assertThat(estimate.requiredPhotosByType())
+				.containsEntry(RoomType.LIVING_ROOM, 5)
+				.containsEntry(RoomType.KITCHEN, 3)
+				.containsEntry(RoomType.BATHROOM, 2)
+				.containsEntry(RoomType.STUDY, 5)
+				.containsEntry(RoomType.BALCONY, 2)
+				.as("every kind, not only the ones this layout derived: the addable ones are exactly the "
+						+ "ones the list does not already have")
+				.hasSize(RoomType.values().length);
+	}
+
+	@Test
 	@DisplayName("a selection of areas prices only those areas")
 	void pricesOnlyTheSelectedAreas() {
 		UUID whole = draftWith(answers(WallCondition.GOOD));

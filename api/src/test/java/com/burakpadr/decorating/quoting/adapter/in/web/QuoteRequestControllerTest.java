@@ -243,7 +243,11 @@ class QuoteRequestControllerTest {
 				.andExpect(jsonPath("$.areaWasGross").value(false))
 				.andExpect(jsonPath("$.rooms.length()").value(7))
 				.andExpect(jsonPath("$.rooms[0].label").value("Salon"))
-				.andExpect(jsonPath("$.photoCount").value(28));
+				.andExpect(jsonPath("$.photoCount").value(28))
+				// §2.2's add-an-area buttons: the screen offers a study this layout never derived, and the
+				// total it promises has to include it. The frames are the version's, not the client's.
+				.andExpect(jsonPath("$.requiredPhotosByType.STUDY").value(5))
+				.andExpect(jsonPath("$.requiredPhotosByType.BATHROOM").value(2));
 	}
 
 	@Test

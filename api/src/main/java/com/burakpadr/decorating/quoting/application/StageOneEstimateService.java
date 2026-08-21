@@ -1,10 +1,12 @@
 package com.burakpadr.decorating.quoting.application;
 
 import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
+import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.QuoteCalculation;
 import com.burakpadr.decorating.quoting.domain.model.QuoteCalculationCommand;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
+import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.StageOneEstimate;
 import com.burakpadr.decorating.quoting.domain.port.in.CalculateQuote;
@@ -14,6 +16,7 @@ import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.StageOneEstimateWriter;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,11 +61,16 @@ class StageOneEstimateService implements EstimateStageOne {
 					"this draft cannot be priced yet: §2.1's questions are not all answered");
 		}
 
+		// The book the calculator is about to price against, read once: the district check and §2.2's
+		// frames per kind of area are two questions about the same version, and asking twice would let a
+		// zam land between them.
+		PriceBook book = priceBooks.findActive().orElseThrow();
+
 		// Checked again here, and not only when the district was answered: a draft can sit for days and a
 		// district can be switched off in between. PriceBook.districtFactor prices an unlisted district at
 		// 1.0000 by design (the operator tool quotes hypothetical addresses), so without this the customer
 		// would be quoted for an area nobody will drive to.
-		if (!priceBooks.findActive().orElseThrow().serves(answers.districtCode())) {
+		if (!book.serves(answers.districtCode())) {
 			throw new DistrictNotServed(answers.districtCode());
 		}
 
@@ -100,6 +108,11 @@ class StageOneEstimateService implements EstimateStageOne {
 				calculation.netArea(),
 				calculation.areaWasGross(),
 				calculation.rooms(),
+				// Every kind of area, not only the ones this layout derived: workflow §2.2's add-an-area
+				// buttons offer the ones it did not, and the screen still owes the customer a true total.
+				book.roomTypes().values().stream().collect(Collectors.toMap(
+						RoomTypeConfig::roomType,
+						config -> config.requiredPhotos().size())),
 				calculation.priceBookVersion());
 	}
 }
