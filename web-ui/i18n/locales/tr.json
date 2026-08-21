@@ -265,5 +265,60 @@
     "MINOR": "Ufak çatlak",
     "MAJOR": "Belirgin çatlak",
     "UNSURE": "Belirsiz"
+  },
+  "quoteForm": {
+    "progress": "Adım {step} / {total}",
+    "step1": {
+      "title": "Ev bilgileri",
+      "district": "İlçe",
+      "districtPlaceholder": "İlçenizi seçin",
+      "districtHelp": "Hizmet verdiğimiz ilçeler listelenir.",
+      "area": "Evin büyüklüğü",
+      "areaBasis": "Bu ölçü brüt mü, net mi?",
+      "areaBasisHelp": "Tapuda yazan brüt, içinde yaşadığınız alan nettir. İkisi arasında yaklaşık %18 fark olur, bu yüzden hangisi olduğunu bilmemiz gerekiyor.",
+      "layout": "Oda sayısı",
+      "scope": "Nereler boyanacak",
+      "scopeAreas": "{layout} bir evde şu alanlar boyanır:",
+      "selectAreas": "Boyanacak alanları seçin",
+      "areaCount": "{count} alan",
+      "selectedNone": "En az bir alan seçin."
+    },
+    "step2": {
+      "title": "İş kapsamı",
+      "furnishing": "Boya günü evde eşya olacak mı?",
+      "furnishingHelp": "Şu anki durumu değil, boyama günündeki durumu soruyoruz. Çoğu müşteri taşınmadan önce boyatıyor.",
+      "doors": "Kapılar da boyanacak mı?",
+      "doorsYes": "Evet, boyanacak",
+      "doorsNo": "Hayır, boyanmayacak",
+      "doorCount": "Kaç kapı boyanacak?",
+      "doorCountHelp": "Oda kapıları, banyo ve mutfak kapıları dahil. Emin değilseniz yaklaşık bir sayı yazın.",
+      "colourChange": "Kapıların rengi değişecek mi?",
+      "colourChangeHelp": "Koyu bir kapıyı açık renge çevirmek fazladan kat gerektirir.",
+      "yes": "Evet",
+      "no": "Hayır"
+    },
+    "step3": {
+      "title": "Duvar durumu",
+      "question": "Duvarlarınız ne durumda?",
+      "help": "Gözle görebildiğinizi seçin. Alçı veya macun ayrımını bilmeniz gerekmiyor.",
+      "GOOD": "Duvarlar iyi durumda",
+      "GOODNote": "Çatlak, dökülme veya leke yok.",
+      "MINOR": "Ufak tefek çatlaklar var",
+      "MINORNote": "Kılcal çatlaklar, birkaç noktada küçük dökülme.",
+      "MAJOR": "Belirgin çatlak veya dökülme var",
+      "MAJORNote": "Geniş çatlaklar, kabarma, elle dökülen yerler.",
+      "UNSURE": "Emin değilim",
+      "UNSURENote": "Sorun değil. Bu durumda fiyat aralığını daha geniş veriyoruz ve nedenini yazıyoruz."
+    },
+    "back": "Geri",
+    "next": "Devam",
+    "submit": "Fiyat aralığımı gör",
+    "saving": "Kaydediliyor…",
+    "required": "Bu soru cevaplanmalı.",
+    "areaRange": "20 ile 500 m² arasında bir değer girin.",
+    "doorCountRange": "1 ile 50 arasında bir sayı girin.",
+    "failed": "Kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
+    "districtsFailed": "İlçe listesi alınamadı. Sayfayı yenileyin.",
+    "notServed": "{district} ilçesinde henüz hizmet vermiyoruz."
   }
 }

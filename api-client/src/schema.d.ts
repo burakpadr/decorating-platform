@@ -221,10 +221,6 @@ export interface components {
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
             selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
         };
-        OwnedQuoteRequest: {
-            /** Format: uuid */
-            id?: string;
-        };
         CalculatedRoomResponse: {
             /** @enum {string} */
             type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
@@ -456,11 +452,12 @@ export interface operations {
     };
     estimate: {
         parameters: {
-            query: {
-                owned: components["schemas"]["OwnedQuoteRequest"];
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -675,11 +672,12 @@ export interface operations {
     };
     answer: {
         parameters: {
-            query: {
-                owned: components["schemas"]["OwnedQuoteRequest"];
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
             cookie?: never;
         };
         requestBody: {

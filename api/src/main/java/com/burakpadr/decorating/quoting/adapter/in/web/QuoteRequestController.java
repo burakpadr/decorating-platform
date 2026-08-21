@@ -6,6 +6,9 @@ import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
@@ -28,6 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Workflow §8 is why PATCH exists rather than a single submit at the end: people fill in two screens
  * on a laptop and finish on a phone, and an answer that lived only in the browser is an answer they get
  * asked for twice.
+ *
+ * <p>The {@code {id}} path parameters below are declared for the document rather than for the handler.
+ * {@link OwnedQuoteRequest} arrives from an argument resolver, so springdoc sees a parameter it cannot
+ * classify and — left alone — publishes the resolver's own type as a required query parameter while
+ * never mentioning the path variable at all. Both halves are wrong the same way: the generated client
+ * ends up unable to call the endpoint it was generated for. {@code OpenApiContractTest} is what
+ * notices.
  */
 @RestController
 @RequestMapping("/api/quote-requests")
@@ -60,6 +70,9 @@ class QuoteRequestController {
 
 	@PatchMapping("/{id}")
 	@Operation(summary = "Answer more of the eight questions")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "200", description = "The draft as stored, after the merge"),
 			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
@@ -70,14 +83,18 @@ class QuoteRequestController {
 							+ "confirmed", content = {})})
 	QuoteRequestResponse answer(
 			// Not a @PathVariable. The type is only obtainable from the resolver that has already matched
-			// the cookie against this path's id (BOYA-24), so the check cannot be forgotten here.
-			OwnedQuoteRequest owned,
+			// the cookie against this path's id (BOYA-24), so the check cannot be forgotten here — and
+			// hidden from the document, because it is resolved rather than sent.
+			@Parameter(hidden = true) OwnedQuoteRequest owned,
 			@Valid @RequestBody PatchQuoteRequestRequest request) {
 		return QuoteRequestResponse.of(requests.answer(owned.id(), request.toAnswers()));
 	}
 
 	@PostMapping("/{id}/estimate")
 	@Operation(summary = "The instant range for the answers given so far")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
 	@ApiResponses({
 			@ApiResponse(responseCode = "200",
 					description = "The range, the areas it assumed, and how wide the band is"),
@@ -86,7 +103,7 @@ class QuoteRequestController {
 					content = {}),
 			@ApiResponse(responseCode = "409",
 					description = "Not all of §2.1's questions are answered yet", content = {})})
-	StageOneEstimateResponse estimate(OwnedQuoteRequest owned) {
+	StageOneEstimateResponse estimate(@Parameter(hidden = true) OwnedQuoteRequest owned) {
 		return StageOneEstimateResponse.of(estimates.estimate(owned.id()));
 	}
 }

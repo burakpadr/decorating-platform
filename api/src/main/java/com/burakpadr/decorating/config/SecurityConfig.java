@@ -100,7 +100,11 @@ public class SecurityConfig {
 
 		CorsConfiguration configuration = new CorsConfiguration();
 		configuration.setAllowedOrigins(allowedOrigins);
-		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		// PATCH included, and CorsCoversEveryMethodTest is what keeps this list honest: a verb the
+		// controllers map and this list omits is an endpoint no browser can reach, and every MockMvc test
+		// passes anyway because MockMvc does not preflight.
+		configuration.setAllowedMethods(
+				List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 		// The operator's credentials and the anonymous session cookie both ride on the request, so the
 		// response has to say credentials are allowed — which is why the origin list can never be "*".
