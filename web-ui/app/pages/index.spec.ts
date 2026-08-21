@@ -23,7 +23,7 @@ describe('welcome screen', () => {
     const primary = page.findAll('a.btn.primary')
     expect(primary.length).toBeGreaterThan(0)
     expect(new Set(primary.map(link => link.attributes('href')))).toEqual(new Set(['/teklif-al']))
-    expect(new Set(primary.map(link => link.text()))).toEqual(new Set(['Ücretsiz fiyat al']))
+    expect(new Set(primary.map(link => link.text()))).toEqual(new Set(['Ücretsiz fiyat alın']))
   })
 
   it('asks for nothing: no field of any kind on the way in', async () => {
@@ -51,8 +51,10 @@ describe('welcome screen', () => {
 
     // §1.5: "aralığın geniş olması kusur değil, dürüsttür". The landing page is where a visitor first
     // meets the idea, and a range nobody explained reads as a business that does not know its prices.
-    expect(page.text()).toContain('aralık')
-    expect(page.text()).toContain('emin değilim')
+    // Both halves are asserted because a formal rewrite is exactly where the substance goes missing: the
+    // sentence stays polite and stops saying anything.
+    expect(page.text()).toContain('fiyat aralığı')
+    expect(page.text()).toContain('emin olmadığınızı')
   })
 
   it('sets a page title and a description, since the whole point is arriving from search', async () => {

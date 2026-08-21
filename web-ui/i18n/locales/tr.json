@@ -18,26 +18,26 @@
   "pages": {
     "home": {
       "title": "Ana sayfa",
-      "lede": "Eve gelen ustaya, tahmini fiyata ve “bir bakalım”a gerek yok. Sekiz soruya cevap verin, boya badana işiniz için somut bir fiyat aralığını hemen görün.",
-      "cta": "Ücretsiz fiyat al",
-      "noSignup": "Kayıt yok · telefon yok · e-posta yok",
-      "exchangeTitle": "Karşılığını almadan hiçbir şey istemiyoruz",
-      "exchangeNote": "Sıra tersine çevrilse — girişte fotoğraf ve numara istenirse — çoğu insan ilk ekranda haklı olarak ayrılır. O yüzden numaranızı ancak teklifi göstereceğimiz anda soruyoruz.",
+      "lede": "Sekiz soruluk kısa bir formu doldurun, boya badana işiniz için fiyat aralığınızı anında görün. Yerinde keşif randevusu beklemeniz gerekmez.",
+      "cta": "Ücretsiz fiyat alın",
+      "noSignup": "Üyelik, telefon veya e-posta bilgisi gerekmez.",
+      "exchangeTitle": "Aşamalar ve karşılıkları",
+      "exchangeNote": "Bilgi talebi, sunulan karşılıkla aynı sırada ilerler. Telefon numaranız yalnızca hazırlanan teklifi görüntüleyeceğiniz aşamada istenir.",
       "exchange": {
-        "gives": "Siz ne veriyorsunuz",
-        "gets": "Karşılığında ne alıyorsunuz",
+        "gives": "Sizden istenen",
+        "gets": "Size sunulan",
         "step1Gives": "1 dakika, 8 cevap",
-        "step1Gets": "Somut fiyat aralığı",
+        "step1Gets": "Fiyat aralığı",
         "step2Gives": "8 dakika, 28 fotoğraf",
-        "step2Gets": "Kesin, kalem kırılımlı teklif",
+        "step2Gets": "Kalem kırılımlı kesin teklif",
         "step3Gives": "Telefon numarası",
         "step3Gets": "Teklife erişim"
       },
-      "bandTitle": "Neden tek bir fiyat değil, aralık",
-      "bandBody": "Duvarın arkasını görmeden verilen tek fiyat, ya sizin ya bizim aleyhinize yanlıştır. Ne kadar net bilgi verirseniz aralık o kadar daralır — “duvarların durumundan emin değilim” derseniz aralık genişler, ve nedenini ekranda yazıyoruz.",
+      "bandTitle": "Neden tek fiyat değil, fiyat aralığı",
+      "bandBody": "Yerinde inceleme yapılmadan verilen tek bir fiyat, taraflardan biri için mutlaka yanlıştır. Paylaştığınız bilgi netleştikçe aralık daralır. Duvarlarınızın durumundan emin olmadığınızı belirtirseniz aralık genişler ve bunun nedeni sonuç ekranında açıkça belirtilir.",
       "districtsTitle": "Hizmet verdiğimiz ilçeler",
-      "districtsNote": "İstanbul'da 39 ilçe. İlçenizin sayfasında o bölgeye dair fiyat bilgisi var.",
-      "howItWorks": "Süreç nasıl işliyor"
+      "districtsNote": "İstanbul genelinde 39 ilçede hizmet veriyoruz. İlçenizin sayfasında bölgeye özel fiyat bilgilerini bulabilirsiniz.",
+      "howItWorks": "Nasıl çalışır"
     },
     "howItWorks": {
       "title": "Nasıl çalışır"
