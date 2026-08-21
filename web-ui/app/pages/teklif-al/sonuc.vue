@@ -176,12 +176,7 @@ const doors = computed(() => {
       </section>
 
       <section class="panel summary">
-        <!-- The edit action lives here rather than at the foot of the page: the wish to change an answer
-             forms while reading the answers, and it used to be a grey line two panels further down. -->
-        <h2>
-          {{ t('quoteResult.summaryTitle') }}
-          <NuxtLink class="edit" :to="`/teklif-al?talep=${id}`">{{ t('quoteResult.edit') }}</NuxtLink>
-        </h2>
+        <h2>{{ t('quoteResult.summaryTitle') }}</h2>
         <dl>
           <dt>{{ t('quoteResult.district') }}</dt>
           <dd>{{ districtName(draft!.districtCode) }}</dd>
@@ -217,8 +212,14 @@ const doors = computed(() => {
         <p class="hint">{{ t('quoteResult.photoCount', { count: estimate.photoCount }) }}</p>
       </section>
 
+      <!-- What can be done now, in descending weight: go on, change something, stop. Editing is an
+           action rather than a line of text inside a card — showing somebody a summary and then making
+           the way to correct it the faintest thing on the screen is an invitation nobody accepts. -->
       <div class="actions">
         <NuxtLink class="btn primary" to="/cekim">{{ t('quoteResult.continue') }}</NuxtLink>
+        <NuxtLink class="btn outline edit" :to="`/teklif-al?talep=${id}`">
+          {{ t('quoteResult.edit') }}
+        </NuxtLink>
         <NuxtLink class="quiet" to="/">{{ t('quoteResult.leave') }}</NuxtLink>
       </div>
       <p class="hint continue-note">{{ t('quoteResult.continueNote') }}</p>
@@ -522,17 +523,9 @@ h3 {
   color: var(--danger);
 }
 
-/* Brand-coloured and next to what it edits: discoverable where it is wanted, without arguing with
-   "Kesin fiyat al" — this is navigation, not the primary action. */
-.summary .edit {
-  color: var(--brand);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  border-bottom: 1px solid currentcolor;
-}
-
-.summary .edit:hover {
-  color: var(--brand-hover);
+/* Outline: second in the row, not absent from it. The filled button is still the one thing the page
+   is asking for. */
+.actions .edit {
+  margin-top: 0;
 }
 </style>
