@@ -39,6 +39,12 @@ dev-api: ## Run the API with hot reload
 	--decorating.cors.allowed-origins=http://localhost:3000"
 
 dev-web: ## Run the web app with hot reload
+	# The same credentials dev-api starts with. The operator realm is basic auth and the panel has no
+	# login screen yet, so without this the panel's own fetch goes out unauthenticated, the API answers
+	# 401 with WWW-Authenticate, and the browser puts its native username/password box on the screen —
+	# which looks like the app asking for a login it does not have. Never set in production: it would
+	# ship the credentials to every browser that loads the app.
+	NUXT_PUBLIC_OPERATOR_AUTH=$(OPERATOR_USER):$(OPERATOR_PASSWORD) \
 	pnpm --filter @decorating/web dev
 
 build: client ## Build everything
