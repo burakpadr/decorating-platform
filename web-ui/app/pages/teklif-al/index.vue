@@ -31,6 +31,10 @@ type Furnishing = 'EMPTY' | 'PARTIAL' | 'FURNISHED'
 type WallCondition = 'GOOD' | 'MINOR' | 'MAJOR' | 'UNSURE'
 
 const step = ref(1)
+/** The furthest step earned. A fresh form earns them one at a time; a stored draft has them all. */
+const reached = ref(1)
+/** Whether the draft already answers everything — which changes what the primary action offers. */
+const complete = ref(false)
 const busy = ref(false)
 const failure = ref('')
 
@@ -54,6 +58,51 @@ const form = reactive({
 })
 
 const draftId = ref(typeof route.query.talep === 'string' ? route.query.talep : '')
+
+/**
+ * The answers already on the server, when the customer arrives with a draft — from "Cevapları değiştir"
+ * on the result screen, from a resume link, or from a refresh.
+ *
+ * Without this the form opens blank on a draft that is already full, which reads as having lost the
+ * work: the answers are on the server precisely because §8 says the browser cannot be trusted with
+ * them, so ignoring them on the way back in throws away the thing that was worth storing.
+ */
+/** A draft named in the URL that this browser is not allowed to read, or that no longer exists. */
+const unreadableDraft = ref(false)
+
+if (draftId.value) {
+  const { data: stored } = await useAsyncData(`draft-form-${draftId.value}`, async () => {
+    const { data, response } = await api.GET('/api/quote-requests/{id}',
+      { params: { path: { id: draftId.value } } })
+    if (!response.ok) {
+      // Said, not swallowed. A blank form under a draft id is the same failure the customer reported
+      // from the other direction: they press Devam, a *second* draft is created, and the answers they
+      // gave are still sitting on the first one where nothing will ever read them again.
+      unreadableDraft.value = true
+      return null
+    }
+    return data ?? null
+  })
+  if (stored.value) {
+    form.districtCode = stored.value.districtCode ?? ''
+    form.area = stored.value.area == null ? '' : String(stored.value.area)
+    form.areaBasis = (stored.value.areaBasis as AreaBasis | undefined) ?? null
+    form.layout = (stored.value.layout as LayoutCode | undefined) ?? ''
+    form.scope = (stored.value.scope as Scope | undefined) ?? null
+    form.selectedRooms = [...(stored.value.selectedRooms ?? [])] as RoomTypeCode[]
+    form.furnishing = (stored.value.furnishing as Furnishing | undefined) ?? null
+    form.doorCount = stored.value.doorCount == null ? '' : String(stored.value.doorCount)
+    // A stored zero means "no doors", which is an answer — so the yes/no question is answered too.
+    form.doorsPainted = stored.value.doorCount == null ? null : stored.value.doorCount > 0
+    form.doorColourChange = stored.value.doorColourChange ?? null
+    form.wallCondition = (stored.value.wallCondition as WallCondition | undefined) ?? null
+    if (stored.value.priceable) {
+      // Every question answered, so every step is somewhere the customer may go back to.
+      reached.value = STEPS
+      complete.value = true
+    }
+  }
+}
 
 /** Only the districts the business serves — an unserved one cannot be picked (BOYA-26, BOYA-27). */
 const { data: districts, error: districtsError } = await useAsyncData('districts', async () => {
@@ -156,32 +205,73 @@ function patchFor(current: number): Record<string, unknown> {
 }
 
 async function advance() {
-  if (busy.value || !validate(step.value)) {
+  if (busy.value) {
     return
+  }
+  if (!await saveCurrentStep()) {
+    return
+  }
+  if (step.value === STEPS || complete.value) {
+    // Somebody who came back to change one answer should not have to press Devam three times to find
+    // out what it did to the price.
+    await navigateTo(`/teklif-al/sonuc?talep=${draftId.value}`)
+    return
+  }
+  step.value += 1
+  reached.value = Math.max(reached.value, step.value)
+}
+
+/**
+ * Moves to a step the customer has earned.
+ *
+ * <p>Forwards has to be earned — the step being left must validate and save. Backwards never does: the
+ * form holds every answer in one object, so nothing is lost and there is nothing to check. That
+ * asymmetry is what stops a half-answered step 2 from trapping somebody who only wanted to fix the m².
+ */
+async function goToStep(target: number) {
+  if (busy.value || target > reached.value || target === step.value) {
+    return
+  }
+  if (target > step.value && !await saveCurrentStep()) {
+    return
+  }
+  if (target < step.value) {
+    // Saved on the way out if it is valid, and silently left alone if not: an unfinished step is not an
+    // error while the customer is still moving around.
+    await saveCurrentStep({ quiet: true })
+  }
+  failure.value = ''
+  step.value = target
+}
+
+/** Validates and writes the step on screen. Answers whether the caller may move on. */
+async function saveCurrentStep(options: { quiet?: boolean } = {}): Promise<boolean> {
+  if (!validate(step.value)) {
+    return Boolean(options.quiet)
   }
   busy.value = true
   failure.value = ''
   try {
-    await save()
+    return await save()
   }
   catch {
     // A request that throws rather than answering — a refused preflight, a dropped connection — used to
     // leave the button reading "Kaydediliyor…" for ever, with nothing said and nothing in the log. A
     // stuck button is worse than an error: the customer waits instead of retrying.
     failure.value = t('quoteForm.failed')
+    return false
   }
   finally {
     busy.value = false
   }
 }
 
-async function save() {
-
+async function save(): Promise<boolean> {
   if (!draftId.value) {
     const { data, response } = await api.POST('/api/quote-requests')
     if (!response.ok || !data) {
       failure.value = t('quoteForm.failed')
-      return
+      return false
     }
     draftId.value = data.id
     // Replaced, not pushed: the id is not a place in the customer's history, it is which draft this is.
@@ -194,29 +284,31 @@ async function save() {
   })
 
   if (!response.ok) {
-    // Advancing on a failed write is how an answer goes missing with nobody seeing it: the customer
-    // finishes the form and the draft is one screen short.
     const problem = error as { type?: string, districtCode?: string } | undefined
     failure.value = problem?.type === 'urn:decorating:district-not-served'
       ? t('quoteForm.notServed', { district: districtName(problem.districtCode) })
       : t('quoteForm.failed')
-    return
+    return false
   }
-
-  if (step.value === STEPS) {
-    await navigateTo(`/teklif-al/sonuc?talep=${draftId.value}`)
-    return
-  }
-  step.value += 1
+  return true
 }
 
 function districtName(code?: string): string {
   return districts.value?.find(district => district.code === code)?.name ?? code ?? ''
 }
 
+/** Drops the unusable id and starts a draft the browser owns. */
+function startFresh() {
+  unreadableDraft.value = false
+  draftId.value = ''
+  step.value = 1
+  reached.value = 1
+  complete.value = false
+  router.replace({ query: {} })
+}
+
 function back() {
-  failure.value = ''
-  step.value = Math.max(1, step.value - 1)
+  void goToStep(Math.max(1, step.value - 1))
 }
 </script>
 
@@ -224,12 +316,35 @@ function back() {
   <main>
     <header class="head">
       <p class="progress">{{ t('quoteForm.progress', { step, total: STEPS }) }}</p>
-      <div class="bar" :aria-hidden="true">
-        <span :style="{ width: `${(step / STEPS) * 100}%` }" />
-      </div>
+      <!-- Named steps rather than a bar alone: somebody who came back to fix the m² needs to see where
+           that answer lives, and get to it without walking the whole form again. A step not yet earned
+           is disabled rather than hidden — the shape of what is coming is part of knowing how long it
+           will take. -->
+      <nav class="steps" :aria-label="t('quoteForm.progress', { step, total: STEPS })">
+        <button
+          v-for="index in STEPS" :key="index" type="button"
+          :disabled="index > reached" :aria-current="index === step ? 'step' : undefined"
+          @click="goToStep(index)"
+        >
+          <em>{{ index }}</em>
+          <span>{{ t(`quoteForm.step${index}.title`) }}</span>
+        </button>
+      </nav>
     </header>
 
     <p v-if="districtsError" class="banner danger">{{ t('quoteForm.districtsFailed') }}</p>
+
+    <!-- The id in the URL belongs to a draft this browser cannot open — usually an old link, or one
+         opened on a different device without going through /devam/{token}. Starting over is offered
+         rather than done: the customer chose that URL and deserves to know it did not work. -->
+    <section v-if="unreadableDraft" class="panel">
+      <p>{{ t('quoteForm.draftUnreadable') }}</p>
+      <button class="btn primary" type="button" @click="startFresh">
+        {{ t('quoteForm.startFresh') }}
+      </button>
+    </section>
+
+    <template v-else>
 
     <!-- ------------------------------------------------------------------ 1 · §1.1 -->
     <section v-if="step === 1" class="panel">
@@ -422,10 +537,24 @@ function back() {
       <button v-if="step > 1" class="btn" type="button" :disabled="busy" @click="back">
         {{ t('quoteForm.back') }}
       </button>
-      <button class="btn primary" type="button" :disabled="busy" @click="advance">
-        {{ busy ? t('quoteForm.saving') : step === STEPS ? t('quoteForm.submit') : t('quoteForm.next') }}
+      <!-- Once every answer is in, the way out is the range rather than the next screen: the customer
+           came back to change one thing and wants to see what it did. -->
+      <button
+        v-if="complete && step < STEPS" class="btn" type="button" :disabled="busy"
+        @click="goToStep(step + 1)"
+      >
+        {{ t('quoteForm.next') }}
+      </button>
+      <button
+        class="btn primary" :class="{ 'to-result': complete || step === STEPS }" type="button"
+        :disabled="busy" @click="advance"
+      >
+        {{ busy
+          ? t('quoteForm.saving')
+          : (complete || step === STEPS) ? t('quoteForm.submit') : t('quoteForm.next') }}
       </button>
     </div>
+    </template>
   </main>
 </template>
 
@@ -449,18 +578,57 @@ main {
   color: var(--ink-3);
 }
 
-.bar {
-  height: 3px;
-  border-radius: 999px;
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
   background: var(--surface-sunken);
-  overflow: hidden;
+  border-radius: var(--radius-sm);
 }
 
-.bar span {
-  display: block;
-  height: 100%;
-  background: var(--brand);
-  transition: width 0.25s ease;
+.steps button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  min-height: 2.9rem;
+  padding: 0 0.5rem;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.steps button[aria-current='step'] {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 650;
+}
+
+/* Visible but plainly unavailable: knowing what is coming is part of knowing how long this takes. */
+.steps button:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.steps em {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+/* On a phone three labels do not fit; the numbers carry the position and the panel heading says which
+   step it is. */
+@media (max-width: 30rem) {
+  .steps span {
+    display: none;
+  }
 }
 
 .panel {

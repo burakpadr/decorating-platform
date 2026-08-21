@@ -256,7 +256,11 @@ const doors = computed(() => {
           </div>
         </template>
       </section>
-      <NuxtLink class="quiet edit" to="/teklif-al">{{ t('quoteResult.edit') }}</NuxtLink>
+      <!-- With the draft, not without it. Sending the customer to a blank form was throwing away every
+           answer they had given — the answers are on the server for exactly this. -->
+      <NuxtLink class="quiet edit" :to="`/teklif-al?talep=${id}`">
+        {{ t('quoteResult.edit') }}
+      </NuxtLink>
     </template>
 
     <p v-else class="panel">{{ t('quoteResult.loading') }}</p>

@@ -49,7 +49,7 @@ const ESTIMATE = {
 describe('stage 1 result', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clearNuxtData()
+    clearNuxtData(() => true)
     get.mockResolvedValue({ response: { ok: true, status: 200 }, data: ANSWERS })
     post.mockResolvedValue({ response: { ok: true, status: 200 }, data: ESTIMATE })
   })

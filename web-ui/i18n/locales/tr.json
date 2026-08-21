@@ -325,7 +325,9 @@
     "doorCountRange": "1 ile 50 arasında bir sayı girin.",
     "failed": "Kaydedilemedi. Bağlantınızı kontrol edip tekrar deneyin.",
     "districtsFailed": "İlçe listesi alınamadı. Sayfayı yenileyin.",
-    "notServed": "{district} ilçesinde henüz hizmet vermiyoruz."
+    "notServed": "{district} ilçesinde henüz hizmet vermiyoruz.",
+    "draftUnreadable": "Bu bağlantıdaki form bu cihazda açılamıyor. Telefonunuza gelen bağlantıyı kullandıysanız süresi geçmiş olabilir.",
+    "startFresh": "Baştan başla"
   },
   "quoteResult": {
     "eyebrow": "Fiyat aralığınız",
