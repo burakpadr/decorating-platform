@@ -16,7 +16,9 @@ import { DISTRICTS } from '~/utils/districts'
 const { t } = useI18n()
 
 useHead({
-  title: t('meta.titleTemplate', { page: t('brand.tagline') }),
+  // Not the tagline: that is a promise to read, and a title tag is a search result — 68
+  // characters of promise is a truncated one.
+  title: t('meta.titleTemplate', { page: t('meta.home.title') }),
   meta: [{ name: 'description', content: t('pages.home.lede') }],
 })
 

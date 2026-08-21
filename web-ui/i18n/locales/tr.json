@@ -1,13 +1,16 @@
 {
   "brand": {
     "name": "Boya Teklifi",
-    "tagline": "Eve gelmeden boya badana teklifi alın."
+    "tagline": "Boya badana fiyatınızı keşif randevusu olmadan öğrenin."
   },
   "meta": {
     "titleTemplate": "{page} — Boya Teklifi",
     "district": {
       "title": "{district} boya badana fiyatları",
-      "description": "{district} için boya badana fiyat aralığını eve gelmeden, fotoğraflarla öğrenin."
+      "description": "{district} için boya badana fiyat aralığını keşif randevusu olmadan, fotoğraflarla öğrenin."
+    },
+    "home": {
+      "title": "Boya badana fiyatları ve teklif"
     }
   },
   "nav": {
@@ -18,7 +21,7 @@
   "pages": {
     "home": {
       "title": "Ana sayfa",
-      "lede": "Sekiz soruluk kısa bir formu doldurun, boya badana işiniz için fiyat aralığınızı anında görün. Yerinde keşif randevusu beklemeniz gerekmez.",
+      "lede": "Sekiz soruluk kısa bir formu doldurun, boya badana işiniz için fiyat aralığınızı anında görün.",
       "cta": "Ücretsiz fiyat alın",
       "noSignup": "Üyelik, telefon veya e-posta bilgisi gerekmez.",
       "exchangeTitle": "Aşamalar ve karşılıkları",
