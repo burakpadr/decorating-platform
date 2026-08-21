@@ -104,6 +104,85 @@
         }
       }
     },
+    "/api/quote-requests/{id}/rooms/confirm" : {
+      "post" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "Accept the areas to photograph",
+        "operationId" : "confirmRooms",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The draft this session owns",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmRoomsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The agreed areas, labelled and ordered, with the frames each needs",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedRoomsResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "An empty or impossible list",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedRoomsResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedRoomsResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The session owns a different draft",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedRoomsResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Already confirmed",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConfirmedRoomsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/quote-requests/{id}/estimate" : {
       "post" : {
         "tags" : [ "quote-request-controller" ],
@@ -753,6 +832,64 @@
           }
         },
         "required" : [ "id", "priceable", "status" ]
+      },
+      "ConfirmRoomsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "areas" : {
+            "type" : "array",
+            "example" : [ "LIVING_ROOM", "BEDROOM", "BEDROOM", "KITCHEN", "BATHROOM" ],
+            "items" : {
+              "type" : "string",
+              "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "areas" ]
+      },
+      "ConfirmedRoomsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "rooms" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Room"
+            }
+          },
+          "photoCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "photoCount", "rooms" ]
+      },
+      "Room" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "requiredPhotos" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING", "DETAIL" ]
+            }
+          },
+          "captureComplete" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "captureComplete", "id", "label", "requiredPhotos", "type" ]
       },
       "CalculatedRoomResponse" : {
         "type" : "object",

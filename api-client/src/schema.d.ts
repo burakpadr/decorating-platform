@@ -37,6 +37,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests/{id}/rooms/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept the areas to photograph */
+        post: operations["confirmRooms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quote-requests/{id}/estimate": {
         parameters: {
             query?: never;
@@ -255,6 +272,32 @@ export interface components {
             /** @enum {string} */
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
             selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
+        };
+        ConfirmRoomsRequest: {
+            /**
+             * @example [
+             *       "LIVING_ROOM",
+             *       "BEDROOM",
+             *       "BEDROOM",
+             *       "KITCHEN",
+             *       "BATHROOM"
+             *     ]
+             */
+            areas: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
+        };
+        ConfirmedRoomsResponse: {
+            rooms: components["schemas"]["Room"][];
+            /** Format: int32 */
+            photoCount: number;
+        };
+        Room: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
+            label: string;
+            requiredPhotos: ("WALL_1" | "WALL_2" | "WALL_3" | "WALL_4" | "CEILING" | "DETAIL")[];
+            captureComplete: boolean;
         };
         CalculatedRoomResponse: {
             /** @enum {string} */
@@ -485,6 +528,69 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    confirmRooms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRoomsRequest"];
+            };
+        };
+        responses: {
+            /** @description The agreed areas, labelled and ordered, with the frames each needs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfirmedRoomsResponse"];
+                };
+            };
+            /** @description An empty or impossible list */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfirmedRoomsResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfirmedRoomsResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfirmedRoomsResponse"];
+                };
+            };
+            /** @description Already confirmed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfirmedRoomsResponse"];
                 };
             };
         };

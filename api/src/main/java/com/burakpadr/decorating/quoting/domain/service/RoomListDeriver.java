@@ -79,6 +79,18 @@ public final class RoomListDeriver {
 			}
 		}
 
+		return label(areas, book);
+	}
+
+	/**
+	 * Labels and orders a list of areas that is already decided.
+	 *
+	 * <p>Public because §2.2 lets the customer change the list — add a second bathroom, drop the balcony
+	 * — and the result still has to be labelled and numbered by the same rule. A second copy of that rule
+	 * would be two answers to "what is this room called", and the label is what the customer reads on the
+	 * capture screen and the operator reads in the quote.
+	 */
+	public RoomList label(List<RoomType> areas, PriceBook book) {
 		Map<RoomType, Integer> total = new EnumMap<>(RoomType.class);
 		areas.forEach(type -> total.merge(type, 1, Integer::sum));
 

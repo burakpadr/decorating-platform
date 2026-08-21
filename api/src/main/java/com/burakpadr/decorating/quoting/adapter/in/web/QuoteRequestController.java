@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.adapter.in.web;
 import com.burakpadr.decorating.config.session.AnonymousSessionCookie;
 import com.burakpadr.decorating.config.session.OwnedQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
+import com.burakpadr.decorating.quoting.domain.port.in.ConfirmRoomList;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
@@ -53,14 +54,17 @@ class QuoteRequestController {
 	private final ManageQuoteRequests requests;
 	private final EstimateStageOne estimates;
 	private final SendEstimateBySms sms;
+	private final ConfirmRoomList roomList;
 	private final ResumeTokens resumeTokens;
 	private final AnonymousSessionCookie session;
 
 	QuoteRequestController(ManageQuoteRequests requests, EstimateStageOne estimates,
-			SendEstimateBySms sms, ResumeTokens resumeTokens, AnonymousSessionCookie session) {
+			SendEstimateBySms sms, ConfirmRoomList roomList, ResumeTokens resumeTokens,
+			AnonymousSessionCookie session) {
 		this.requests = requests;
 		this.estimates = estimates;
 		this.sms = sms;
+		this.roomList = roomList;
 		this.resumeTokens = resumeTokens;
 		this.session = session;
 	}
@@ -142,6 +146,24 @@ class QuoteRequestController {
 		// stays. Answering 200 would tell the browser something was delivered.
 		sms.send(owned.id(), PhoneNumber.of(request.phone()));
 		return ResponseEntity.accepted().build();
+	}
+
+	@PostMapping("/{id}/rooms/confirm")
+	@Operation(summary = "Accept the areas to photograph")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "200",
+					description = "The agreed areas, labelled and ordered, with the frames each needs"),
+			@ApiResponse(responseCode = "400", description = "An empty or impossible list", content = {}),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "409", description = "Already confirmed", content = {})})
+	ConfirmedRoomsResponse confirmRooms(@Parameter(hidden = true) OwnedQuoteRequest owned,
+			@Valid @RequestBody ConfirmRoomsRequest request) {
+		return ConfirmedRoomsResponse.of(roomList.confirm(owned.id(), request.areas()));
 	}
 
 	@GetMapping("/resume/{token}")

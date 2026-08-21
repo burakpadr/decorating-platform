@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.adapter.out.persistence;
 
 import com.burakpadr.decorating.quoting.domain.port.out.PendingPhoneWriter;
+import com.burakpadr.decorating.quoting.domain.port.out.PricedWithVersion;
 import com.burakpadr.decorating.quoting.domain.port.out.StageOneEstimateWriter;
 import com.burakpadr.decorating.quoting.domain.port.out.StoredEstimates;
 import com.burakpadr.decorating.shared.PhoneNumber;
@@ -21,7 +22,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 class StageOneEstimatePersistenceAdapter
-		implements StageOneEstimateWriter, StoredEstimates, PendingPhoneWriter {
+		implements StageOneEstimateWriter, StoredEstimates, PendingPhoneWriter, PricedWithVersion {
 
 	private final JdbcTemplate jdbc;
 
@@ -36,6 +37,15 @@ class StageOneEstimatePersistenceAdapter
 				row -> row.next()
 						? Optional.of(new Range(row.getBigDecimal(1), row.getBigDecimal(2)))
 						: Optional.<Range>empty(),
+				quoteRequestId);
+	}
+
+	@Override
+	public Optional<UUID> pricedWith(UUID quoteRequestId) {
+		return jdbc.query("SELECT price_book_id FROM quote_request WHERE id = ?",
+				row -> row.next()
+						? Optional.ofNullable(row.getObject(1, UUID.class))
+						: Optional.<UUID>empty(),
 				quoteRequestId);
 	}
 

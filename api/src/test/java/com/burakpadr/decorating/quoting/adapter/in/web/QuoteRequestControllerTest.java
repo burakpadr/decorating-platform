@@ -434,6 +434,79 @@ class QuoteRequestControllerTest {
 				.andExpect(status().isNotFound());
 	}
 
+	// =============================================================================================
+	// The areas to photograph (BOYA-37)
+	// =============================================================================================
+
+	@Test
+	@DisplayName("POST /{id}/rooms/confirm answers the labelled list and what it will cost in frames")
+	void confirmsTheRoomList() throws Exception {
+		UUID id = answered();
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)));
+
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"areas\":[\"LIVING_ROOM\",\"BEDROOM\",\"BEDROOM\",\"BATHROOM\"]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rooms.length()").value(4))
+				.andExpect(jsonPath("$.rooms[0].label").value("Salon"))
+				.andExpect(jsonPath("$.rooms[1].label").value("Yatak odası 1"))
+				.andExpect(jsonPath("$.rooms[3].requiredPhotos.length()").value(2))
+				// §2.2 wants this on the screen with the list: 5 + 5 + 5 + 2.
+				.andExpect(jsonPath("$.photoCount").value(17));
+	}
+
+	@Test
+	@DisplayName("the client cannot name the rooms: labels are the server's copy")
+	void ignoresAnyLabelTheClientSends() throws Exception {
+		UUID id = answered();
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)));
+
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"areas\":[\"KITCHEN\"],\"label\":\"Şahane mutfağım\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rooms[0].label").value("Mutfak"));
+	}
+
+	@Test
+	@DisplayName("an empty list is refused before anything is written")
+	void refusesAnEmptyRoomList() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"areas\":[]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("confirming somebody else's list is refused like every other scoped route")
+	void confirmNeedsTheSession() throws Exception {
+		UUID id = answered();
+
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"areas\":[\"KITCHEN\"]}"))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id).cookie(owns(draft()))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"areas\":[\"KITCHEN\"]}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@DisplayName("once confirmed the answers are fixed: PATCH is refused")
+	void answersAreFixedAfterConfirmation() throws Exception {
+		UUID id = answered();
+		mvc.perform(post("/api/quote-requests/{id}/estimate", id).cookie(owns(id)));
+		mvc.perform(post("/api/quote-requests/{id}/rooms/confirm", id).cookie(owns(id))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"areas\":[\"KITCHEN\"]}"));
+
+		// The list was derived from the answers and the photographs will be taken against it, so an
+		// answer changed now invalidates everything downstream with nothing to show it happened.
+		mvc.perform(patch("/api/quote-requests/{id}", id).cookie(owns(id))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"area\":40}"))
+				.andExpect(status().isConflict());
+	}
+
 	/** A draft with all of §2.1 answered, which is what the estimate needs. */
 	private UUID answered() {
 		UUID id = draft();
