@@ -25,6 +25,11 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * week is covered the day it is added — which is the point, because §7 lists nine of these routes and
  * they arrive with BOYA-25, BOYA-37 and BOYA-45, long after the mechanism was written and stopped being
  * something anybody thinks about.
+ *
+ * <p>§7's photo routes are scoped to a customer too, and name a photograph rather than a request
+ * ({@code /api/photos/{id}}), so the resolver cannot compare the cookie to the path. They take a
+ * {@link CustomerSession} instead and check the row themselves — but declaring the parameter is still
+ * the step that cannot be skipped, so it is asked for here in the same way.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -32,6 +37,9 @@ class QuoteRequestEndpointsAreOwnedTest {
 
 	/** §7's anonymous routes that name a request. */
 	private static final String SCOPED_PREFIX = "/api/quote-requests/{id}";
+
+	/** §7's anonymous routes that name a photograph, which belongs to a request two joins away. */
+	private static final String PHOTO_PREFIX = "/api/photos";
 
 	// By name: the actuator publishes a RequestMappingHandlerMapping of its own, so by type there are two.
 	@Autowired
@@ -55,8 +63,31 @@ class QuoteRequestEndpointsAreOwnedTest {
 				.isEmpty();
 	}
 
+	@Test
+	@DisplayName("a handler under /api/photos cannot be written without the session either")
+	void everyPhotoHandlerTakesTheSession() {
+		List<String> unchecked = mappings.getHandlerMethods().entrySet().stream()
+				.filter(entry -> entry.getKey().getPatternValues().stream()
+						.anyMatch(pattern -> pattern.startsWith(PHOTO_PREFIX)))
+				.filter(entry -> !takesSession(entry.getValue()))
+				.map(entry -> entry.getKey() + " → " + entry.getValue().getMethod().getName())
+				.toList();
+
+		assertThat(unchecked)
+				.as("a photo id is a row, not a credential: without the session these routes would read, "
+						+ "complete or delete any photograph in the system by id")
+				.isEmpty();
+	}
+
 	private boolean takesOwnedRequest(HandlerMethod handler) {
-		return Arrays.stream(handler.getMethod().getParameterTypes())
-				.anyMatch(OwnedQuoteRequest.class::equals);
+		return takes(handler, OwnedQuoteRequest.class);
+	}
+
+	private boolean takesSession(HandlerMethod handler) {
+		return takes(handler, CustomerSession.class) || takesOwnedRequest(handler);
+	}
+
+	private boolean takes(HandlerMethod handler, Class<?> parameter) {
+		return Arrays.stream(handler.getMethod().getParameterTypes()).anyMatch(parameter::equals);
 	}
 }

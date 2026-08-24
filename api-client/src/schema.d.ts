@@ -88,6 +88,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/photos/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The photograph arrived */
+        post: operations["complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/photos/upload-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reserve a frame and get the URL to PUT it to */
+        post: operations["intend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-calculations": {
         parameters: {
             query?: never;
@@ -203,6 +237,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/photos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A short-lived URL for one photograph */
+        get: operations["read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/districts": {
         parameters: {
             query?: never;
@@ -215,6 +266,23 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/photos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Retake: forget the frame and remove the object */
+        delete: operations["discard"];
         options?: never;
         head?: never;
         patch?: never;
@@ -323,6 +391,50 @@ export interface components {
         SendEstimateSmsRequest: {
             /** @example 0555 123 45 67 */
             phone: string;
+        };
+        CompleteUploadRequest: {
+            /**
+             * Format: date-time
+             * @description EXIF DateTimeOriginal, read before the re-encode strips it
+             */
+            capturedAt?: string;
+            /** Format: int32 */
+            width?: number;
+            /** Format: int32 */
+            height?: number;
+            /** Format: int32 */
+            byteSize?: number;
+            /** @description Laplacian variance the client computed */
+            qualityScore?: number;
+            /** @description Accepted despite the score — §9 stops arguing after three attempts */
+            lowQualityFlag?: boolean;
+        };
+        PhotoResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            roomId: string;
+            /** @enum {string} */
+            role: "WALL_1" | "WALL_2" | "WALL_3" | "WALL_4" | "CEILING" | "DETAIL";
+            uploaded: boolean;
+            lowQualityFlag: boolean;
+        };
+        UploadIntentRequest: {
+            /**
+             * Format: uuid
+             * @description One of the areas this request confirmed at §2.2
+             */
+            roomId: string;
+            /** @enum {string} */
+            role: "WALL_1" | "WALL_2" | "WALL_3" | "WALL_4" | "CEILING" | "DETAIL";
+        };
+        UploadIntentResponse: {
+            /** Format: uuid */
+            photoId: string;
+            /** @description PUT the JPEG here, directly. It does not pass through this API. */
+            uploadUrl: string;
+            /** Format: int64 */
+            expiresInSeconds: number;
         };
         CalculateQuoteRequest: {
             districtCode: string;
@@ -446,6 +558,11 @@ export interface components {
             createdAt: string;
             coefficients: components["schemas"]["Coefficients"];
             items: components["schemas"]["PriceBookItemResponse"][];
+        };
+        OperatorPhotoResponse: {
+            url: string;
+            /** Format: int64 */
+            expiresInSeconds: number;
         };
         DistrictResponse: {
             /** @example KADIKOY */
@@ -699,6 +816,129 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description From the upload intent */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description The frame, now uploaded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PhotoResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PhotoResponse"];
+                };
+            };
+            /** @description The photograph belongs to another quote request */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PhotoResponse"];
+                };
+            };
+            /** @description No such photograph */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PhotoResponse"];
+                };
+            };
+            /** @description The request is not collecting photographs */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PhotoResponse"];
+                };
+            };
+        };
+    };
+    intend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadIntentRequest"];
+            };
+        };
+        responses: {
+            /** @description A presigned PUT, and the id to report it by */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UploadIntentResponse"];
+                };
+            };
+            /** @description No room or no role */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UploadIntentResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UploadIntentResponse"];
+                };
+            };
+            /** @description The room belongs to another quote request */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UploadIntentResponse"];
+                };
+            };
+            /** @description This frame is already photographed, or the request is not collecting photographs */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UploadIntentResponse"];
+                };
             };
         };
     };
@@ -1039,6 +1279,46 @@ export interface operations {
             };
         };
     };
+    read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The presigned read and its window */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OperatorPhotoResponse"];
+                };
+            };
+            /** @description Not an operator */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OperatorPhotoResponse"];
+                };
+            };
+            /** @description No such photograph */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["OperatorPhotoResponse"];
+                };
+            };
+        };
+    };
     served: {
         parameters: {
             query?: never;
@@ -1056,6 +1336,47 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["DistrictResponse"][];
                 };
+            };
+        };
+    };
+    discard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Gone, object and row */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The photograph belongs to another quote request */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such photograph */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

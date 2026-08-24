@@ -16,5 +16,16 @@ public enum PhotoRole {
 	WALL_3,
 	WALL_4,
 	CEILING,
-	DETAIL
+	DETAIL;
+
+	/**
+	 * Whether a room may hold more than one of these (§4.3).
+	 *
+	 * <p>Only the close-up. The other five name a wall or the ceiling, so a second row for {@code
+	 * WALL_1} would be two answers to "what does this wall look like" and the analysis has no way to
+	 * choose between them. Close-ups are unlimited because §2.6 invites as many as there are cracks.
+	 */
+	public boolean isRepeatable() {
+		return this == DETAIL;
+	}
 }

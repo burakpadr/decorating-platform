@@ -39,5 +39,8 @@ class SessionConfig implements WebMvcConfigurer {
 	@Override
 	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
 		resolvers.add(new OwnedQuoteRequestResolver(cookie));
+		// The photo routes (§7) name a photograph rather than a request, so they get the caller's own
+		// id and check the row against it themselves.
+		resolvers.add(new CustomerSessionResolver(cookie));
 	}
 }

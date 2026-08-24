@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -83,6 +84,12 @@ class RoomPersistenceAdapter implements RoomRepository {
 						row.getBoolean("capture_complete")),
 				quoteRequestId);
 		return new ConfirmedRooms(rooms);
+	}
+
+	@Override
+	public Optional<UUID> quoteRequestOf(UUID roomId) {
+		return jdbc.query("SELECT quote_request_id FROM room WHERE id = ?",
+				(row, index) -> row.getObject(1, UUID.class), roomId).stream().findFirst();
 	}
 
 	/**

@@ -95,6 +95,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # The capture flow uploads straight from the browser to MinIO, and the browser sends a preflight
+      # first. Without PUT allowed from the web origin that upload fails and nothing can be quoted.
+      # Server-level rather than per bucket: MinIO answers PutBucketCors with "not implemented", so
+      # `mc cors set` cannot configure this however plausible it looks.
+      MINIO_API_CORS_ALLOW_ORIGIN: https://${DOMAIN}
     volumes:
       - minio_data:/data
     healthcheck:
@@ -104,8 +109,8 @@ services:
       retries: 10
     logging: *default_logging
 
-  # One-shot: creates the bucket and applies the CORS rule the capture flow needs. Without PUT and
-  # OPTIONS allowed from the web origin, direct-to-storage upload fails and nothing can be quoted.
+  # One-shot: creates the bucket and closes it to anonymous readers. CORS is not set here — it is a
+  # server setting on the minio service above, because MinIO has no per-bucket CORS to set.
   minio-init:
     image: minio/mc:latest
     depends_on:
@@ -121,7 +126,7 @@ services:
       mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
       mc mb --ignore-existing local/$$MINIO_BUCKET &&
       mc anonymous set none local/$$MINIO_BUCKET &&
-      echo 'Bucket ready. Set the CORS rule and the ILM expiry policy — see docs/engineering/deployment.md'
+      echo 'Bucket ready. Set the ILM expiry policy — see docs/engineering/deployment.md'
       "
     restart: "no"
 

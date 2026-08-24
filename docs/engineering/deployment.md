@@ -15,25 +15,28 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
 
 Flyway runs on API startup, so there is no separate migration step.
 
-## Two things `minio-init` does not do
+## Bucket CORS is a server setting, not a bucket setting
 
-**Bucket CORS.** The capture flow uploads straight from the browser to MinIO. Without `PUT` and
-`OPTIONS` allowed from the web origin, that upload fails and no quote can be produced.
+The capture flow uploads straight from the browser to MinIO. Without `PUT` allowed from the web
+origin the preflight fails, the upload silently does nothing, and no quote can be produced.
 
-```sh
-cat > /tmp/cors.json <<JSON
-{"CORSRules":[{
-  "AllowedOrigins":["https://$DOMAIN"],
-  "AllowedMethods":["PUT","GET","HEAD","OPTIONS"],
-  "AllowedHeaders":["*"],
-  "ExposeHeaders":["ETag"],
-  "MaxAgeSeconds":3000
-}]}
-JSON
+It is set on the `minio` service, from `DOMAIN`:
 
-docker compose -f infra/docker-compose.yml exec minio \
-  mc cors set local/$MINIO_BUCKET /tmp/cors.json
+```yaml
+MINIO_API_CORS_ALLOW_ORIGIN: https://${DOMAIN}
 ```
+
+**Not `mc cors set`.** MinIO answers `PutBucketCors` with "a header you provided implies
+functionality that is not implemented", so the per-bucket rule this file documented until BOYA-40
+never worked — and it failed in a way nobody would notice from the server side, because the request
+that breaks is a preflight in somebody else's browser. `MinioPhotoStorageTest` performs that
+preflight against a real MinIO and reads this setting out of both compose files, so the two cannot
+drift apart again.
+
+Leaving it unset is not neutral: the default is `*`, which lets a page on any domain use a
+presigned URL the customer's own session was handed.
+
+## One thing `minio-init` does not do
 
 **ILM expiry.** A backstop to the `PhotoPurge` scheduled job. Run both — a retention policy that
 depends on one scheduler is a policy with a single point of failure.

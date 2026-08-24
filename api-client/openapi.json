@@ -286,6 +286,154 @@
         }
       }
     },
+    "/api/photos/{id}/complete" : {
+      "post" : {
+        "tags" : [ "photo-controller" ],
+        "summary" : "The photograph arrived",
+        "operationId" : "complete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "From the upload intent",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CompleteUploadRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The frame, now uploaded",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The photograph belongs to another quote request",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such photograph",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The request is not collecting photographs",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/photos/upload-intent" : {
+      "post" : {
+        "tags" : [ "photo-controller" ],
+        "summary" : "Reserve a frame and get the URL to PUT it to",
+        "operationId" : "intend",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UploadIntentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "A presigned PUT, and the id to report it by",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "No room or no role",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The room belongs to another quote request",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "This frame is already photographed, or the request is not collecting photographs",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-calculations" : {
       "post" : {
         "tags" : [ "quote-calculation-controller" ],
@@ -686,6 +834,54 @@
         }
       }
     },
+    "/api/op/photos/{id}" : {
+      "get" : {
+        "tags" : [ "operator-photo-controller" ],
+        "summary" : "A short-lived URL for one photograph",
+        "operationId" : "read",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The presigned read and its window",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OperatorPhotoResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not an operator",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OperatorPhotoResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No such photograph",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OperatorPhotoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/districts" : {
       "get" : {
         "tags" : [ "district-controller" ],
@@ -704,6 +900,36 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/photos/{id}" : {
+      "delete" : {
+        "tags" : [ "photo-controller" ],
+        "summary" : "Retake: forget the frame and remove the object",
+        "operationId" : "discard",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "Gone, object and row"
+          },
+          "401" : {
+            "description" : "No session cookie"
+          },
+          "403" : {
+            "description" : "The photograph belongs to another quote request"
+          },
+          "404" : {
+            "description" : "No such photograph"
           }
         }
       }
@@ -957,6 +1183,93 @@
           }
         },
         "required" : [ "phone" ]
+      },
+      "CompleteUploadRequest" : {
+        "type" : "object",
+        "properties" : {
+          "capturedAt" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "EXIF DateTimeOriginal, read before the re-encode strips it"
+          },
+          "width" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "height" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "byteSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "qualityScore" : {
+            "type" : "number",
+            "description" : "Laplacian variance the client computed"
+          },
+          "lowQualityFlag" : {
+            "type" : "boolean",
+            "description" : "Accepted despite the score — §9 stops arguing after three attempts"
+          }
+        }
+      },
+      "PhotoResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "roomId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING", "DETAIL" ]
+          },
+          "uploaded" : {
+            "type" : "boolean"
+          },
+          "lowQualityFlag" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "id", "lowQualityFlag", "role", "roomId", "uploaded" ]
+      },
+      "UploadIntentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "roomId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "One of the areas this request confirmed at §2.2"
+          },
+          "role" : {
+            "type" : "string",
+            "enum" : [ "WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING", "DETAIL" ]
+          }
+        },
+        "required" : [ "role", "roomId" ]
+      },
+      "UploadIntentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "photoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "uploadUrl" : {
+            "type" : "string",
+            "description" : "PUT the JPEG here, directly. It does not pass through this API."
+          },
+          "expiresInSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "expiresInSeconds", "photoId", "uploadUrl" ]
       },
       "CalculateQuoteRequest" : {
         "type" : "object",
@@ -1306,6 +1619,19 @@
           }
         },
         "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
+      },
+      "OperatorPhotoResponse" : {
+        "type" : "object",
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          },
+          "expiresInSeconds" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [ "expiresInSeconds", "url" ]
       },
       "DistrictResponse" : {
         "type" : "object",

@@ -101,6 +101,18 @@ public final class QuoteRequest {
 		return moveTo(QuoteStatus.PHOTOS_PENDING, QuoteStatus.DRAFT);
 	}
 
+	/**
+	 * Whether §3 has this request at a point where photographs are being collected.
+	 *
+	 * <p>A question rather than a transition, because taking a photograph does not move the request:
+	 * the arrow out of {@code PHOTOS_PENDING} is {@link #submit()}, and it needs every required frame
+	 * plus a verified phone. {@code RECAPTURE_REQUIRED} is here for the same reason it exists — §6 asks
+	 * the customer for better frames, and refusing them would make that request unanswerable.
+	 */
+	public boolean acceptsPhotographs() {
+		return status == QuoteStatus.PHOTOS_PENDING || status == QuoteStatus.RECAPTURE_REQUIRED;
+	}
+
 	/** Every required photo is in and the phone is verified (§3's guard on this arrow). */
 	public QuoteRequest submit() {
 		return moveTo(QuoteStatus.ANALYZING, QuoteStatus.PHOTOS_PENDING);

@@ -31,6 +31,10 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
+      # The capture flow uploads straight from the browser to MinIO, and the browser sends a preflight
+      # first. Without this it fails and every upload silently does nothing. Server-level on purpose:
+      # MinIO answers PutBucketCors with "not implemented", so there is no per-bucket rule to set.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000
     ports:
       - "9000:9000"   # S3 API
       - "9001:9001"   # console
@@ -51,7 +55,6 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 minioadmin minioadmin &&
       mc mb --ignore-existing local/decorating-photos &&
-      mc cors set local/decorating-photos /tmp/cors.json 2>/dev/null ||
       echo 'Bucket ready.'
       "
     restart: "no"

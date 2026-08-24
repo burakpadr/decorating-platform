@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.domain.port.out;
 
 import com.burakpadr.decorating.quoting.domain.model.ConfirmedRooms;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -15,4 +16,14 @@ public interface RoomRepository {
 	void replaceAll(UUID quoteRequestId, ConfirmedRooms rooms);
 
 	ConfirmedRooms findByQuoteRequest(UUID quoteRequestId);
+
+	/**
+	 * Which request this room belongs to, or empty if there is no such room.
+	 *
+	 * <p>Asked before a photograph is reserved against it (§9). The room id arrives from the client and
+	 * the session names a different id, so this is the join that decides whether the two are the same
+	 * customer — and answering the same way for "no such room" as for "not yours" is what stops the
+	 * question from being a way to map other people's rooms.
+	 */
+	Optional<UUID> quoteRequestOf(UUID roomId);
 }
