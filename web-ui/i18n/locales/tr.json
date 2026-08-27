@@ -68,6 +68,9 @@
       "loading": "Kaldığınız yer açılıyor…",
       "failed": "Bu bağlantının süresi geçmiş ya da geçersiz. Baştan başlayabilirsiniz.",
       "start": "Yeni fiyat al"
+    },
+    "guide": {
+      "title": "Çekim rehberi"
     }
   },
   "rooms": {
@@ -396,5 +399,30 @@
     "goToForm": "Forma dön",
     "already": "Bu listeyi onayladınız. Kaldığınız yerden devam edin.",
     "continue": "Çekime devam et"
+  },
+  "captureGuide": {
+    "eyebrow": "Aşama 2 · Fotoğraf çekimi",
+    "title": "Çekmeden önce üç şey",
+    "intro": "Bu üç kural, tekrar çekim istememiz ihtimalini büyük ölçüde azaltıyor.",
+    "ruleLightTitle": "Işıkları açın",
+    "ruleLightBody": "Perdeleri aralayın, lambaları yakın. Karanlık fotoğrafta duvarın durumu görünmüyor.",
+    "rulePeopleTitle": "Fotoğraflarda kimse görünmesin",
+    "rulePeopleBody": "Odada kimse yokken çekin. Aynada kendinizi de göstermemeye çalışın.",
+    "ruleSteadyTitle": "Telefonu sabit tutun",
+    "ruleSteadyBody": "Çekerken bir an durun. Bulanık kareyi sizden tekrar istemek zorunda kalıyoruz.",
+    "noticeTitle": "Fotoğraflarınıza ne oluyor?",
+    "noticeLoading": "Onay metni yükleniyor…",
+    "noticeFailed": "Onay metni yüklenemedi. Sayfayı yenileyin.",
+    "agree": "Fotoğraflarımın yukarıda yazdığı şekilde kullanılmasını ve saklanmasını kabul ediyorum.",
+    "required": "Devam etmek için onay vermeniz gerekiyor. Onay vermeden fotoğraf çekimine geçemiyoruz.",
+    "continue": "Onaylıyorum, çekime başla",
+    "continuing": "Kaydediliyor…",
+    "failed": "Onayınız kaydedilemedi. Tekrar deneyin.",
+    "changed": "Onay metni güncellendi. Yeni metni okuyup tekrar onaylayın.",
+    "decline": "Onay vermek istemiyorum",
+    "declined": "Onayınızı kaydettik. Onay olmadan fotoğraflı teklif hazırlayamıyoruz, ama aldığınız fiyat aralığı geçerli.",
+    "backToResult": "Fiyat aralığına dön",
+    "incomplete": "Hangi talep için çekim yapıldığı belli değil.",
+    "goToForm": "Forma dön"
   }
 }
