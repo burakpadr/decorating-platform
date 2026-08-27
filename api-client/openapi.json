@@ -9,6 +9,10 @@
     "url" : "/",
     "description" : "Same origin"
   } ],
+  "tags" : [ {
+    "name" : "Consent",
+    "description" : "The versioned data notice (workflow §2.3)"
+  } ],
   "paths" : {
     "/api/op/price-books/{id}/items/{code}" : {
       "put" : {
@@ -282,6 +286,85 @@
           },
           "409" : {
             "description" : "No range has been computed yet"
+          }
+        }
+      }
+    },
+    "/api/quote-requests/{id}/consents" : {
+      "post" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "Record the customer's decision on the data notice",
+        "operationId" : "consent",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The draft this session owns",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecordConsentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "The decision, as it was recorded",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Not a decision this API accepts",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The session owns a different draft",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The notice has changed, or the room list is not agreed yet",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -904,6 +987,44 @@
         }
       }
     },
+    "/api/consent-notices/{type}" : {
+      "get" : {
+        "tags" : [ "Consent" ],
+        "summary" : "The notice currently published for this consent type",
+        "operationId" : "notice",
+        "parameters" : [ {
+          "name" : "type",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "PROCESSING", "RETENTION_FOR_IMPROVEMENT" ]
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The text and the version that names it",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentNoticeResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No notice is published for that type yet",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentNoticeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/photos/{id}" : {
       "delete" : {
         "tags" : [ "photo-controller" ],
@@ -1183,6 +1304,47 @@
           }
         },
         "required" : [ "phone" ]
+      },
+      "RecordConsentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "PROCESSING", "RETENTION_FOR_IMPROVEMENT" ],
+            "example" : "PROCESSING"
+          },
+          "granted" : {
+            "type" : "boolean"
+          },
+          "textVersion" : {
+            "type" : "string",
+            "description" : "The version served by GET /api/consent-notices/{type}",
+            "example" : "v1",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "granted", "textVersion", "type" ]
+      },
+      "ConsentResponse" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "PROCESSING", "RETENTION_FOR_IMPROVEMENT" ]
+          },
+          "granted" : {
+            "type" : "boolean"
+          },
+          "textVersion" : {
+            "type" : "string",
+            "example" : "v1"
+          },
+          "recordedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "granted", "recordedAt", "textVersion", "type" ]
       },
       "CompleteUploadRequest" : {
         "type" : "object",
@@ -1646,6 +1808,25 @@
           }
         },
         "required" : [ "code", "name" ]
+      },
+      "ConsentNoticeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "PROCESSING", "RETENTION_FOR_IMPROVEMENT" ]
+          },
+          "textVersion" : {
+            "type" : "string",
+            "description" : "Send this back with the decision; a stale one is refused",
+            "example" : "v1"
+          },
+          "body" : {
+            "type" : "string",
+            "description" : "Markdown. Turkish, and the only copy in this API that is not in tr.json"
+          }
+        },
+        "required" : [ "body", "textVersion", "type" ]
       }
     }
   }

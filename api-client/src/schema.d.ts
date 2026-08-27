@@ -88,6 +88,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests/{id}/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the customer's decision on the data notice */
+        post: operations["consent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/photos/{id}/complete": {
         parameters: {
             query?: never;
@@ -271,6 +288,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/consent-notices/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The notice currently published for this consent type */
+        get: operations["notice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/photos/{id}": {
         parameters: {
             query?: never;
@@ -391,6 +425,28 @@ export interface components {
         SendEstimateSmsRequest: {
             /** @example 0555 123 45 67 */
             phone: string;
+        };
+        RecordConsentRequest: {
+            /**
+             * @example PROCESSING
+             * @enum {string}
+             */
+            type: "PROCESSING" | "RETENTION_FOR_IMPROVEMENT";
+            granted: boolean;
+            /**
+             * @description The version served by GET /api/consent-notices/{type}
+             * @example v1
+             */
+            textVersion: string;
+        };
+        ConsentResponse: {
+            /** @enum {string} */
+            type: "PROCESSING" | "RETENTION_FOR_IMPROVEMENT";
+            granted: boolean;
+            /** @example v1 */
+            textVersion: string;
+            /** Format: date-time */
+            recordedAt: string;
         };
         CompleteUploadRequest: {
             /**
@@ -569,6 +625,17 @@ export interface components {
             code: string;
             /** @example Kadıköy */
             name: string;
+        };
+        ConsentNoticeResponse: {
+            /** @enum {string} */
+            type: "PROCESSING" | "RETENTION_FOR_IMPROVEMENT";
+            /**
+             * @description Send this back with the decision; a stale one is refused
+             * @example v1
+             */
+            textVersion: string;
+            /** @description Markdown. Turkish, and the only copy in this API that is not in tr.json */
+            body: string;
         };
     };
     responses: never;
@@ -816,6 +883,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    consent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description The decision, as it was recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description Not a decision this API accepts */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentResponse"];
+                };
+            };
+            /** @description The notice has changed, or the room list is not agreed yet */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentResponse"];
+                };
             };
         };
     };
@@ -1335,6 +1465,37 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DistrictResponse"][];
+                };
+            };
+        };
+    };
+    notice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: "PROCESSING" | "RETENTION_FOR_IMPROVEMENT";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The text and the version that names it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentNoticeResponse"];
+                };
+            };
+            /** @description No notice is published for that type yet */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConsentNoticeResponse"];
                 };
             };
         };

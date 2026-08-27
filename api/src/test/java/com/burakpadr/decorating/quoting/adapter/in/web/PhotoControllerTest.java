@@ -12,6 +12,7 @@ import com.burakpadr.decorating.TestcontainersConfiguration;
 import com.burakpadr.decorating.config.session.AnonymousSessionCookie;
 import com.burakpadr.decorating.quoting.domain.model.AreaBasis;
 import com.burakpadr.decorating.quoting.domain.model.ConfirmedRooms;
+import com.burakpadr.decorating.quoting.domain.model.ConsentType;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.Layout;
 import com.burakpadr.decorating.quoting.domain.model.PresignedUrl;
@@ -21,6 +22,8 @@ import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.WallCondition;
 import com.burakpadr.decorating.quoting.domain.port.in.ConfirmRoomList;
+import com.burakpadr.decorating.quoting.domain.port.in.ReadConsentNotice;
+import com.burakpadr.decorating.quoting.domain.port.in.RecordConsent;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.out.PhotoStorage;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
@@ -65,6 +68,12 @@ class PhotoControllerTest {
 	private ConfirmRoomList roomList;
 
 	@Autowired
+	private RecordConsent consents;
+
+	@Autowired
+	private ReadConsentNotice notices;
+
+	@Autowired
 	private EstimateStageOne estimates;
 
 	@Autowired
@@ -96,15 +105,20 @@ class PhotoControllerTest {
 		return new Cookie(AnonymousSessionCookie.NAME, session.asCookie(id).getValue());
 	}
 
-	/** A request with its room list agreed, which is the only state a photograph belongs in. */
+	/** A request with its room list agreed and its data notice accepted — §2.2 then §2.3. */
 	private ConfirmedRooms capturing() {
 		QuoteRequest draft = QuoteRequest.draft(Uuid7.generate()).answer(new StageOneAnswers(
 				"KADIKOY", new BigDecimal("92"), AreaBasis.NET, Layout.TWO_PLUS_ONE,
 				QuoteScope.WHOLE_HOME, Furnishing.EMPTY, 6, false, WallCondition.GOOD, null));
 		requests.save(draft);
 		estimates.estimate(draft.id());
-		return roomList.confirm(draft.id(), List.of(
+		ConfirmedRooms agreed = roomList.confirm(draft.id(), List.of(
 				RoomType.LIVING_ROOM, RoomType.KITCHEN, RoomType.BATHROOM, RoomType.HALLWAY));
+		// §2.3 is now a rule and not only a screen: PhotoCaptureService refuses to reserve a frame for a
+		// request that has not agreed the notice, so the fixture has to agree it like a customer would.
+		consents.record(draft.id(), ConsentType.PROCESSING, true,
+				notices.current(ConsentType.PROCESSING).version());
+		return agreed;
 	}
 
 	private UUID requestOf(ConfirmedRooms rooms) {

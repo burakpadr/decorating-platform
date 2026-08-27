@@ -1,5 +1,6 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
+import com.burakpadr.decorating.quoting.domain.model.ConsentMissing;
 import com.burakpadr.decorating.quoting.domain.model.PhotoNotFound;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,18 @@ class PhotoErrorHandler {
 	ProblemDetail notFound(RuntimeException missing) {
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
 		problem.setTitle("Fotoğraf bulunamadı");
+		return problem;
+	}
+
+	@ExceptionHandler(ConsentMissing.class)
+	ProblemDetail withoutConsent(ConsentMissing refused) {
+		// 403 rather than 409: nothing about the request has to change for this to succeed, and nothing
+		// about it is in conflict. Permission is missing, and the urn is how the client knows to send the
+		// customer back to §2.3 rather than showing a dead end.
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, refused.getMessage());
+		problem.setType(java.net.URI.create("urn:decorating:consent-missing"));
+		problem.setTitle("Fotoğraf çekimi için onay gerekiyor");
 		return problem;
 	}
 

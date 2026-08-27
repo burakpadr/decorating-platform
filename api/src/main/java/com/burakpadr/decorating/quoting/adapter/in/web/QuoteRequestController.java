@@ -4,6 +4,7 @@ import com.burakpadr.decorating.config.session.AnonymousSessionCookie;
 import com.burakpadr.decorating.config.session.OwnedQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.ConfirmRoomList;
+import com.burakpadr.decorating.quoting.domain.port.in.RecordConsent;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
@@ -55,16 +56,18 @@ class QuoteRequestController {
 	private final EstimateStageOne estimates;
 	private final SendEstimateBySms sms;
 	private final ConfirmRoomList roomList;
+	private final RecordConsent consents;
 	private final ResumeTokens resumeTokens;
 	private final AnonymousSessionCookie session;
 
 	QuoteRequestController(ManageQuoteRequests requests, EstimateStageOne estimates,
-			SendEstimateBySms sms, ConfirmRoomList roomList, ResumeTokens resumeTokens,
-			AnonymousSessionCookie session) {
+			SendEstimateBySms sms, ConfirmRoomList roomList, RecordConsent consents,
+			ResumeTokens resumeTokens, AnonymousSessionCookie session) {
 		this.requests = requests;
 		this.estimates = estimates;
 		this.sms = sms;
 		this.roomList = roomList;
+		this.consents = consents;
 		this.resumeTokens = resumeTokens;
 		this.session = session;
 	}
@@ -164,6 +167,29 @@ class QuoteRequestController {
 	ConfirmedRoomsResponse confirmRooms(@Parameter(hidden = true) OwnedQuoteRequest owned,
 			@Valid @RequestBody ConfirmRoomsRequest request) {
 		return ConfirmedRoomsResponse.of(roomList.confirm(owned.id(), request.areas()));
+	}
+
+	@PostMapping("/{id}/consents")
+	@Operation(summary = "Record the customer's decision on the data notice")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "The decision, as it was recorded"),
+			@ApiResponse(responseCode = "400", description = "Not a decision this API accepts",
+					content = {}),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "409",
+					description = "The notice has changed, or the room list is not agreed yet",
+					content = {})})
+	ResponseEntity<ConsentResponse> consent(@Parameter(hidden = true) OwnedQuoteRequest owned,
+			@Valid @RequestBody RecordConsentRequest request) {
+		// 201 rather than 200: a decision is appended, never updated (§12 keeps every one), so each call
+		// that succeeds has created something.
+		return ResponseEntity.status(HttpStatus.CREATED).body(ConsentResponse.of(consents.record(
+				owned.id(), request.type(), request.granted(), request.textVersion())));
 	}
 
 	@GetMapping("/resume/{token}")

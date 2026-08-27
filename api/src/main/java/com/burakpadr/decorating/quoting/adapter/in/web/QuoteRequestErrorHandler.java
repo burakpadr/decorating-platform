@@ -1,5 +1,7 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
+import com.burakpadr.decorating.quoting.domain.model.ConsentNoticeChanged;
+import com.burakpadr.decorating.quoting.domain.model.ConsentOutOfOrder;
 import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import org.springframework.http.HttpStatus;
@@ -37,6 +39,28 @@ class QuoteRequestErrorHandler {
 		problem.setType(java.net.URI.create("urn:decorating:district-not-served"));
 		problem.setTitle("Bu ilçede henüz hizmet vermiyoruz");
 		problem.setProperty("districtCode", refused.districtCode());
+		return problem;
+	}
+
+	@ExceptionHandler(ConsentNoticeChanged.class)
+	ProblemDetail noticeChanged(ConsentNoticeChanged stale) {
+		// 409 with the version to show instead. The client's next move is to re-read the notice and ask
+		// again, and it cannot work that out from a sentence — a grant against words that are no longer
+		// published is the one thing §12's versioning exists to prevent.
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+		problem.setType(java.net.URI.create("urn:decorating:consent-notice-changed"));
+		problem.setTitle("Onay metni güncellendi");
+		problem.setProperty("currentVersion", stale.current());
+		return problem;
+	}
+
+	@ExceptionHandler(ConsentOutOfOrder.class)
+	ProblemDetail outOfOrder(ConsentOutOfOrder early) {
+		// Its own handler so it does not inherit the sentence below, which is about answers being frozen
+		// and would send the customer looking for a form they have not filled in wrongly.
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, early.getMessage());
+		problem.setTitle("Önce çekilecek alanlar onaylanmalı");
 		return problem;
 	}
 

@@ -2,6 +2,9 @@ package com.burakpadr.decorating.quoting.application;
 
 import com.burakpadr.decorating.config.session.NotYourQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.CapturedFrame;
+import com.burakpadr.decorating.quoting.domain.model.Consent;
+import com.burakpadr.decorating.quoting.domain.model.ConsentMissing;
+import com.burakpadr.decorating.quoting.domain.model.ConsentType;
 import com.burakpadr.decorating.quoting.domain.model.Photo;
 import com.burakpadr.decorating.quoting.domain.model.PhotoNotFound;
 import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
@@ -10,6 +13,7 @@ import com.burakpadr.decorating.quoting.domain.model.PresignedUrl;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import com.burakpadr.decorating.quoting.domain.port.in.CapturePhotos;
+import com.burakpadr.decorating.quoting.domain.port.out.ConsentRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.PhotoRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.PhotoStorage;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
@@ -39,6 +43,7 @@ class PhotoCaptureService implements CapturePhotos {
 	private final PhotoRepository photos;
 	private final RoomRepository rooms;
 	private final QuoteRequestRepository requests;
+	private final ConsentRepository consents;
 	private final PhotoStorage storage;
 
 	/** UTC, as {@code SessionConfig} does it: the column is {@code timestamptz} and nothing here is
@@ -46,10 +51,11 @@ class PhotoCaptureService implements CapturePhotos {
 	private final Clock clock = Clock.systemUTC();
 
 	PhotoCaptureService(PhotoRepository photos, RoomRepository rooms, QuoteRequestRepository requests,
-			PhotoStorage storage) {
+			ConsentRepository consents, PhotoStorage storage) {
 		this.photos = photos;
 		this.rooms = rooms;
 		this.requests = requests;
+		this.consents = consents;
 		this.storage = storage;
 	}
 
@@ -62,6 +68,7 @@ class PhotoCaptureService implements CapturePhotos {
 			throw new NotYourQuoteRequest("this room belongs to another quote request");
 		}
 		requireCapturing(quoteRequestId);
+		requireConsent(quoteRequestId);
 
 		if (!role.isRepeatable()) {
 			supersede(photos.findByRoomAndRole(roomId, role), role);
@@ -130,6 +137,27 @@ class PhotoCaptureService implements CapturePhotos {
 	 * <p>Before that there is no list for a frame to belong to; after it the analysis has already read
 	 * what was there, and a photograph arriving late would be one the quote was not built on.
 	 */
+	/**
+	 * Refuses a frame the customer has not agreed to have processed (workflow §2.3, BOYA-39).
+	 *
+	 * <p>Asked here rather than trusted to the screen, because the screen is one URL away from being
+	 * skipped and the frames would then arrive with nothing on record saying they may be held.
+	 *
+	 * <p>Only the reservation is gated. {@code complete} finishes a PUT that was already permitted when
+	 * it was signed, and refusing it would strand a browser holding bytes it cannot put anywhere;
+	 * {@code discard} is how a photograph is removed, and making that harder after a withdrawal would be
+	 * exactly backwards.
+	 */
+	private void requireConsent(UUID quoteRequestId) {
+		boolean agreed = consents.latest(quoteRequestId, ConsentType.PROCESSING)
+				.filter(Consent::granted)
+				.isPresent();
+		if (!agreed) {
+			throw new ConsentMissing(
+					"the data notice has not been agreed to: §2.3 comes before the first frame");
+		}
+	}
+
 	private void requireCapturing(UUID quoteRequestId) {
 		QuoteRequest request = requests.findById(quoteRequestId)
 				.orElseThrow(() -> new QuoteRequestNotFound(String.valueOf(quoteRequestId)));
