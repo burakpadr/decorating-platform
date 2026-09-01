@@ -424,5 +424,48 @@
     "backToResult": "Fiyat aralığına dön",
     "incomplete": "Hangi talep için çekim yapıldığı belli değil.",
     "goToForm": "Forma dön"
+  },
+  "capture": {
+    "eyebrow": "Aşama 2 · Fotoğraf çekimi",
+    "progress": "{taken} / {required} fotoğraf",
+    "areaProgress": "{taken}/{total}",
+    "now": "Şimdi: {area}",
+    "pickTitle": "Hangi alandan başlamak istersiniz?",
+    "frames": {
+      "general": "Genel görünüm",
+      "corner1": "1. köşe",
+      "corner2": "2. köşe",
+      "corner3": "3. köşe",
+      "corner4": "4. köşe"
+    },
+    "hints": {
+      "wall": "Duvarın tamamı kadraja girsin. Karşı köşeden çekerseniz kolay olur.",
+      "ceiling": "Telefonu yukarı doğrultun, tavanın ortasını alın.",
+      "corner": "Karşıt köşelerden birer kare yeterli — burada duvarın çoğu dolap ve fayans.",
+      "general": "Odanın genelini gösteren tek kare yeterli.",
+      "detail": "Çatlağa veya lekeye yaklaşın, net olsun."
+    },
+    "take": "Fotoğraf çek",
+    "retake": "Yeniden çek",
+    "preparing": "Fotoğraf hazırlanıyor…",
+    "uploading": "Yükleniyor… %{percent}",
+    "rejected": {
+      "BLURRY": "Fotoğraf bulanık çıkmış. Telefonu sabit tutup tekrar çekin.",
+      "DARK": "Fotoğraf çok karanlık. Işıkları açıp tekrar çekin.",
+      "SMALL": "Fotoğraf çok küçük geldi. Tekrar çekmeyi deneyin."
+    },
+    "lowQuality": "Bu kare ideal değil ama kabul ettik.",
+    "failed": "Fotoğraf gönderilemedi. Tekrar deneyin.",
+    "deleteFailed": "Fotoğraf silinemedi. Tekrar deneyin.",
+    "consentNeeded": "Devam etmek için önce çekim onayını vermeniz gerekiyor.",
+    "goToGuide": "Çekim rehberine dön",
+    "doneTitle": "Bütün fotoğraflar tamam",
+    "doneBody": "{required} karenin hepsi bize ulaştı. Bundan sonrası bizde — teklifiniz hazırlanıyor.",
+    "loading": "Çekim listesi yükleniyor…",
+    "failedToLoad": "Çekim listesi yüklenemedi. Sayfayı yenileyin.",
+    "noAreas": "Önce çekilecek alanları onaylamanız gerekiyor.",
+    "goToRooms": "Alan listesine dön",
+    "incomplete": "Hangi talep için çekim yapıldığı belli değil.",
+    "goToForm": "Forma dön"
   }
 }
