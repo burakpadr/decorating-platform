@@ -199,7 +199,6 @@ class RoomAnalysisSchemaTest {
 				  "roomType": "LIVING_ROOM",
 				  "surfaces": [{
 				    "id": "WALL_1",
-				    "photoId": "0199c4f2-1c1a-7c3e-9a52-6b1d0f6a1a01",
 				    "coating": "PAINTED",
 				    "currentTone": "DARK",
 				    "fillerRatio": "MEDIUM",

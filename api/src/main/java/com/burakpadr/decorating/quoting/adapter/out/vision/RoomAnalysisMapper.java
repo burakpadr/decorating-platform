@@ -8,12 +8,10 @@ import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.Moisture;
 import com.burakpadr.decorating.quoting.domain.model.RoomAnalysis;
 import com.burakpadr.decorating.quoting.domain.model.RoomAnalysisRequest;
-import com.burakpadr.decorating.quoting.domain.model.RoomType;
 import com.burakpadr.decorating.quoting.domain.model.SurfaceFinding;
 import com.burakpadr.decorating.quoting.domain.model.Tone;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import tools.jackson.databind.JsonNode;
 
 /**
@@ -42,17 +40,21 @@ final class RoomAnalysisMapper {
 		JsonNode ceiling = response.get("ceiling");
 
 		return new RoomAnalysis(
-				// The room the frames came from, not the room the model thinks it saw. room.room_type is
-				// the customer's answer and it is what §5.3 prices against; roomType below is evidence.
+				// The room the frames came from. What the model thinks the room is stays in the raw
+				// response: room.room_type is the customer's answer and §5.3 prices that one (§4.4 gives
+				// the row no column for the model's reading either).
 				request.roomId(),
 				promptVersion,
 				modelVersion,
 				rawResponse,
-				RoomType.valueOf(response.get("roomType").stringValue()),
 				surfaces(response.get("surfaces")),
 				new CeilingFinding(
 						Moisture.valueOf(ceiling.get("staining").stringValue()),
 						FillerBand.valueOf(ceiling.get("fillerRatio").stringValue())),
+				// Kept out of CeilingFinding: the engine takes that record and prices neither this nor
+				// anything derived from it. How well the ceiling was read belongs to the room's
+				// confidence (§6, decision 0021), which is not the engine's business.
+				ceiling.get("confidence").decimalValue(),
 				ceiling.get("cornice").booleanValue(),
 				ceiling.get("downlightCount").intValue(),
 				Furnishing.valueOf(response.get("furnishing").stringValue()),
@@ -69,7 +71,6 @@ final class RoomAnalysisMapper {
 		for (JsonNode surface : surfaces) {
 			findings.add(new SurfaceFinding(
 					surface.get("id").stringValue(),
-					photoId(surface),
 					Coating.valueOf(surface.get("coating").stringValue()),
 					Tone.valueOf(surface.get("currentTone").stringValue()),
 					FillerBand.valueOf(surface.get("fillerRatio").stringValue()),
@@ -80,24 +81,6 @@ final class RoomAnalysisMapper {
 					surface.get("confidence").decimalValue()));
 		}
 		return findings;
-	}
-
-	/**
-	 * Optional, and quietly dropped when it is not a photograph we sent. §6 does not require it, a
-	 * finding about the room as a whole may have no single frame behind it, and a model that answers
-	 * with an id of its own invention must not put that id on a row that looks like a foreign key.
-	 */
-	private static UUID photoId(JsonNode surface) {
-		String reported = surface.path("photoId").stringValue(null);
-		if (reported == null) {
-			return null;
-		}
-		try {
-			return UUID.fromString(reported);
-		}
-		catch (IllegalArgumentException notAUuid) {
-			return null;
-		}
 	}
 
 	private static List<String> strings(JsonNode array) {

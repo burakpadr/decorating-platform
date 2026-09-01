@@ -190,7 +190,15 @@ the job. `notes` must stay Turkish — the operator reads it.
 
 `VisionAnalysisPort` must be fake-able. A test suite that makes real vision calls is unusable.
 
-Room confidence is the weighted average of surface confidences, not the minimum.
+Room confidence is the weighted average of surface confidences, not the minimum — read as the plain
+average over every plane read, **ceiling included**, because §5.4 supplies no per-wall area to weigh by
+and ADR 0017 made the ceiling a priced plane. `RoomAnalysis.roomConfidence()` owns the rule; the row
+stores it so calibration can join rather than recompute (decision 0021).
+
+An analysis is stored once per room — `room_id` is UNIQUE, so a re-analysis after a recapture replaces
+its predecessor and its surface rows. The findings are read back from the columns, never from
+`raw_response`: that is what `surface_finding` is for, and `RoomAnalysisPersistenceAdapterTest` proves
+it by emptying the JSON after the write.
 
 The adapter is provider-independent (BOYA-47). `VisionModel` is the single interface a provider
 implements, selected by `decorating.vision.provider`; everything else in `adapter/out/vision` —

@@ -18,7 +18,6 @@
         "required": ["id", "coating", "currentTone", "fillerRatio", "skimCoatRequired", "crackLevel", "moisture", "wallpaper", "confidence"],
         "properties": {
           "id": { "type": "string", "enum": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "ROOM_GENERAL"] },
-          "photoId": { "type": "string" },
           "coating": { "type": "string", "enum": ["PAINTED", "TILE", "WOOD", "BRICK"] },
           "currentTone": { "type": "string", "enum": ["LIGHT", "MEDIUM", "DARK"] },
           "fillerRatio": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "FULL"] },

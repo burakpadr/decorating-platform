@@ -120,7 +120,6 @@ class ModelBackedVisionAnalysisTest {
 		assertThat(analysis.modelVersion()).isEqualTo("scripted-model-1");
 		assertThat(analysis.rawResponse()).isEqualTo(valid());
 
-		assertThat(analysis.roomType()).isEqualTo(RoomType.LIVING_ROOM);
 		assertThat(analysis.furnishing()).isEqualTo(Furnishing.FURNISHED);
 		assertThat(analysis.doorCount()).isEqualTo(2);
 		assertThat(analysis.windowCount()).isEqualTo(3);
@@ -128,12 +127,14 @@ class ModelBackedVisionAnalysisTest {
 		assertThat(analysis.cornice()).isTrue();
 		assertThat(analysis.downlightCount()).isEqualTo(6);
 		assertThat(analysis.reportedConfidence()).isEqualByComparingTo("0.83");
+		// The ceiling's own reading, which §6 leaves out of "surfaces" and decision 0021 puts back into
+		// the room's confidence — the ceiling is priced, so how well it was read counts.
+		assertThat(analysis.ceilingConfidence()).isEqualByComparingTo("0.79");
 		assertThat(analysis.unusablePhotos()).isEmpty();
 		assertThat(analysis.notes()).containsExactly("sol duvarda priz hizasında çatlak");
 
 		assertThat(analysis.surfaces()).singleElement().isEqualTo(new SurfaceFinding(
-				"WALL_1", UUID.fromString("0199c4f2-1c1a-7c3e-9a52-6b1d0f6a1a01"),
-				Coating.PAINTED, Tone.DARK, FillerBand.MEDIUM, false,
+				"WALL_1", Coating.PAINTED, Tone.DARK, FillerBand.MEDIUM, false,
 				CrackLevel.HAIRLINE, Moisture.NONE, false, new BigDecimal("0.88")));
 	}
 
