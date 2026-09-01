@@ -109,6 +109,7 @@ const attempts = ref<Record<string, number>>({})
 
 const guideLink = computed(() => `/cekim/rehber?talep=${encodeURIComponent(id)}`)
 const roomsLink = computed(() => `/cekim?talep=${encodeURIComponent(id)}`)
+const verifyLink = computed(() => `/cekim/dogrulama?talep=${encodeURIComponent(id)}`)
 
 function labelOf(areaType: string, role: string): string {
   return t(frameLabelKey(areaType, role))
@@ -262,6 +263,9 @@ async function retake(photoId: string) {
         <template v-if="state.complete">
           <h1>{{ t('capture.doneTitle') }}</h1>
           <p class="intro">{{ t('capture.doneBody', { required: state.required }) }}</p>
+          <NuxtLink class="btn primary verify" :to="verifyLink">
+            {{ t('capture.goToVerify') }}
+          </NuxtLink>
         </template>
         <h1 v-else>{{ t('capture.pickTitle') }}</h1>
 

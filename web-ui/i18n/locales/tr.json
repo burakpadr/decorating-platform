@@ -71,6 +71,12 @@
     },
     "guide": {
       "title": "Çekim rehberi"
+    },
+    "verify": {
+      "title": "Telefon doğrulama"
+    },
+    "waiting": {
+      "title": "Teklifiniz hazırlanıyor"
     }
   },
   "rooms": {
@@ -461,12 +467,66 @@
     "consentNeeded": "Devam etmek için önce çekim onayını vermeniz gerekiyor.",
     "goToGuide": "Çekim rehberine dön",
     "doneTitle": "Bütün fotoğraflar tamam",
-    "doneBody": "{required} karenin hepsi bize ulaştı. Bundan sonrası bizde — teklifiniz hazırlanıyor.",
+    "doneBody": "{required} karenin hepsi bize ulaştı. Son bir adım kaldı: telefonunuzu doğrulayın.",
     "loading": "Çekim listesi yükleniyor…",
     "failedToLoad": "Çekim listesi yüklenemedi. Sayfayı yenileyin.",
     "noAreas": "Önce çekilecek alanları onaylamanız gerekiyor.",
     "goToRooms": "Alan listesine dön",
     "incomplete": "Hangi talep için çekim yapıldığı belli değil.",
+    "goToForm": "Forma dön",
+    "goToVerify": "Telefonumu doğrula"
+  },
+  "verify": {
+    "eyebrow": "Aşama 3 · Telefon doğrulama",
+    "title": "Teklifinizi nereye gönderelim?",
+    "intro": "Numaranıza altı haneli bir kod göndereceğiz. Teklif hazır olduğunda da SMS ile haber vereceğiz.",
+    "why": "Numaranızı sadece teklifinizi iletmek için kullanıyoruz.",
+    "phone": "Cep telefonu numaranız",
+    "phonePlaceholder": "0555 123 45 67",
+    "send": "Kod gönder",
+    "sending": "Gönderiliyor…",
+    "invalidPhone": "Türkiye cep telefonu numarası girin (5 ile başlayan 10 hane).",
+    "sendFailed": "Kod gönderilemedi. Tekrar deneyin.",
+    "rateLimited": "Çok sık kod istediniz.",
+    "retry": {
+      "seconds": "{seconds} saniye sonra tekrar deneyebilirsiniz.",
+      "clock": "{clock} sonra tekrar deneyebilirsiniz.",
+      "hours": "{hours} saat sonra tekrar deneyebilirsiniz.",
+      "now": "Şimdi tekrar deneyebilirsiniz."
+    },
+    "codeTitle": "Kodu girin",
+    "codeSent": "{phone} numarasına altı haneli bir kod gönderdik.",
+    "expiresIn": "Kodun geçerlilik süresi: {clock}",
+    "expired": "Kodun süresi doldu. Yeni bir kod isteyin.",
+    "code": "Doğrulama kodu",
+    "codePlaceholder": "123456",
+    "verify": "Doğrula",
+    "verifying": "Doğrulanıyor…",
+    "invalidCode": "Altı haneli kodu girin.",
+    "wrongCode": "Kod doğrulanamadı. Tekrar deneyin.",
+    "locked": "Bu kod çok kez yanlış girildi. Yeni bir kod isteyin.",
+    "resend": "Yeni kod gönder",
+    "changePhone": "Numarayı değiştir",
+    "submitFailed": "Talebiniz gönderilemedi. Tekrar deneyin.",
+    "captureIncomplete": "Önce eksik fotoğrafları tamamlamanız gerekiyor.",
+    "goToCapture": "Çekime dön",
+    "incomplete": "Hangi talep için doğrulama yapıldığı belli değil.",
+    "goToForm": "Forma dön"
+  },
+  "waiting": {
+    "eyebrow": "Aşama 3 · Tamamlandı",
+    "title": "Teklifiniz hazırlanıyor",
+    "promise": "Teklifiniz {when} hazır olacak.",
+    "promiseToday": "Teklifiniz bugün saat {time} civarında hazır olacak.",
+    "promiseTomorrow": "Teklifiniz yarın saat {time} civarında hazır olacak.",
+    "promiseUnknown": "Teklifiniz hazırlanır hazırlanmaz size haber vereceğiz.",
+    "leaveOk": "Bu ekranı kapatabilirsiniz. Hazır olduğunda SMS göndereceğiz.",
+    "whatNow": "Bundan sonra ne oluyor?",
+    "step1": "Fotoğraflarınız yapay zekâ ile oda oda inceleniyor.",
+    "step2": "Tespit edilen duruma göre teklifiniz hesaplanıyor.",
+    "step3": "Teklif son kontrolden geçip SMS ile size ulaşıyor.",
+    "home": "Ana sayfaya dön",
+    "incomplete": "Hangi talep için beklendiği belli değil.",
     "goToForm": "Forma dön"
   }
 }
