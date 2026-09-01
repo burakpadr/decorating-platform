@@ -446,11 +446,7 @@
       "detail": "Çatlağa veya lekeye yaklaşın, net olsun."
     },
     "take": "Fotoğraf çek",
-    "previewOf": "Çektiğiniz kare: {frame}",
-    "previewAlt": "Az önce çektiğiniz fotoğraf",
-    "previewAsk": "Kare istediğiniz gibi mi? Onaylarsanız gönderiyoruz.",
-    "confirm": "Onayla ve gönder",
-    "discard": "Yeniden çek",
+    "refusedAlt": "Kabul edilmeyen fotoğraf",
     "retake": "Yeniden çek",
     "preparing": "Fotoğraf hazırlanıyor…",
     "uploading": "Yükleniyor… %{percent}",
