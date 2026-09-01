@@ -1983,11 +1983,32 @@
               "$ref" : "#/components/schemas/CaptureFrameResponse"
             }
           },
+          "extras" : {
+            "type" : "array",
+            "description" : "§2.6's close-ups: unlimited, skippable, counted towards nothing",
+            "items" : {
+              "$ref" : "#/components/schemas/CaptureExtraResponse"
+            }
+          },
           "complete" : {
+            "type" : "boolean",
+            "description" : "Every required frame is in. Close-ups do not affect it either way."
+          }
+        },
+        "required" : [ "complete", "extras", "frames", "id", "label", "sortOrder", "type" ]
+      },
+      "CaptureExtraResponse" : {
+        "type" : "object",
+        "properties" : {
+          "photoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "lowQualityFlag" : {
             "type" : "boolean"
           }
         },
-        "required" : [ "complete", "frames", "id", "label", "sortOrder", "type" ]
+        "required" : [ "lowQualityFlag", "photoId" ]
       },
       "CaptureFrameResponse" : {
         "type" : "object",

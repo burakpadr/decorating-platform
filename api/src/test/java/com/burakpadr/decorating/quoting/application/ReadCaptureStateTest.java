@@ -55,6 +55,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * abandon mid-flow and resume on another device", and the desktop-to-mobile handoff is precisely how
  * this screen is usually reached.
  *
+ * <p>§2.6's close-ups live here too, and they are a different kind of thing from the rest: unlimited,
+ * skippable, and belonging to no slot. "Analiz açısından muhtemelen en değerli kareler bunlar olacak —
+ * geniş açı fotoğrafta ince çatlak görünmez." So they are reported beside the required frames rather
+ * than among them; counting them would make a capture that took two close-ups look further along than
+ * one that took none, and neither is more finished than the other.
+ *
  * <p>The distinction that matters most here is between a frame that was reserved and a frame that
  * arrived. An upload intent is a signed URL and a promise; a lift with no signal breaks the promise and
  * leaves the row behind. A screen that counted reservations would tell the customer they had finished
@@ -230,6 +236,74 @@ class ReadCaptureStateTest {
 		}
 
 		assertThat(capture.of(session.id()).complete()).isTrue();
+	}
+
+	@Test
+	@DisplayName("§2.6: a close-up is reported beside the required frames, and names its photo")
+	void reportsACloseUp() {
+		Capturing session = capturing();
+		UUID living = roomOf(session, 0);
+		UUID closeUp = upload(session, living, PhotoRole.DETAIL);
+
+		CaptureState state = capture.of(session.id());
+
+		assertThat(state.areas().get(0).extras()).extracting("photoId").containsExactly(closeUp);
+		assertThat(state.areas().get(0).frames()).extracting("role")
+				.as("a close-up belongs to no slot: it must not appear among the frames §2.4 asks for")
+				.doesNotContain(PhotoRole.DETAIL);
+	}
+
+	@Test
+	@DisplayName("§2.6 is unlimited: a room may hold as many close-ups as the customer takes")
+	void allowsManyCloseUps() {
+		Capturing session = capturing();
+		UUID living = roomOf(session, 0);
+		upload(session, living, PhotoRole.DETAIL);
+		upload(session, living, PhotoRole.DETAIL);
+		upload(session, living, PhotoRole.DETAIL);
+
+		assertThat(capture.of(session.id()).areas().get(0).extras()).hasSize(3);
+	}
+
+	@Test
+	@DisplayName("close-ups count towards nothing: §2.6 is skippable and the totals say so")
+	void closeUpsDoNotCount() {
+		Capturing session = capturing();
+		upload(session, roomOf(session, 0), PhotoRole.DETAIL);
+
+		CaptureState state = capture.of(session.id());
+
+		assertThat(state.taken()).isZero();
+		assertThat(state.required())
+				.as("seven frames are asked for whether or not anybody photographs a crack")
+				.isEqualTo(7);
+		assertThat(state.areas().get(0).complete()).isFalse();
+	}
+
+	@Test
+	@DisplayName("an area with every required frame is complete, close-up or no close-up")
+	void closeUpsDoNotBlockCompletion() {
+		Capturing session = capturing();
+		UUID bathroom = roomOf(session, 1);
+		upload(session, bathroom, PhotoRole.WALL_1);
+		upload(session, bathroom, PhotoRole.CEILING);
+
+		assertThat(capture.of(session.id()).areas().get(1).complete())
+				.as("skippable means skippable: a room nobody found a crack in is finished")
+				.isTrue();
+
+		upload(session, bathroom, PhotoRole.DETAIL);
+
+		assertThat(capture.of(session.id()).areas().get(1).complete()).isTrue();
+	}
+
+	@Test
+	@DisplayName("a close-up nobody uploaded is not one, like every other frame")
+	void doesNotCountAnUnfinishedCloseUp() {
+		Capturing session = capturing();
+		photos.intend(session.id(), roomOf(session, 0), PhotoRole.DETAIL);
+
+		assertThat(capture.of(session.id()).areas().get(0).extras()).isEmpty();
 	}
 
 	@Test

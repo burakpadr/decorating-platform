@@ -11,6 +11,12 @@ import java.util.UUID;
  * question no existing type answered: {@code ConfirmedRooms} knows what was agreed and {@code Photo}
  * knows what arrived, and the screen has to show both against each other.
  *
+ * <p>§2.6's close-ups are carried separately, in {@code extras}. They belong to no slot — unlimited
+ * and skippable, taken because the customer saw a crack — so they cannot be frames without either
+ * inventing slots for them or making a room's completeness depend on how much was wrong with it.
+ * Counting them would say a capture that found two problems is further along than one that found
+ * none, and neither is more finished than the other.
+ *
  * <p>The line that carries the weight is {@link CaptureFrame#taken}. A reserved frame and a
  * photographed one are different things — an intent is a signed URL and a promise, and a lift with no
  * signal breaks the promise while leaving the row. Counting reservations would tell somebody they had
@@ -25,10 +31,11 @@ public record CaptureState(List<CaptureArea> areas) {
 
 	/** One agreed area and the frames §2.4's table asks of it. */
 	public record CaptureArea(UUID id, RoomType type, String label, int sortOrder,
-			List<CaptureFrame> frames) {
+			List<CaptureFrame> frames, List<CaptureExtra> extras) {
 
 		public CaptureArea {
 			frames = List.copyOf(frames);
+			extras = List.copyOf(extras);
 		}
 
 		public boolean complete() {
@@ -39,6 +46,14 @@ public record CaptureState(List<CaptureArea> areas) {
 			return (int) frames.stream().filter(CaptureFrame::taken).count();
 		}
 	}
+
+	/**
+	 * A close-up somebody chose to take (§2.6).
+	 *
+	 * @param lowQualityFlag carried like a frame's, because a blurred close-up of a crack is worth
+	 *     knowing about: it is the frame the analysis was most likely to learn something from.
+	 */
+	public record CaptureExtra(UUID photoId, boolean lowQualityFlag) {}
 
 	/**
 	 * One frame of one area.

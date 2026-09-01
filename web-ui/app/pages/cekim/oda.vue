@@ -29,9 +29,15 @@
  * three-rejection rule is about this sitting, not about the request: a frame refused today and retried
  * tomorrow deserves the same three honest attempts.
  *
- * Not here: the close-ups of §2.6 (BOYA-43), the retry queue of §2.7 (BOYA-44, so a failed upload is
- * told to the customer rather than queued), and what happens once every frame is in — §3 needs a
- * verified phone before ANALYZING, which is BOYA-45.
+ * §2.6's close-ups are asked for once an area's required frames are in, and not before: the question is
+ * "bu odada çatlak, leke veya dökülme var mı", and asking it while four walls are still outstanding
+ * would be interrupting one job with another. Unlimited and skippable, exactly as §2.6 says — they
+ * count towards nothing, and an area with none is as finished as an area with three. They are also,
+ * per §2.6, probably the most valuable frames the analysis will get, because a hairline crack is
+ * invisible in a wide shot.
+ *
+ * Not here: the retry queue of §2.7 (BOYA-44, so a failed upload is told to the customer rather than
+ * queued).
  */
 import type { components } from '@decorating/api-client'
 
@@ -334,6 +340,34 @@ async function retake(photoId: string) {
                   >{{ t('capture.retake') }}</button>
                 </li>
               </ul>
+
+              <!-- §2.6, and only once the area's own frames are in: the question is about this room. -->
+              <section v-if="a.complete" class="closeUps">
+                <h3>{{ t('capture.closeUpTitle') }}</h3>
+                <p class="hint">{{ t('capture.closeUpBody') }}</p>
+
+                <ul v-if="a.extras.length" class="closeUpList">
+                  <li v-for="(extra, index) in a.extras" :key="extra.photoId" class="closeUp">
+                    <span>{{ t('capture.closeUpItem', { index: index + 1 }) }}</span>
+                    <span v-if="extra.lowQualityFlag" class="flag">{{ t('capture.lowQuality') }}</span>
+                    <button
+                      class="retake remove"
+                      type="button"
+                      :disabled="busy"
+                      @click="retake(extra.photoId)"
+                    >{{ t('capture.closeUpRemove') }}</button>
+                  </li>
+                </ul>
+
+                <button
+                  class="btn primary addCloseUp"
+                  type="button"
+                  :disabled="busy"
+                  @click="shoot(a.id, 'DETAIL')"
+                >
+                  {{ a.extras.length ? t('capture.closeUpAddMore') : t('capture.closeUpAdd') }}
+                </button>
+              </section>
             </template>
           </li>
         </ol>
@@ -416,6 +450,40 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.25; }
 .frameRow[data-taken="true"] .frameName::before { content: "✓ "; color: var(--brand); }
 
 .flag { grid-column: 1; font-size: .78rem; color: var(--ink-3); }
+
+.closeUps {
+  display: grid;
+  gap: .45rem;
+  justify-items: start;
+  border-top: 1px dashed var(--line);
+  margin-top: .4rem;
+  padding-top: var(--gap);
+}
+
+.closeUps h3 { margin: 0; font-size: .95rem; }
+
+.closeUpList { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: .35rem; }
+
+.closeUp {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: .5rem;
+  align-items: baseline;
+  font-size: .92rem;
+  color: var(--ink-2);
+}
+.closeUp > span:first-child::before { content: "✓ "; color: var(--brand); }
+
+/* Secondary to the frames above it: this one is optional and the buttons should not compete. */
+.addCloseUp.btn.primary {
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  font-size: .9rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--brand);
+}
+.addCloseUp.btn.primary:hover { background: var(--brand-soft); }
 .rejected { grid-column: 1 / -1; }
 
 /* Secondary to the area choice above it, and there are up to five in a row. */

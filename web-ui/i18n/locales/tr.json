@@ -454,6 +454,12 @@
     "take": "Fotoğraf çek",
     "refusedAlt": "Kabul edilmeyen fotoğraf",
     "retake": "Yeniden çek",
+    "closeUpTitle": "Bu odada çatlak, leke veya dökülme var mı?",
+    "closeUpBody": "Varsa yakından çekin. Zorunlu değil, dilediğiniz kadar ekleyebilirsiniz.",
+    "closeUpAdd": "Yakın çekim ekle",
+    "closeUpAddMore": "Bir tane daha ekle",
+    "closeUpItem": "Yakın çekim {index}",
+    "closeUpRemove": "Kaldır",
     "preparing": "Fotoğraf hazırlanıyor…",
     "uploading": "Yükleniyor… %{percent}",
     "rejected": {

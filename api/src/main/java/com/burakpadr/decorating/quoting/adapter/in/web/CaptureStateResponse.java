@@ -11,8 +11,9 @@ import java.util.UUID;
  * Where the capture has got to (workflow §2.4, BOYA-42).
  *
  * <p>The totals are sent rather than left to the client to add up. They are the sentence the screen
- * shows — "3 / 28 fotoğraf" — and the same arithmetic done twice on two sides of a contract is the kind
- * of thing that disagrees quietly once one of them learns about DETAIL frames.
+ * shows — "3 / 28 fotoğraf" — and the same arithmetic done twice on two sides of a contract is exactly
+ * what disagrees quietly the day one side learns about close-ups. Which has now happened: {@code
+ * extras} carries them, and none of the three numbers moves when one is taken.
  */
 record CaptureStateResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<CaptureAreaResponse> areas,
@@ -38,11 +39,30 @@ record CaptureStateResponse(
 			String label,
 			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) int sortOrder,
 			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<CaptureFrameResponse> frames,
-			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean complete) {
+
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+					description = "§2.6's close-ups: unlimited, skippable, counted towards nothing")
+			List<CaptureExtraResponse> extras,
+
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED,
+					description = "Every required frame is in. Close-ups do not affect it either way.")
+			boolean complete) {
 
 		static CaptureAreaResponse of(CaptureState.CaptureArea area) {
 			return new CaptureAreaResponse(area.id(), area.type(), area.label(), area.sortOrder(),
-					area.frames().stream().map(CaptureFrameResponse::of).toList(), area.complete());
+					area.frames().stream().map(CaptureFrameResponse::of).toList(),
+					area.extras().stream().map(CaptureExtraResponse::of).toList(),
+					area.complete());
+		}
+	}
+
+	/** A close-up of a crack or a stain (workflow §2.6). */
+	record CaptureExtraResponse(
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) UUID photoId,
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean lowQualityFlag) {
+
+		static CaptureExtraResponse of(CaptureState.CaptureExtra extra) {
+			return new CaptureExtraResponse(extra.photoId(), extra.lowQualityFlag());
 		}
 	}
 

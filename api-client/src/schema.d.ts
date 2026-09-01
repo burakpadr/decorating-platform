@@ -689,7 +689,15 @@ export interface components {
             /** Format: int32 */
             sortOrder: number;
             frames: components["schemas"]["CaptureFrameResponse"][];
+            /** @description §2.6's close-ups: unlimited, skippable, counted towards nothing */
+            extras: components["schemas"]["CaptureExtraResponse"][];
+            /** @description Every required frame is in. Close-ups do not affect it either way. */
             complete: boolean;
+        };
+        CaptureExtraResponse: {
+            /** Format: uuid */
+            photoId: string;
+            lowQualityFlag: boolean;
         };
         CaptureFrameResponse: {
             /** @enum {string} */

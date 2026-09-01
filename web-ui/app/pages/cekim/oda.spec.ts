@@ -35,6 +35,8 @@ mockNuxtImport('useRoute', () => () => ({ query: { talep: 'draft-1' } }))
 mockNuxtImport('processFrame', () => process)
 mockNuxtImport('uploadFrame', () => upload)
 
+type Extra = { photoId: string, lowQualityFlag: boolean }
+
 /** A 2+1's living room and bathroom: §2.4's five frames and two. */
 function state(taken: string[] = []) {
   const frame = (role: string, photoId: string | null = null) => ({
@@ -46,8 +48,9 @@ function state(taken: string[] = []) {
   return {
     areas: [
       { id: 'room-living', type: 'LIVING_ROOM', label: 'Salon', sortOrder: 0, frames: living,
-        complete: living.every(f => f.taken) },
-      { id: 'room-bath', type: 'BATHROOM', label: 'Banyo', sortOrder: 1, frames: bath, complete: false },
+        extras: [] as Extra[], complete: living.every(f => f.taken) },
+      { id: 'room-bath', type: 'BATHROOM', label: 'Banyo', sortOrder: 1, frames: bath,
+        extras: [] as Extra[], complete: false },
     ],
     required: 7,
     taken: taken.length,
@@ -247,6 +250,74 @@ describe('çekim ekranı', () => {
 
     expect(page.find('.refused').exists()).toBe(false)
     expect(upload).toHaveBeenCalledTimes(1)
+  })
+
+  it('§2.6: does not ask about cracks while the area still owes frames', async () => {
+    const page = await mountSuspended(Oda)
+
+    // Asking here would interrupt one job with another; §2.6 comes after the required frames.
+    expect(page.find('.addCloseUp').exists()).toBe(false)
+    expect(page.text()).not.toContain('çatlak')
+  })
+
+  it('§2.6: asks once that area is done', async () => {
+    get.mockResolvedValue({ response: { ok: true, status: 200 },
+      data: state(['WALL_1', 'WALL_2', 'WALL_3', 'WALL_4', 'CEILING']) })
+    const page = await mountSuspended(Oda)
+
+    expect(page.text()).toContain('çatlak')
+    expect(page.find('.addCloseUp').exists()).toBe(true)
+  })
+
+  it('photographs a close-up as DETAIL, against the area it was asked about', async () => {
+    get.mockResolvedValue({ response: { ok: true, status: 200 },
+      data: state(['WALL_1', 'WALL_2', 'WALL_3', 'WALL_4', 'CEILING']) })
+    const page = await mountSuspended(Oda)
+
+    await page.find('.addCloseUp').trigger('click')
+    await chooseAFile(page)
+
+    expect(process).toHaveBeenCalledWith(expect.anything(), 'DETAIL', 1)
+    expect(post).toHaveBeenCalledWith('/api/photos/upload-intent', {
+      body: { roomId: 'room-living', role: 'DETAIL' },
+    })
+  })
+
+  it('§2.6 is unlimited: the question stays after one is taken', async () => {
+    const withOne = state(['WALL_1', 'WALL_2', 'WALL_3', 'WALL_4', 'CEILING'])
+    withOne.areas[0]!.extras = [{ photoId: 'photo-detail-1', lowQualityFlag: false }]
+    get.mockResolvedValue({ response: { ok: true, status: 200 }, data: withOne })
+    const page = await mountSuspended(Oda)
+
+    expect(page.findAll('.closeUp')).toHaveLength(1)
+    expect(page.find('.addCloseUp').exists()).toBe(true)
+  })
+
+  it('a close-up can be thrown away, since nothing required it', async () => {
+    const withOne = state(['WALL_1', 'WALL_2', 'WALL_3', 'WALL_4', 'CEILING'])
+    withOne.areas[0]!.extras = [{ photoId: 'photo-detail-1', lowQualityFlag: false }]
+    get.mockResolvedValue({ response: { ok: true, status: 200 }, data: withOne })
+    const page = await mountSuspended(Oda)
+
+    await page.find('.closeUp .remove').trigger('click')
+    await new Promise(resolve => setTimeout(resolve, 0))
+
+    expect(del).toHaveBeenCalledWith('/api/photos/{id}', {
+      params: { path: { id: 'photo-detail-1' } },
+    })
+  })
+
+  it('§2.6 is skippable: close-ups never hold the capture back', async () => {
+    const everything = state(['WALL_1', 'WALL_2', 'WALL_3', 'WALL_4', 'CEILING'])
+    everything.areas[1]!.frames.forEach((f) => { f.taken = true })
+    everything.areas[1]!.complete = true
+    get.mockResolvedValue({ response: { ok: true, status: 200 },
+      data: { ...everything, taken: 7, complete: true } })
+    const page = await mountSuspended(Oda)
+
+    // No close-up anywhere, and the capture is finished all the same.
+    expect(page.text()).toContain('Bütün fotoğraflar tamam')
+    expect(page.find('.verify').exists()).toBe(true)
   })
 
   it('retakes a frame by deleting it first: §9 will not overwrite one that arrived', async () => {

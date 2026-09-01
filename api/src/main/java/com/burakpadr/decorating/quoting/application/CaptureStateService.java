@@ -2,6 +2,7 @@ package com.burakpadr.decorating.quoting.application;
 
 import com.burakpadr.decorating.quoting.domain.model.CaptureState;
 import com.burakpadr.decorating.quoting.domain.model.CaptureState.CaptureArea;
+import com.burakpadr.decorating.quoting.domain.model.CaptureState.CaptureExtra;
 import com.burakpadr.decorating.quoting.domain.model.CaptureState.CaptureFrame;
 import com.burakpadr.decorating.quoting.domain.model.ConfirmedRooms.ConfirmedRoom;
 import com.burakpadr.decorating.quoting.domain.model.Photo;
@@ -50,16 +51,27 @@ class CaptureStateService implements ReadCaptureState {
 			throw new QuoteRequestNotFound(String.valueOf(quoteRequestId));
 		}
 
-		Map<UUID, Map<PhotoRole, Photo>> arrived = photos.findByQuoteRequest(quoteRequestId).stream()
+		List<Photo> arrived = photos.findByQuoteRequest(quoteRequestId).stream()
 				.filter(Photo::isUploaded)
+				.toList();
+
+		Map<UUID, Map<PhotoRole, Photo>> slots = arrived.stream()
+				.filter(photo -> !photo.role().isRepeatable())
 				.collect(Collectors.groupingBy(Photo::roomId,
-						// A room holds one frame per role, except DETAIL — which is not a required frame and
-						// so never asked for here. Merging on collision keeps the newest rather than throwing.
+						// One frame per role once DETAIL is out of the way. Merging on collision keeps the
+						// newest rather than throwing: a retake races its own delete often enough.
 						Collectors.toMap(Photo::role, photo -> photo, (older, newer) -> newer)));
+
+		// §2.6: unlimited, so a list rather than a slot, in the order they were taken.
+		Map<UUID, List<CaptureExtra>> closeUps = arrived.stream()
+				.filter(photo -> photo.role().isRepeatable())
+				.collect(Collectors.groupingBy(Photo::roomId, Collectors.mapping(
+						photo -> new CaptureExtra(photo.id(), photo.lowQualityFlag()), Collectors.toList())));
 
 		return new CaptureState(rooms.findByQuoteRequest(quoteRequestId).rooms().stream()
 				.map(room -> new CaptureArea(room.id(), room.type(), room.label(), room.sortOrder(),
-						framesOf(room, arrived.getOrDefault(room.id(), Map.of()))))
+						framesOf(room, slots.getOrDefault(room.id(), Map.of())),
+						closeUps.getOrDefault(room.id(), List.of())))
 				.toList());
 	}
 
