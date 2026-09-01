@@ -62,11 +62,23 @@ decorating:
     presigned-put-ttl: PT15M
     presigned-get-ttl: PT5M
 
+  # Aşama 3.1. One minute, which is also §11's send window — so the moment a code dies is the moment
+  # another may be asked for, and the screen has one clock to show rather than two that disagree.
+  #
+  # Short. A Turkish SMS can take ten or twenty seconds to arrive, so a fair part of the minute is
+  # spent in transit; if customers start reporting codes that expire before they arrive, this is the
+  # number to raise, together with rate-limit.otp.per-phone-per-minute so the two stay equal.
+  otp:
+    ttl: PT1M
+
   # Customer-facing time promises must respect these hours (spec §8).
   business-hours:
     zone: Europe/Istanbul
     open: "09:00"
     close: "18:00"
+    # What §3.2 promises on the waiting screen. Counted in working time, so a request at 17:30 is
+    # answered tomorrow morning rather than at 19:30. §16 still has the real figure with the business.
+    sla: PT2H
 
   # Where the links in notifications point. The API cannot guess it: the SMS is read on a phone that has
   # never talked to us, so a relative link is no link at all.

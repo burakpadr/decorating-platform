@@ -37,6 +37,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quote-requests/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand the request over: every frame is in and the phone is verified */
+        post: operations["submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quote-requests/{id}/rooms/confirm": {
         parameters: {
             query?: never;
@@ -133,6 +150,40 @@ export interface paths {
         put?: never;
         /** Reserve a frame and get the URL to PUT it to */
         post: operations["intend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify the code, creating the customer */
+        post: operations["verifyCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/otp/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a verification code to a number */
+        post: operations["sendCode"];
         delete?: never;
         options?: never;
         head?: never;
@@ -392,6 +443,15 @@ export interface components {
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
             selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
         };
+        SubmissionResponse: {
+            /** @description ANALYZING */
+            status: string;
+            /**
+             * Format: date-time
+             * @description When the customer is told to expect an answer, computed against §8's hours
+             */
+            respondBy: string;
+        };
         ConfirmRoomsRequest: {
             /**
              * @example [
@@ -508,6 +568,18 @@ export interface components {
             uploadUrl: string;
             /** Format: int64 */
             expiresInSeconds: number;
+        };
+        VerifyOtpRequest: {
+            /** @example 123456 */
+            code: string;
+        };
+        SendOtpRequest: {
+            /** @example 0555 123 45 67 */
+            phone: string;
+        };
+        SendOtpResponse: {
+            /** Format: date-time */
+            expiresAt: string;
         };
         CalculateQuoteRequest: {
             districtCode: string;
@@ -772,6 +844,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted for analysis, with when to expect an answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
+                };
+            };
+            /** @description Frames are missing, the phone is not verified, or it was already sent */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SubmissionResponse"];
                 };
             };
         };
@@ -1124,6 +1246,100 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UploadIntentResponse"];
+                };
+            };
+        };
+    };
+    verifyCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyOtpRequest"];
+            };
+        };
+        responses: {
+            /** @description Verified */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong, expired or already used */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description §11's fifth wrong guess */
+            423: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sendCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendOtpRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued — see §13 on what 'sent' means here — with the code's expiry */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SendOtpResponse"];
+                };
+            };
+            /** @description Not a Turkish mobile number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SendOtpResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SendOtpResponse"];
+                };
+            };
+            /** @description §11's limits */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SendOtpResponse"];
                 };
             };
         };

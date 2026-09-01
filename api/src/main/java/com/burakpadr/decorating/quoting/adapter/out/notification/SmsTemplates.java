@@ -25,19 +25,35 @@ public class SmsTemplates {
 	private static final Pattern PLACEHOLDER = Pattern.compile("\\{([a-zA-Z]+)}");
 
 	public String render(TemplateCode code, Map<String, String> values) {
-		String template = read(code);
+		return render(code.name(), code.name(), values);
+	}
+
+	/**
+	 * Renders a message that is not one of §13's eleven.
+	 *
+	 * <p>The OTP is the only one, and deliberately outside the catalogue: it is a transactional code,
+	 * it appears in neither §13's list nor the workflow's §9 notification table, and adding a twelfth
+	 * {@code TemplateCode} would change a count the spec, {@code api/CLAUDE.md}, decision 8 and two
+	 * tests all state. It is still a file, still versioned with the artefact, and still measured
+	 * against the segment budget — none of which required it to be a notification.
+	 *
+	 * @param name the file under {@code notifications/tr/}, without the extension
+	 * @param describedAs what to call it in an error message
+	 */
+	public String render(String name, String describedAs, Map<String, String> values) {
+		String template = read(name, describedAs);
 
 		Set<String> used = new HashSet<>();
 		Matcher matcher = PLACEHOLDER.matcher(template);
 		StringBuilder body = new StringBuilder();
 		while (matcher.find()) {
-			String name = matcher.group(1);
-			String value = values.get(name);
+			String placeholder = matcher.group(1);
+			String value = values.get(placeholder);
 			if (value == null) {
 				throw new IllegalStateException(
-						code + " has a placeholder nobody filled in: " + name);
+						describedAs + " has a placeholder nobody filled in: " + placeholder);
 			}
-			used.add(name);
+			used.add(placeholder);
 			matcher.appendReplacement(body, Matcher.quoteReplacement(value));
 		}
 		matcher.appendTail(body);
@@ -45,17 +61,17 @@ public class SmsTemplates {
 		Set<String> unused = new HashSet<>(values.keySet());
 		unused.removeAll(used);
 		if (!unused.isEmpty()) {
-			throw new IllegalArgumentException(code + " has no placeholder for: " + unused);
+			throw new IllegalArgumentException(describedAs + " has no placeholder for: " + unused);
 		}
 		// Templates end with a newline because files do; an SMS is one line.
 		return body.toString().strip();
 	}
 
-	private String read(TemplateCode code) {
-		String path = "notifications/tr/" + code.name() + ".txt";
+	private String read(String name, String describedAs) {
+		String path = "notifications/tr/" + name + ".txt";
 		try (InputStream file = getClass().getClassLoader().getResourceAsStream(path)) {
 			if (file == null) {
-				throw new IllegalStateException("no template at " + path);
+				throw new IllegalStateException("no template at " + path + " for " + describedAs);
 			}
 			return new String(file.readAllBytes(), StandardCharsets.UTF_8);
 		}

@@ -68,6 +68,17 @@ class SmsTemplatesTest {
 		assertThat(body).doesNotContain("\n").isEqualTo(body.strip());
 	}
 
+	/**
+	 * The one file here that is not a notification.
+	 *
+	 * <p>The OTP is a transactional code: §13's table does not list it, the workflow's §9 notification
+	 * table does not either, and nothing logs it as a {@code notification} row. Making it a twelfth
+	 * {@code TemplateCode} would change a count the spec, {@code api/CLAUDE.md} and decision 8 all
+	 * state, to describe a message that is not one of the things being counted. Lower case, so the
+	 * exception is visible in a directory listing rather than only here (BOYA-45).
+	 */
+	private static final java.util.Set<String> NOT_NOTIFICATIONS = java.util.Set.of("otp-code");
+
 	@Test
 	@DisplayName("every template §13 names exists on disk, and every file on disk is named")
 	void theEnumAndTheFilesAgree() throws IOException {
@@ -75,10 +86,23 @@ class SmsTemplatesTest {
 		// code with no file fails at send time, in production, on the one message that mattered; a file
 		// with no code is wording nobody can reach and nobody will maintain.
 		try (Stream<Path> files = Files.list(Path.of("src/main/resources/notifications/tr"))) {
-			assertThat(files.map(path -> path.getFileName().toString().replace(".txt", "")).sorted())
+			assertThat(files.map(path -> path.getFileName().toString().replace(".txt", ""))
+					.filter(name -> !NOT_NOTIFICATIONS.contains(name))
+					.sorted())
 					.containsExactlyElementsOf(
 							Stream.of(TemplateCode.values()).map(Enum::name).sorted().toList());
 		}
+	}
+
+	@Test
+	@DisplayName("the OTP message is rendered by name, and carries only the code")
+	void rendersTheOtpMessage() {
+		String body = templates.render("otp-code", "the OTP message", Map.of("code", "123456"));
+
+		assertThat(body).contains("123456").doesNotContain("\n");
+		assertThat(body)
+				.as("a code and a warning, and nothing a phisher could use — no link, no amount, no name")
+				.doesNotContain("http");
 	}
 
 	@Test

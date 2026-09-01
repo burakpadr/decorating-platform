@@ -14,4 +14,12 @@ import java.util.UUID;
 public interface PendingPhoneWriter {
 
 	void storePendingPhone(UUID quoteRequestId, PhoneNumber phone);
+
+	/**
+	 * The number stored against this request, before anybody proved it.
+	 *
+	 * <p>Read once, at verification, to say whose number was just proved. Empty after that: the schema
+	 * moves it to {@code customer} and nulls the column.
+	 */
+	java.util.Optional<PhoneNumber> pendingPhone(UUID quoteRequestId);
 }

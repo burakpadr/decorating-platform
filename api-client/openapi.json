@@ -10,6 +10,9 @@
     "description" : "Same origin"
   } ],
   "tags" : [ {
+    "name" : "Verification",
+    "description" : "Phone verification (workflow §3.1)"
+  }, {
     "name" : "Consent",
     "description" : "The versioned data notice (workflow §2.3)"
   } ],
@@ -101,6 +104,65 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/QuoteRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/quote-requests/{id}/submit" : {
+      "post" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "Hand the request over: every frame is in and the phone is verified",
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The draft this session owns",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Accepted for analysis, with when to expect an answer",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The session owns a different draft",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "Frames are missing, the phone is not verified, or it was already sent",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmissionResponse"
                 }
               }
             }
@@ -510,6 +572,96 @@
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/UploadIntentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/otp/verify" : {
+      "post" : {
+        "tags" : [ "Verification" ],
+        "summary" : "Verify the code, creating the customer",
+        "operationId" : "verifyCode",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyOtpRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Verified"
+          },
+          "401" : {
+            "description" : "No session cookie"
+          },
+          "422" : {
+            "description" : "Wrong, expired or already used"
+          },
+          "423" : {
+            "description" : "§11's fifth wrong guess"
+          }
+        }
+      }
+    },
+    "/api/otp/send" : {
+      "post" : {
+        "tags" : [ "Verification" ],
+        "summary" : "Send a verification code to a number",
+        "operationId" : "sendCode",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendOtpRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Queued — see §13 on what 'sent' means here — with the code's expiry",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SendOtpResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Not a Turkish mobile number",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SendOtpResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SendOtpResponse"
+                }
+              }
+            }
+          },
+          "429" : {
+            "description" : "§11's limits",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SendOtpResponse"
                 }
               }
             }
@@ -1229,6 +1381,21 @@
         },
         "required" : [ "id", "priceable", "status" ]
       },
+      "SubmissionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string",
+            "description" : "ANALYZING"
+          },
+          "respondBy" : {
+            "type" : "string",
+            "format" : "date-time",
+            "description" : "When the customer is told to expect an answer, computed against §8's hours"
+          }
+        },
+        "required" : [ "respondBy", "status" ]
+      },
       "ConfirmRoomsRequest" : {
         "type" : "object",
         "properties" : {
@@ -1481,6 +1648,38 @@
           }
         },
         "required" : [ "expiresInSeconds", "photoId", "uploadUrl" ]
+      },
+      "VerifyOtpRequest" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string",
+            "example" : "123456",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "code" ]
+      },
+      "SendOtpRequest" : {
+        "type" : "object",
+        "properties" : {
+          "phone" : {
+            "type" : "string",
+            "example" : "0555 123 45 67",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "phone" ]
+      },
+      "SendOtpResponse" : {
+        "type" : "object",
+        "properties" : {
+          "expiresAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "expiresAt" ]
       },
       "CalculateQuoteRequest" : {
         "type" : "object",

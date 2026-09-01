@@ -60,6 +60,15 @@ class StageOneEstimatePersistenceAdapter
 	}
 
 	@Override
+	public Optional<PhoneNumber> pendingPhone(UUID quoteRequestId) {
+		return jdbc.query("SELECT pending_phone FROM quote_request WHERE id = ?",
+				(row, index) -> row.getString(1), quoteRequestId).stream()
+				.filter(java.util.Objects::nonNull)
+				.findFirst()
+				.map(PhoneNumber::of);
+	}
+
+	@Override
 	public void recordEstimate(UUID quoteRequestId, BigDecimal netArea, String priceBookVersion,
 			BigDecimal low, BigDecimal high) {
 		// Resolved in its own statement rather than as a subselect in the UPDATE: a subselect that found

@@ -5,6 +5,7 @@ import com.burakpadr.decorating.config.session.OwnedQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.ConfirmRoomList;
 import com.burakpadr.decorating.quoting.domain.port.in.ReadCaptureState;
+import com.burakpadr.decorating.quoting.domain.port.in.SubmitQuoteRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.RecordConsent;
 import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.in.ManageQuoteRequests;
@@ -59,18 +60,21 @@ class QuoteRequestController {
 	private final ConfirmRoomList roomList;
 	private final RecordConsent consents;
 	private final ReadCaptureState capture;
+	private final SubmitQuoteRequest submission;
 	private final ResumeTokens resumeTokens;
 	private final AnonymousSessionCookie session;
 
 	QuoteRequestController(ManageQuoteRequests requests, EstimateStageOne estimates,
 			SendEstimateBySms sms, ConfirmRoomList roomList, RecordConsent consents,
-			ReadCaptureState capture, ResumeTokens resumeTokens, AnonymousSessionCookie session) {
+			ReadCaptureState capture, SubmitQuoteRequest submission, ResumeTokens resumeTokens,
+			AnonymousSessionCookie session) {
 		this.requests = requests;
 		this.estimates = estimates;
 		this.sms = sms;
 		this.roomList = roomList;
 		this.consents = consents;
 		this.capture = capture;
+		this.submission = submission;
 		this.resumeTokens = resumeTokens;
 		this.session = session;
 	}
@@ -210,6 +214,24 @@ class QuoteRequestController {
 		// The capture screen opens on this and on nothing else: it can be reached on a phone that has
 		// never seen the room list, which is what the QR handoff is for (§10, BOYA-35).
 		return CaptureStateResponse.of(capture.of(owned.id()));
+	}
+
+	@PostMapping("/{id}/submit")
+	@Operation(summary = "Hand the request over: every frame is in and the phone is verified")
+	@Parameter(name = "id", in = ParameterIn.PATH, required = true,
+			description = "The draft this session owns",
+			schema = @Schema(type = "string", format = "uuid"))
+	@ApiResponses({
+			@ApiResponse(responseCode = "200",
+					description = "Accepted for analysis, with when to expect an answer"),
+			@ApiResponse(responseCode = "401", description = "No session cookie", content = {}),
+			@ApiResponse(responseCode = "403", description = "The session owns a different draft",
+					content = {}),
+			@ApiResponse(responseCode = "409",
+					description = "Frames are missing, the phone is not verified, or it was already sent",
+					content = {})})
+	SubmissionResponse submit(@Parameter(hidden = true) OwnedQuoteRequest owned) {
+		return SubmissionResponse.of(submission.submit(owned.id()));
 	}
 
 	@GetMapping("/resume/{token}")

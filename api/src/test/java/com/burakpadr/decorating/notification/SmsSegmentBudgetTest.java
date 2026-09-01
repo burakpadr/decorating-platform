@@ -59,7 +59,8 @@ class SmsSegmentBudgetTest {
 			"{district}", "Küçükçekmece",
 			"{room}", "Salon 2. duvar",
 			"{estimate}", "74.000 TL",
-			"{hours}", "26");
+			"{hours}", "26",
+			"{code}", "123456");
 
 	/**
 	 * Budgeted segments per template.
@@ -92,6 +93,12 @@ class SmsSegmentBudgetTest {
 		BUDGET.put("OPERATOR_QUOTE_ACCEPTED", 2);
 		BUDGET.put("OPERATOR_CALLBACK_OVERDUE", 1);
 		BUDGET.put("OPERATOR_DELETION_REQUEST", 1);
+
+		// Not a §13 notification — a transactional code, absent from that table and from the workflow's
+		// §9 list, and never written to `notification`. It is budgeted here all the same: it is an SMS,
+		// it costs the same money per segment, and it is the one message in the set that will be sent
+		// most often (BOYA-45).
+		BUDGET.put("otp-code", 1);
 	}
 
 	@Test

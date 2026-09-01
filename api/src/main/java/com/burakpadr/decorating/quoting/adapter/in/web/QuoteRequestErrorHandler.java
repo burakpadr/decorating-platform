@@ -1,8 +1,10 @@
 package com.burakpadr.decorating.quoting.adapter.in.web;
 
+import com.burakpadr.decorating.quoting.domain.model.CaptureIncomplete;
 import com.burakpadr.decorating.quoting.domain.model.ConsentNoticeChanged;
 import com.burakpadr.decorating.quoting.domain.model.ConsentOutOfOrder;
 import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
+import com.burakpadr.decorating.quoting.domain.model.PhoneNotVerified;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -61,6 +63,28 @@ class QuoteRequestErrorHandler {
 		ProblemDetail problem =
 				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, early.getMessage());
 		problem.setTitle("Önce çekilecek alanlar onaylanmalı");
+		return problem;
+	}
+
+	@ExceptionHandler(CaptureIncomplete.class)
+	ProblemDetail captureIncomplete(CaptureIncomplete missing) {
+		// The counts travel so the screen can say which frames are left rather than making the customer
+		// count them against a list they have just scrolled past.
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+		problem.setType(java.net.URI.create("urn:decorating:capture-incomplete"));
+		problem.setTitle("Fotoğraflar tamamlanmadı");
+		problem.setProperty("required", missing.required());
+		problem.setProperty("taken", missing.taken());
+		return problem;
+	}
+
+	@ExceptionHandler(PhoneNotVerified.class)
+	ProblemDetail phoneNotVerified(PhoneNotVerified refused) {
+		// Not a mistake and not a conflict of state the customer caused — it is the next step, and the
+		// urn is how the screen knows to send them to it rather than showing a dead end.
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+		problem.setType(java.net.URI.create("urn:decorating:phone-not-verified"));
+		problem.setTitle("Telefon doğrulaması gerekiyor");
 		return problem;
 	}
 
