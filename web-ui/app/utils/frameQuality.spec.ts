@@ -106,8 +106,14 @@ describe('assessFrame', () => {
     expect(assessFrame({ ...good, width: 320, height: 240 }, 1).reason).toBe('SMALL')
   })
 
-  it('names blur first when a frame is both dark and blurred: it is the one the customer can fix', () => {
-    expect(assessFrame({ ...good, variance: 2, luminance: 5 }, 1).reason).toBe('BLURRY')
+  it('names darkness first when a frame is both, because darkness is why there is no detail', () => {
+    // A room photographed with the lights off scores zero variance as well, and answering it with
+    // "hold the phone still" tells somebody to repeat exactly what they just did.
+    expect(assessFrame({ ...good, variance: 2, luminance: 5 }, 1).reason).toBe('DARK')
+  })
+
+  it('still names blur when the room was bright enough to see', () => {
+    expect(assessFrame({ ...good, variance: 2, luminance: 130 }, 1).reason).toBe('BLURRY')
   })
 
   it('stops arguing after three rejections and keeps the frame, flagged', () => {

@@ -55,17 +55,25 @@ export function assessFrame(frame: FrameMeasurements, attempt: number): FrameVer
 }
 
 /**
- * Blur is named before darkness because it is the one the customer can actually act on: "telefonu
- * sabit tutun" is a thing a person can do standing where they are, and a dark frame is usually a
- * blurred one taken in a dark room anyway. A measurement that is missing is not a fault — an old phone
- * that cannot read its own canvas back has still taken the photograph.
+ * Darkness is named before blur, and the order was got wrong once.
+ *
+ * A dark frame has nothing in it to measure, so its variance collapses too and both faults fire at
+ * once — which meant a photograph taken with the lights off was answered with "telefonu sabit tutun".
+ * That is true and useless: the phone was steady, the room was dark, and the advice sends the customer
+ * to do again exactly what they just did. Darkness is the cause, so darkness is what gets named.
+ *
+ * Found by photographing an unlit room in a browser, not by a test — every fixture until then was
+ * either sharp and bright or flat and mid-grey.
+ *
+ * A measurement that is missing is not a fault: an old phone that cannot read its own canvas back has
+ * still taken the photograph.
  */
 function faultIn(frame: FrameMeasurements): FrameFault | null {
-  if (frame.variance !== null && frame.variance < SHARP_ENOUGH) {
-    return 'BLURRY'
-  }
   if (frame.luminance !== null && frame.luminance < BRIGHT_ENOUGH) {
     return 'DARK'
+  }
+  if (frame.variance !== null && frame.variance < SHARP_ENOUGH) {
+    return 'BLURRY'
   }
   const longest = Math.max(frame.width ?? 0, frame.height ?? 0)
   if (longest > 0 && longest < BIG_ENOUGH) {
