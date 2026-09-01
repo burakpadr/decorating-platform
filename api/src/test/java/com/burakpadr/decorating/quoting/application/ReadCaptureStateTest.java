@@ -1,6 +1,8 @@
 package com.burakpadr.decorating.quoting.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.burakpadr.decorating.TestcontainersConfiguration;
@@ -26,17 +28,23 @@ import com.burakpadr.decorating.quoting.domain.port.in.ReadCaptureState;
 import com.burakpadr.decorating.quoting.domain.port.in.ReadConsentNotice;
 import com.burakpadr.decorating.quoting.domain.port.in.RecordConsent;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
+import com.burakpadr.decorating.quoting.domain.model.PresignedUrl;
+import com.burakpadr.decorating.quoting.domain.port.out.PhotoStorage;
 import com.burakpadr.decorating.shared.Uuid7;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.net.URI;
+import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
  * Where a capture has got to (workflow §2.4, BOYA-42).
@@ -79,6 +87,20 @@ class ReadCaptureStateTest {
 
 	@Autowired
 	private JdbcTemplate jdbc;
+
+	/**
+	 * Storage is mocked, as it is wherever a frame is reserved outside {@code MinioPhotoStorageTest}.
+	 * What a presigned URL does is that test's subject, against a real MinIO; there is none in CI, and a
+	 * test that needs one to answer a question about rows is a test that fails for the wrong reason.
+	 */
+	@MockitoBean
+	private PhotoStorage storage;
+
+	@BeforeEach
+	void storageSignsWhateverItIsAsked() {
+		given(storage.presignPut(anyString()))
+				.willReturn(new PresignedUrl(URI.create("http://storage.test/put"), Duration.ofMinutes(15)));
+	}
 
 	@AfterEach
 	void removeWhatTheTestWrote() {
