@@ -7,6 +7,10 @@
  * own home in whatever order the doors happen to be in, and a screen that insists on the fourth wall
  * of the living room before the kitchen is arguing with somebody holding the phone.
  *
+ * §2.4's other two verbs are "önizlenir, onaylanır": nothing is sent until the customer has seen what
+ * they took and said yes to it. So the tests below draw a hard line at the preview — before it, no
+ * request has left the phone.
+ *
  * The rest: that a bad frame is refused *now*, while they are still in the room, and not uploaded;
  * that an accepted frame reaches storage; and that where they have got to survives the page being
  * reloaded on another device, because it is read from the server rather than remembered here.
@@ -21,6 +25,7 @@ const post = vi.fn()
 const del = vi.fn()
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }))
 const { process, upload } = vi.hoisted(() => ({ process: vi.fn(), upload: vi.fn() }))
+const created: Blob[] = []
 
 mockNuxtImport('useApi', () => () => ({ GET: get, POST: post, DELETE: del }))
 mockNuxtImport('navigateTo', () => navigate)
@@ -54,10 +59,17 @@ const ACCEPTED = {
   verdict: { accept: true, reason: null, lowQualityFlag: false },
 }
 
-/** Tap a frame's own button, then hand the picker a file — the two halves of taking one frame. */
+/** Tap a frame's button and hand the picker a file. Stops at the preview, as the customer does. */
 async function shoot(page: Awaited<ReturnType<typeof mountSuspended>>, role = 'WALL_1') {
   await page.find(`.shoot[data-role="${role}"]`).trigger('click')
   await chooseAFile(page)
+}
+
+/** "Onayla" — the act §2.4 puts between taking a frame and it being sent anywhere. */
+async function confirmShot(page: Awaited<ReturnType<typeof mountSuspended>>) {
+  await page.find('.confirm').trigger('click')
+  await new Promise(resolve => setTimeout(resolve, 0))
+  await page.vm.$nextTick()
 }
 
 async function chooseAFile(page: Awaited<ReturnType<typeof mountSuspended>>) {
@@ -83,6 +95,10 @@ describe('çekim ekranı', () => {
     del.mockResolvedValue({ response: { ok: true, status: 204 }, data: null })
     process.mockResolvedValue(ACCEPTED)
     upload.mockResolvedValue(undefined)
+    created.length = 0
+    // happy-dom has no object URLs; the preview needs one and the test needs to see which blob got it.
+    URL.createObjectURL = (blob: Blob) => { created.push(blob); return 'blob:preview' }
+    URL.revokeObjectURL = () => {}
   })
 
   it('opens on the first area that still owes frames, without insisting on it', async () => {
@@ -114,6 +130,7 @@ describe('çekim ekranı', () => {
     // The ceiling, while four walls are still outstanding above it.
     await page.find('.shoot[data-role="CEILING"]').trigger('click')
     await chooseAFile(page)
+    await confirmShot(page)
 
     expect(process).toHaveBeenCalledWith(expect.anything(), 'CEILING', 1)
     expect(post).toHaveBeenCalledWith('/api/photos/upload-intent', {
@@ -127,6 +144,7 @@ describe('çekim ekranı', () => {
     await page.find('[data-area="room-bath"]').trigger('click')
     await page.find('.shoot[data-role="WALL_1"]').trigger('click')
     await chooseAFile(page)
+    await confirmShot(page)
 
     expect(post).toHaveBeenCalledWith('/api/photos/upload-intent', {
       body: { roomId: 'room-bath', role: 'WALL_1' },
@@ -161,6 +179,7 @@ describe('çekim ekranı', () => {
     const page = await mountSuspended(Oda)
 
     await shoot(page)
+    await confirmShot(page)
 
     expect(post).toHaveBeenCalledWith('/api/photos/upload-intent', {
       body: { roomId: 'room-living', role: 'WALL_1' },
@@ -179,6 +198,7 @@ describe('çekim ekranı', () => {
     const page = await mountSuspended(Oda)
 
     await shoot(page)
+    await confirmShot(page)
 
     expect(page.text()).toContain('çekim onayını')
     expect(upload).not.toHaveBeenCalled()
@@ -189,8 +209,53 @@ describe('çekim ekranı', () => {
     const page = await mountSuspended(Oda)
 
     await shoot(page)
+    await confirmShot(page)
 
     expect(page.text()).toContain('gönderilemedi')
+  })
+
+  it('shows what was taken and sends nothing until the customer says yes (§2.4)', async () => {
+    const page = await mountSuspended(Oda)
+
+    await shoot(page)
+
+    expect(page.find('.preview img').exists()).toBe(true)
+    expect(post).not.toHaveBeenCalled()
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('previews the frame that will actually be sent, not the original off the camera', async () => {
+    const page = await mountSuspended(Oda)
+
+    await shoot(page)
+
+    // The resized, re-encoded blob is what the analysis will read; showing the 12-megapixel original
+    // would preview a photograph nobody is ever going to look at.
+    expect(created).toContain(ACCEPTED.blob)
+  })
+
+  it('throws the frame away when the customer rejects their own photograph', async () => {
+    const page = await mountSuspended(Oda)
+
+    await shoot(page)
+    await page.find('.discard').trigger('click')
+
+    expect(page.find('.preview').exists()).toBe(false)
+    expect(post).not.toHaveBeenCalled()
+    expect(page.find('.shoot[data-role="WALL_1"]').exists()).toBe(true)
+  })
+
+  it('shows a refused frame too, so the customer can see what was wrong with it', async () => {
+    process.mockResolvedValue({ ...ACCEPTED,
+      verdict: { accept: false, reason: 'DARK', lowQualityFlag: false } })
+    const page = await mountSuspended(Oda)
+
+    await shoot(page)
+
+    expect(page.find('.preview img').exists()).toBe(true)
+    expect(page.text()).toContain('karanlık')
+    // Nothing to confirm: the screen is asking for another one.
+    expect(page.find('.confirm').exists()).toBe(false)
   })
 
   it('retakes a frame by deleting it first: §9 will not overwrite one that arrived', async () => {

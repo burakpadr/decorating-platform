@@ -7,6 +7,11 @@
  * still in the room", which is the entire reason the check is here rather than in the analysis hours
  * later.
  *
+ * §2.4 names three acts and all three are here: "istenen kareler çekilir, önizlenir, onaylanır".
+ * Nothing leaves the phone until the customer has looked at what they took and said yes to it — the
+ * quality check refuses the frames that are plainly wrong, but only the person in the room knows
+ * whether the photograph is of the wall they meant.
+ *
  * §2.4 opens with "Listeden alan seçilir" and that is a requirement, not a stage direction. The
  * customer is walking their own home, in whatever order its doors are in, holding the phone. A screen
  * that marched them frame by frame in the order the server derived would be arguing with the person who
@@ -65,6 +70,32 @@ const openArea = computed(() =>
 
 /** The frame the customer tapped, waiting for the picker to hand a file back. */
 const pending = ref<{ areaId: string, role: PhotoRole } | null>(null)
+
+/**
+ * What was taken, waiting to be looked at (§2.4's "önizlenir").
+ *
+ * The blob shown is the processed one, not what came off the camera: it is what the analysis will be
+ * given, and previewing a 12-megapixel original would show the customer a photograph nobody will ever
+ * look at. The object URL is revoked whenever this is replaced or cleared, or a capture of 28 frames
+ * leaves 28 decoded images pinned in memory on a phone.
+ */
+const preview = ref<{
+  areaId: string
+  role: PhotoRole
+  url: string
+  blob: Blob
+  measurements: Awaited<ReturnType<typeof processFrame>>['measurements']
+  accepted: boolean
+} | null>(null)
+
+function clearPreview() {
+  if (preview.value !== null) {
+    URL.revokeObjectURL(preview.value.url)
+    preview.value = null
+  }
+}
+
+onBeforeUnmount(clearPreview)
 
 const camera = ref<HTMLInputElement | null>(null)
 const busy = ref(false)
@@ -133,15 +164,47 @@ async function onFileChosen(event: Event) {
   try {
     stage.value = 'preparing'
     const processed = await processFrame(chosen, target.role, attempt)
+
+    // §2.5 speaks first, while the customer is still standing in the room. The frame is still shown:
+    // seeing the blurred photograph is what makes "tekrar çekin" mean something.
     if (!processed.verdict.accept) {
-      // §2.5: said now, while they are still standing in the room and can simply take it again.
       attempts.value = { ...attempts.value, [key]: attempt }
       rejected.value = processed.verdict.reason
-      return
     }
 
+    clearPreview()
+    preview.value = {
+      areaId: target.areaId,
+      role: target.role,
+      url: URL.createObjectURL(processed.blob),
+      blob: processed.blob,
+      measurements: processed.measurements,
+      accepted: processed.verdict.accept,
+    }
+  }
+  catch {
+    failed.value = true
+  }
+  finally {
+    busy.value = false
+    stage.value = 'idle'
+  }
+}
+
+/** §2.4's "onaylanır": the only path by which a photograph leaves the phone. */
+async function confirmShot() {
+  const shot = preview.value
+  if (busy.value || shot === null || !shot.accepted) {
+    return
+  }
+
+  busy.value = true
+  failed.value = false
+  needsConsent.value = false
+  percent.value = 0
+  try {
     const intent = await api.POST('/api/photos/upload-intent', {
-      body: { roomId: target.areaId, role: target.role },
+      body: { roomId: shot.areaId, role: shot.role },
     })
     if (intent.response.status === 403) {
       // The data notice has not been agreed to, or was withdrawn (BOYA-39). Nothing to retry here.
@@ -154,20 +217,22 @@ async function onFileChosen(event: Event) {
     }
 
     stage.value = 'uploading'
-    await uploadFrame(intent.data.uploadUrl, processed.blob, {
+    await uploadFrame(intent.data.uploadUrl, shot.blob, {
       onProgress: fraction => (percent.value = Math.round(fraction * 100)),
     })
 
     const done = await api.POST('/api/photos/{id}/complete', {
       params: { path: { id: intent.data.photoId } },
-      body: processed.measurements,
+      body: shot.measurements,
     })
     if (!done.response.ok) {
       failed.value = true
       return
     }
 
-    attempts.value = { ...attempts.value, [key]: 0 }
+    attempts.value = { ...attempts.value, [`${shot.areaId}:${shot.role}`]: 0 }
+    clearPreview()
+    rejected.value = null
     await refresh()
   }
   catch {
@@ -177,6 +242,15 @@ async function onFileChosen(event: Event) {
     busy.value = false
     stage.value = 'idle'
   }
+}
+
+/** The customer did not like their own photograph. Nothing was sent, so nothing has to be undone. */
+function discardShot() {
+  if (busy.value) {
+    return
+  }
+  clearPreview()
+  rejected.value = null
 }
 
 /** §9 refuses to overwrite an uploaded frame, so a retake deletes the object and starts again. */
@@ -240,6 +314,28 @@ async function retake(photoId: string) {
           <NuxtLink class="btn outline" :to="guideLink">{{ t('capture.goToGuide') }}</NuxtLink>
         </template>
 
+        <section v-if="preview" class="preview">
+          <img :src="preview.url" :alt="t('capture.previewAlt')">
+          <p class="previewOf">{{ t('capture.previewOf', {
+            frame: labelOf(openArea?.type ?? '', preview.role) }) }}</p>
+
+          <p v-if="rejected" class="err" role="alert">{{ t(`capture.rejected.${rejected}`) }}</p>
+          <p v-else class="intro">{{ t('capture.previewAsk') }}</p>
+
+          <div class="previewActions">
+            <button
+              v-if="preview.accepted"
+              class="btn primary confirm"
+              type="button"
+              :disabled="busy"
+              @click="confirmShot"
+            >{{ t('capture.confirm') }}</button>
+            <button class="btn outline discard" type="button" :disabled="busy" @click="discardShot">
+              {{ preview.accepted ? t('capture.discard') : t('capture.retake') }}
+            </button>
+          </div>
+        </section>
+
         <p v-if="stage === 'preparing'" class="working">{{ t('capture.preparing') }}</p>
         <p v-else-if="stage === 'uploading'" class="working">
           {{ t('capture.uploading', { percent }) }}
@@ -292,12 +388,6 @@ async function retake(photoId: string) {
                     :disabled="busy"
                     @click="retake(f.photoId)"
                   >{{ t('capture.retake') }}</button>
-
-                  <p
-                    v-if="rejected && pending && pending.areaId === a.id && pending.role === f.role"
-                    class="err rejected"
-                    role="alert"
-                  >{{ t(`capture.rejected.${rejected}`) }}</p>
                 </li>
               </ul>
             </template>
@@ -403,6 +493,29 @@ h1 { margin: 0; font-size: 1.4rem; line-height: 1.25; }
   text-decoration: underline;
 }
 .retake:disabled { color: var(--ink-3); cursor: not-allowed; }
+
+.preview {
+  display: grid;
+  gap: var(--gap);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--gap-loose);
+  background: var(--surface);
+}
+
+.preview img {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+  border-radius: var(--radius);
+  background: var(--line);
+}
+
+.previewOf { margin: 0; font-weight: 600; }
+
+.previewActions { display: flex; flex-wrap: wrap; gap: var(--gap); }
+.previewActions .btn { flex: 1 1 10rem; }
 
 .panel { margin: 0; color: var(--ink-2); }
 .err { margin: 0; color: var(--danger); font-size: .9rem; }
