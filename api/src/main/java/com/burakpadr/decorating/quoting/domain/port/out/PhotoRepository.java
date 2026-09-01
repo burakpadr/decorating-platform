@@ -2,6 +2,7 @@ package com.burakpadr.decorating.quoting.domain.port.out;
 
 import com.burakpadr.decorating.quoting.domain.model.Photo;
 import com.burakpadr.decorating.quoting.domain.model.PhotoRole;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,14 @@ public interface PhotoRepository {
 
 	/** The frame already held for this role, if there is one — §4.3 allows a second only for DETAIL. */
 	Optional<Photo> findByRoomAndRole(UUID roomId, PhotoRole role);
+
+	/**
+	 * Every photograph of every room of this request, in no particular order.
+	 *
+	 * <p>Reserved rows included. Whether an intent nobody uploaded counts as a photograph is a question
+	 * about the capture, not about storage, so it is answered above this — see {@code CaptureState}.
+	 */
+	List<Photo> findByQuoteRequest(UUID quoteRequestId);
 
 	void delete(UUID photoId);
 

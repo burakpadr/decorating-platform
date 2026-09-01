@@ -842,6 +842,55 @@
         }
       }
     },
+    "/api/quote-requests/{id}/rooms" : {
+      "get" : {
+        "tags" : [ "quote-request-controller" ],
+        "summary" : "The areas to photograph and how far the capture has got",
+        "operationId" : "capture",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The draft this session owns",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "The agreed areas, their frames, and which of them have arrived",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaptureStateResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "No session cookie",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaptureStateResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "The session owns a different draft",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CaptureStateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/quote-requests/resume/{token}" : {
       "get" : {
         "tags" : [ "quote-request-controller" ],
@@ -1709,6 +1758,85 @@
             "uniqueItems" : true
           }
         }
+      },
+      "CaptureAreaResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "LIVING_ROOM", "MASTER_BEDROOM", "BEDROOM", "STUDY", "KITCHEN", "BATHROOM", "HALLWAY", "BALCONY" ]
+          },
+          "label" : {
+            "type" : "string",
+            "description" : "Turkish, derived server-side"
+          },
+          "sortOrder" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "frames" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaptureFrameResponse"
+            }
+          },
+          "complete" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "complete", "frames", "id", "label", "sortOrder", "type" ]
+      },
+      "CaptureFrameResponse" : {
+        "type" : "object",
+        "properties" : {
+          "role" : {
+            "type" : "string",
+            "enum" : [ "WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING", "DETAIL" ]
+          },
+          "photoId" : {
+            "type" : "string",
+            "format" : "uuid",
+            "description" : "The photograph, if one has arrived. Delete it to retake the frame."
+          },
+          "taken" : {
+            "type" : "boolean",
+            "description" : "A reservation nobody uploaded is not taken"
+          },
+          "lowQualityFlag" : {
+            "type" : "boolean",
+            "description" : "Kept despite its score — §9 stops arguing after three attempts"
+          }
+        },
+        "required" : [ "lowQualityFlag", "role", "taken" ]
+      },
+      "CaptureStateResponse" : {
+        "type" : "object",
+        "properties" : {
+          "areas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CaptureAreaResponse"
+            }
+          },
+          "required" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Frames §2.4 asks for in total"
+          },
+          "taken" : {
+            "type" : "integer",
+            "format" : "int32",
+            "description" : "Frames that have arrived"
+          },
+          "complete" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "areas", "complete", "required", "taken" ]
       },
       "Coefficients" : {
         "type" : "object",

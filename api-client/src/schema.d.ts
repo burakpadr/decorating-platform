@@ -221,6 +221,23 @@ export interface paths {
         patch: operations["answer"];
         trace?: never;
     };
+    "/api/quote-requests/{id}/rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The areas to photograph and how far the capture has got */
+        get: operations["capture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quote-requests/resume/{token}": {
         parameters: {
             query?: never;
@@ -589,6 +606,45 @@ export interface components {
             wallCondition?: "GOOD" | "MINOR" | "MAJOR" | "UNSURE";
             /** @description Areas to paint when scope is SELECTED_ROOMS. Ignored for WHOLE_HOME, where the layout derives the list. */
             selectedRooms?: ("LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY")[];
+        };
+        CaptureAreaResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "LIVING_ROOM" | "MASTER_BEDROOM" | "BEDROOM" | "STUDY" | "KITCHEN" | "BATHROOM" | "HALLWAY" | "BALCONY";
+            /** @description Turkish, derived server-side */
+            label: string;
+            /** Format: int32 */
+            sortOrder: number;
+            frames: components["schemas"]["CaptureFrameResponse"][];
+            complete: boolean;
+        };
+        CaptureFrameResponse: {
+            /** @enum {string} */
+            role: "WALL_1" | "WALL_2" | "WALL_3" | "WALL_4" | "CEILING" | "DETAIL";
+            /**
+             * Format: uuid
+             * @description The photograph, if one has arrived. Delete it to retake the frame.
+             */
+            photoId?: string;
+            /** @description A reservation nobody uploaded is not taken */
+            taken: boolean;
+            /** @description Kept despite its score — §9 stops arguing after three attempts */
+            lowQualityFlag: boolean;
+        };
+        CaptureStateResponse: {
+            areas: components["schemas"]["CaptureAreaResponse"][];
+            /**
+             * Format: int32
+             * @description Frames §2.4 asks for in total
+             */
+            required: number;
+            /**
+             * Format: int32
+             * @description Frames that have arrived
+             */
+            taken: number;
+            complete: boolean;
         };
         Coefficients: {
             ceilingHeightM: number;
@@ -1342,6 +1398,47 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    capture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The draft this session owns */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The agreed areas, their frames, and which of them have arrived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CaptureStateResponse"];
+                };
+            };
+            /** @description No session cookie */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CaptureStateResponse"];
+                };
+            };
+            /** @description The session owns a different draft */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CaptureStateResponse"];
                 };
             };
         };
