@@ -192,6 +192,25 @@ the job. `notes` must stay Turkish — the operator reads it.
 
 Room confidence is the weighted average of surface confidences, not the minimum.
 
+The adapter is provider-independent (BOYA-47). `VisionModel` is the single interface a provider
+implements, selected by `decorating.vision.provider`; everything else in `adapter/out/vision` —
+the versioned prompt, the schema, the one retry, the mapping onto findings — works whichever
+provider is chosen. Two are shipped:
+
+- `none` (**the default, and what deploys**) refuses. No provider is chosen and no data processing
+  agreement is signed (BOYA-7), so no customer photograph goes anywhere. This is deliberately *not*
+  `RecordingSmsSender`'s arrangement: an SMS nobody sent can be sent by hand, and an analysis nobody
+  performed is a set of observations about a home no model has seen, each of which becomes a
+  quantity and then a price.
+- `fake` invents deterministic, schema-valid findings for local work, and stamps `model_version` as
+  `fake` so a row that came from nothing stays legible as one. It fakes at the `VisionModel` seam
+  rather than at the port, so the whole production path — prompt, validation, retry, mapping — runs
+  over it and the fake cannot drift out of schema without a test noticing.
+
+The response vocabulary is spelled in three places — `schema.json`, the domain enums, and the CHECK
+constraints — and `RoomAnalysisSchemaTest` compares all three. That test exists because they
+disagreed for the length of the project without anything failing (decision 0020).
+
 ## Async
 
 No broker. `analysis_job` in PostgreSQL, claimed with `FOR UPDATE SKIP LOCKED` (query in §8), polled

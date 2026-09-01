@@ -37,7 +37,11 @@
       "properties": {
         "cornice": { "type": "boolean" },
         "downlightCount": { "type": "integer", "minimum": 0 },
-        "staining": { "type": "string", "enum": ["NONE", "LIGHT", "HEAVY"] },
+        "staining": {
+          "type": "string",
+          "enum": ["NONE", "STAIN", "ACTIVE"],
+          "description": "The same three words a wall answers with. ACTIVE is a risk finding: an active leak overhead goes to a survey, not to a price (ADR 0017, decision 0020)."
+        },
         "fillerRatio": { "type": "string", "enum": ["NONE", "LOW", "MEDIUM", "HIGH", "FULL"] },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
       }

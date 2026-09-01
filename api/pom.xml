@@ -21,6 +21,7 @@
 		<springdoc.version>3.1.0</springdoc.version>
 		<springdoc-maven-plugin.version>1.5</springdoc-maven-plugin.version>
 		<minio.version>8.5.17</minio.version>
+		<json-schema-validator.version>3.0.7</json-schema-validator.version>
 		<archunit.version>1.4.1</archunit.version>
 		<!-- Ports used only while the OpenAPI spec is exported; see the openapi profile below.
 		     The JMX port is not 9001 on purpose: spring-boot:start defaults to it, and MinIO's
@@ -64,6 +65,18 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>${springdoc.version}</version>
+		</dependency>
+
+		<!--
+			The vision response is validated against prompts/room-analysis/schema.json before a single
+			field of it is believed (§6). The schema file is the contract in both directions — it is
+			what the provider is asked to conform to and what the answer is checked against — so it is
+			enforced by a validator reading that file, not by a record that restates it and drifts.
+		-->
+		<dependency>
+			<groupId>com.networknt</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>${json-schema-validator.version}</version>
 		</dependency>
 
 		<!-- MinIO: presigned PUT/GET. Photos never pass through the JVM. -->

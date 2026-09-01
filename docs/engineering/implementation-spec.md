@@ -985,7 +985,7 @@ Enforce with structured output / JSON schema. Validate before persisting; on val
   "ceiling": {
     "cornice": true,
     "downlightCount": 6,
-    "staining": "LIGHT",
+    "staining": "STAIN",
     "fillerRatio": "LOW",
     "confidence": 0.79
   },
@@ -998,6 +998,8 @@ Enforce with structured output / JSON schema. Validate before persisting; on val
   "notes": ["sol duvarda priz hizasında çatlak"]
 }
 ```
+
+**The ceiling answers in the same three words as a wall** — `NONE` · `STAIN` · `ACTIVE`. It read `NONE | LIGHT | HEAVY` until BOYA-47, which put a severity scale where the risk rule below looks for an activity one: `ceiling_staining == ACTIVE` had no value that could produce it, so `CeilingFinding.isRisk()` was unreachable and a leaking ceiling priced itself. Decision 0020.
 
 **`notes` must stay Turkish** — the operator reads it. State this explicitly in the prompt, otherwise the model translates the whole output to one language.
 

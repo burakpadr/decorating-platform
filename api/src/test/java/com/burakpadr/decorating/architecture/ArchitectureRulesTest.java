@@ -45,6 +45,11 @@ class ArchitectureRulesTest {
 						"jakarta.persistence..",
 						"jakarta.validation..",
 						"com.fasterxml.jackson..",
+						// Spring Boot 4 moved to Jackson 3, which is a different root package. The rule
+						// named only the old one, so a domain record could have carried an @JsonProperty
+						// from tools.jackson and nothing would have said so.
+						"tools.jackson..",
+						"com.networknt..",
 						"io.swagger..")
 				.because("domain models are plain Java; JPA entities and DTOs are separate classes "
 						+ "in the adapter layer, mapped explicitly")

@@ -90,6 +90,14 @@ decorating:
     resume-token-ttl: P14D          # the same window the quote is valid for; a link outliving it is a link to nothing
     photo-retention-days: 30      # counted from close date, never from send date
 
+  # Which model answers §6's analysis call, and the only switch that decides whether a customer's
+  # photographs leave this system. `none` refuses and the analysis job records why — no provider is
+  # chosen and no data processing agreement is signed (BOYA-7). `fake` invents findings for local work;
+  # every room_analysis row it produces carries model_version=fake, which is how a row that came from
+  # nothing stays legible as one.
+  vision:
+    provider: ${VISION_PROVIDER:none}     # none | fake
+
   analysis:
     poll-interval-ms: 10000
     batch-size: 5

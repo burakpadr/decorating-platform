@@ -15,7 +15,11 @@ public interface PhotoStorage {
 	/** A URL the customer's browser can PUT one photograph to, and nothing else. */
 	PresignedUrl presignPut(String key);
 
-	/** A short-lived read, for the operator's review screen only (§9). */
+	/**
+	 * A short-lived read. Two readers: the operator's review screen (§9), and the vision provider, which
+	 * is handed one URL per frame rather than the bytes (§6). Short-lived matters in both — this is a
+	 * photograph of somebody's home that anyone holding the link can open.
+	 */
 	PresignedUrl presignGet(String key);
 
 	/** Removes the object. Quiet when there is nothing there: an intent nobody used leaves no object. */
