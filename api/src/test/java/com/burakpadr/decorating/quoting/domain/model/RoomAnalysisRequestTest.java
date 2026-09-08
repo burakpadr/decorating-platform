@@ -36,8 +36,7 @@ class RoomAnalysisRequestTest {
 		Photo secondCloseUp = uploaded(PhotoRole.DETAIL, "a5");
 
 		// Deliberately out of order: rows come back in whatever order the query gave them.
-		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, RoomType.BEDROOM,
-				List.of(secondCloseUp, ceiling, wall2, firstCloseUp, wall1));
+		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, List.of(secondCloseUp, ceiling, wall2, firstCloseUp, wall1));
 
 		assertThat(request.photos()).extracting(LabelledPhoto::label)
 				.containsExactly("WALL_1", "WALL_2", "CEILING", "DETAIL_1", "DETAIL_2");
@@ -60,8 +59,8 @@ class RoomAnalysisRequestTest {
 		List<Photo> shuffled = new ArrayList<>(frames);
 		Collections.reverse(shuffled);
 
-		assertThat(RoomAnalysisRequest.of(roomId, RoomType.BEDROOM, shuffled).photos())
-				.isEqualTo(RoomAnalysisRequest.of(roomId, RoomType.BEDROOM, frames).photos());
+		assertThat(RoomAnalysisRequest.of(roomId, shuffled).photos())
+				.isEqualTo(RoomAnalysisRequest.of(roomId, frames).photos());
 	}
 
 	@Test
@@ -69,8 +68,7 @@ class RoomAnalysisRequestTest {
 	void labelsOnlyWhatWasCaptured() {
 		// A kitchen asks for two frames, not five (workflow §2.4). Padding the call out to WALL_4 would
 		// be four labels the response can answer about and nothing behind them.
-		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, RoomType.KITCHEN,
-				List.of(uploaded(PhotoRole.WALL_1), uploaded(PhotoRole.CEILING)));
+		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, List.of(uploaded(PhotoRole.WALL_1), uploaded(PhotoRole.CEILING)));
 
 		assertThat(request.photos()).extracting(LabelledPhoto::label)
 				.containsExactly("WALL_1", "CEILING");
@@ -84,8 +82,7 @@ class RoomAnalysisRequestTest {
 		// others and says nothing about the missing one, which reads exactly like a wall with no findings.
 		Photo reserved = Photo.intended(Uuid7.generate(), quoteRequestId, roomId, PhotoRole.WALL_2);
 
-		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, RoomType.BEDROOM,
-				List.of(uploaded(PhotoRole.WALL_1), reserved));
+		RoomAnalysisRequest request = RoomAnalysisRequest.of(roomId, List.of(uploaded(PhotoRole.WALL_1), reserved));
 
 		assertThat(request.photos()).extracting(LabelledPhoto::label).containsExactly("WALL_1");
 	}
@@ -96,7 +93,7 @@ class RoomAnalysisRequestTest {
 		// The one case where calling the model is worse than failing: asked about a room it cannot see,
 		// a model still answers, and the answer is a plausible average bedroom. That is a priced
 		// invention, and nothing downstream can tell it from an observation.
-		assertThatThrownBy(() -> RoomAnalysisRequest.of(roomId, RoomType.BEDROOM, List.of()))
+		assertThatThrownBy(() -> RoomAnalysisRequest.of(roomId, List.of()))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining(roomId.toString());
 	}
@@ -108,7 +105,7 @@ class RoomAnalysisRequestTest {
 		Photo wall = uploaded(PhotoRole.WALL_1);
 
 		RoomAnalysisRequest request =
-				RoomAnalysisRequest.of(roomId, RoomType.BEDROOM, List.of(wall));
+				RoomAnalysisRequest.of(roomId, List.of(wall));
 
 		assertThat(request.photos()).singleElement()
 				.extracting(LabelledPhoto::storageKey)

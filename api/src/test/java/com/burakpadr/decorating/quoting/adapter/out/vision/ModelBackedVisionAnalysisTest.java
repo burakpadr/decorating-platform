@@ -229,7 +229,7 @@ class ModelBackedVisionAnalysisTest {
 			photos.add(Photo.intended(photoIdOf(role), quoteRequestId, roomId, role)
 					.uploaded(Instant.now(), new CapturedFrame(null, null, null, null, null, false)));
 		}
-		return RoomAnalysisRequest.of(roomId, RoomType.LIVING_ROOM, photos);
+		return RoomAnalysisRequest.of(roomId, photos);
 	}
 
 	/** Stable per role, so the expected storage key can be written down. */

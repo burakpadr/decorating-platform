@@ -23,6 +23,15 @@ public interface PhotoRepository {
 	Optional<Photo> findByRoomAndRole(UUID roomId, PhotoRole role);
 
 	/**
+	 * Every photograph of one room, reserved rows included.
+	 *
+	 * <p>What §6's call is built from: one room, all of its frames, close-ups among them. Which of them
+	 * are worth sending is {@code RoomAnalysisRequest}'s question — an intent nobody uploaded has no
+	 * object behind it — and it is asked there so the answer is not decided twice.
+	 */
+	List<Photo> findByRoom(UUID roomId);
+
+	/**
 	 * Every photograph of every room of this request, in no particular order.
 	 *
 	 * <p>Reserved rows included. Whether an intent nobody uploaded counts as a photograph is a question

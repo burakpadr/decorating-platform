@@ -118,7 +118,7 @@ class FakeVisionModelTest {
 			photos.add(Photo.intended(Uuid7.generate(), quoteRequestId, roomId, role)
 					.uploaded(Instant.now(), new CapturedFrame(null, null, null, null, null, false)));
 		}
-		return RoomAnalysisRequest.of(roomId, RoomType.BEDROOM, photos);
+		return RoomAnalysisRequest.of(roomId, photos);
 	}
 
 	/** Signs a different URL every call, the way a real one does. */

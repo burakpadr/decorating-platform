@@ -223,7 +223,26 @@ disagreed for the length of the project without anything failing (decision 0020)
 
 No broker. `analysis_job` in PostgreSQL, claimed with `FOR UPDATE SKIP LOCKED` (query in §8), polled
 by `@Scheduled`. Retry with exponential backoff `run_after = now() + 2^attempts minutes`, three
-attempts, then `FAILED` and flag for the operator.
+attempts, then `FAILED` and flag for the operator — `FAILED` with `last_error` *is* the flag, read by
+the operator queue; no notification is sent from the poller (that is BOYA-64's).
+
+Three divisions of labour in that loop, each load-bearing (BOYA-48):
+
+- **The queue is filled in the transaction that moves the request to ANALYZING.** That status means
+  "there are jobs for this request's rooms"; written apart, a failure between the two strands a
+  customer waiting on a promise nothing is keeping, with no row that looks wrong.
+- **`AnalyseRoom` writes the findings and closes the job in one transaction, and throws otherwise.**
+  A written analysis with an open job is a second provider call that overwrites what the first one
+  paid for.
+- **The poller catches per job.** One room failing must not abandon the rest of the batch, and the
+  catch cannot live inside the use case: a transaction that has rolled back cannot record why.
+
+Only `VisionUnavailable` earns the backoff. `UnusableAnalysis` means §6 already asked again and the
+photographs have not changed, and a room with no uploaded frame has nothing on its way — both fail
+immediately rather than spending six minutes of the customer's promise.
+
+Nothing yet moves a fully analysed request out of ANALYZING. That is §6's evaluator (BOYA-51) reading
+the rows the poller writes, and it is a stated gap rather than a quiet one.
 
 Customer-facing time promises must respect `decorating.business-hours` — a request at 23:00 must
 not say "within 2 hours".

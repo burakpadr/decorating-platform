@@ -16,8 +16,13 @@ import java.util.UUID;
  *
  * <p>Job granularity follows from that shape, which is why {@code analysis_job.room_id} is a room and
  * not a request.
+ *
+ * <p>The room's <em>type</em> is deliberately not here. §6 wants the model's own reading of what it is
+ * looking at, and {@code v1.md} asks it to infer that from the capture shape — telling it "this is a
+ * bathroom" would be handing it the answer to one of the questions being asked. What the room is
+ * declared to be lives on {@code room.room_type}, which is what §5.3 prices (decision 0021).
  */
-public record RoomAnalysisRequest(UUID roomId, RoomType roomType, List<LabelledPhoto> photos) {
+public record RoomAnalysisRequest(UUID roomId, List<LabelledPhoto> photos) {
 
 	public RoomAnalysisRequest {
 		photos = List.copyOf(photos);
@@ -37,7 +42,7 @@ public record RoomAnalysisRequest(UUID roomId, RoomType roomType, List<LabelledP
 	 * room is missing a frame it was required to have is a §5.9 risk finding and the evaluator's
 	 * question (BOYA-51); it is not a reason to withhold the frames that did arrive.
 	 */
-	public static RoomAnalysisRequest of(UUID roomId, RoomType roomType, List<Photo> photos) {
+	public static RoomAnalysisRequest of(UUID roomId, List<Photo> photos) {
 		List<Photo> arrived = photos.stream()
 				.filter(Photo::isUploaded)
 				.sorted(Comparator.comparing((Photo photo) -> photo.role().ordinal())
@@ -65,6 +70,6 @@ public record RoomAnalysisRequest(UUID roomId, RoomType roomType, List<LabelledP
 					: photo.role().name();
 			labelled.add(new LabelledPhoto(label, photo.id(), photo.storageKey()));
 		}
-		return new RoomAnalysisRequest(roomId, roomType, labelled);
+		return new RoomAnalysisRequest(roomId, labelled);
 	}
 }

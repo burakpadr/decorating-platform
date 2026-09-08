@@ -86,6 +86,11 @@ class PhotoPersistenceAdapter implements PhotoRepository {
 	}
 
 	@Override
+	public List<Photo> findByRoom(UUID roomId) {
+		return jdbc.query("SELECT * FROM photo WHERE room_id = ?", AS_PHOTO, roomId);
+	}
+
+	@Override
 	public List<Photo> findByQuoteRequest(UUID quoteRequestId) {
 		return jdbc.query("""
 				SELECT p.*
