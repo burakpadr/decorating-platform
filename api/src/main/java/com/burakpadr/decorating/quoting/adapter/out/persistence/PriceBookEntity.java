@@ -71,6 +71,12 @@ class PriceBookEntity {
 	@Column(name = "material_vat_rate", nullable = false)
 	private BigDecimal materialVatRate;
 
+	@Column(name = "survey_amount_factor", nullable = false)
+	private BigDecimal surveyAmountFactor;
+
+	@Column(name = "average_job_value", nullable = false)
+	private BigDecimal averageJobValue;
+
 	@Column(name = "base_band_ratio", nullable = false)
 	private BigDecimal baseBandRatio;
 
@@ -138,6 +144,14 @@ class PriceBookEntity {
 
 	BigDecimal getMaterialVatRate() {
 		return materialVatRate;
+	}
+
+	BigDecimal getSurveyAmountFactor() {
+		return surveyAmountFactor;
+	}
+
+	BigDecimal getAverageJobValue() {
+		return averageJobValue;
 	}
 
 	BigDecimal getBaseBandRatio() {

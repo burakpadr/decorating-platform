@@ -41,6 +41,9 @@ public final class PriceBookFixture {
 				new BigDecimal("1.90"), new BigDecimal("2.20"),
 				3, new BigDecimal("8.00"), new BigDecimal("4500.00"), new BigDecimal("0.25"),
 				new BigDecimal("0.30"), new BigDecimal("0.20"),
+				// §6's survey threshold: an uncertain job worth more than twice an average one is
+				// visited rather than priced.
+				new BigDecimal("2.00"), new BigDecimal("25000.00"),
 				new BigDecimal(labourRate), new BigDecimal(materialRate), new BigDecimal("0.12"),
 				items(), modifiers(), roomTypes(),
 				Map.of("KADIKOY", new ServiceDistrict("KADIKOY", "Kadıköy", true, new BigDecimal("1.05"))));

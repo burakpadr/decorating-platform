@@ -99,8 +99,12 @@ class AnalyseRoomTest {
 		QuoteRequest draft = QuoteRequest.draft(Uuid7.generate()).answer(new StageOneAnswers(
 				"KADIKOY", new BigDecimal("92"), AreaBasis.NET, Layout.TWO_PLUS_ONE,
 				QuoteScope.WHOLE_HOME, Furnishing.EMPTY, 3, false, WallCondition.MINOR, null));
-		requests.save(draft);
-		quoteRequestId = draft.id();
+		// ANALYZING, because that is the only state a claimed job can belong to (§3). Reached through
+		// the transitions rather than written, so the fixture cannot describe a request the state
+		// machine would refuse.
+		QuoteRequest analysing = draft.confirmRoomList().submit();
+		requests.save(analysing);
+		quoteRequestId = analysing.id();
 
 		roomId = Uuid7.generate();
 		rooms.replaceAll(quoteRequestId, new ConfirmedRooms(List.of(new ConfirmedRoom(

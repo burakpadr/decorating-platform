@@ -32,6 +32,8 @@ public record PriceBook(
 		BigDecimal dayRoundingTolerance,
 		BigDecimal marginRatio,
 		BigDecimal marginAlertThreshold,
+		BigDecimal surveyAmountFactor,
+		BigDecimal averageJobValue,
 		BigDecimal labourVatRate,
 		BigDecimal materialVatRate,
 		BigDecimal baseBandRatio,

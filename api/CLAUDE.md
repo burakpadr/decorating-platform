@@ -173,6 +173,21 @@ The labour/material split on modifiers is not cosmetic: a furnished home consume
 and more time, so applying the furnishing surcharge to materials systematically overprices
 furnished jobs.
 
+**§6's review decision is `ConfidenceEvaluator`, and it is pure** — the gate between a home priced
+from photographs and a home somebody drives to, so every branch is drivable from a test with no
+database. Two things about it are easy to get backwards (decision 0023):
+
+- **`AUTO` and `SURVEY` both end in `PENDING_REVIEW`.** §3 draws `SURVEY_REQUIRED` from
+  `PENDING_REVIEW`, not from `ANALYZING`, and workflow §4.3 says the survey case lands in the queue
+  *with a survey mark*. `quote_request.review_decision` is that mark; the operator converts
+  (BOYA-54). Only `RECAPTURE` moves the request, because only it needs the customer.
+- **The confidence it thresholds against is not the one §5.9 widens the band with.** This one averages
+  the rooms' stored figures (ceiling included, decision 0021); the engine's band term averages
+  `surface_finding` alone, because `RoomInput` carries no ceiling confidence. Close, not equal.
+
+The risk findings ask `CeilingFinding.isRisk()` rather than restating it — ADR 0017 wrote that
+predicate for this caller, and re-deriving the rule is how it drifted in the first place.
+
 Low confidence **widens the band and never shifts the midpoint** (§5.9). Painting surprises are
 one-directional — pulling low-confidence surfaces toward an average produces systematic
 underquoting.

@@ -4,9 +4,11 @@ import com.burakpadr.decorating.quoting.domain.model.AnalysisJob;
 import com.burakpadr.decorating.quoting.domain.model.RoomAnalysis;
 import com.burakpadr.decorating.quoting.domain.model.RoomAnalysisRequest;
 import com.burakpadr.decorating.quoting.domain.port.in.AnalyseRoom;
+import com.burakpadr.decorating.quoting.domain.port.in.ConcludeAnalysis;
 import com.burakpadr.decorating.quoting.domain.port.out.AnalysisJobs;
 import com.burakpadr.decorating.quoting.domain.port.out.PhotoRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.RoomAnalysisRepository;
+import com.burakpadr.decorating.quoting.domain.port.out.RoomRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.VisionAnalysisPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,10 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
  * that arrangement forbids is the expensive one: an analysis on the row with the job still saying
  * PENDING, which the next tick pays a second provider call to produce again.
  *
- * <p>What it does not do is decide what the analysis means. Whether the room's confidence is good
- * enough, whether a frame has to be retaken, whether the request may leave ANALYZING at all — that is
- * §6's evaluator (BOYA-51) reading the rows this writes. Until it exists a fully analysed request
- * stays in ANALYZING, which is a stated gap rather than a quiet one.
+ * <p>What the analysis <em>means</em> is not decided here. When the last room of a request lands,
+ * {@link ConcludeAnalysis} prices what was found and reads it (§6) — in this same transaction, so a
+ * request either has every analysis, a quote and a decision, or has none of them. Asked after every
+ * room and not only the last, because nothing here knows which room is last: the check for
+ * completeness is the conclusion's own, and a room analysed while another is still running answers
+ * "not yet".
  */
 @Service
 class RoomAnalysisService implements AnalyseRoom {
@@ -31,13 +35,18 @@ class RoomAnalysisService implements AnalyseRoom {
 	private final VisionAnalysisPort vision;
 	private final RoomAnalysisRepository analyses;
 	private final AnalysisJobs jobs;
+	private final RoomRepository rooms;
+	private final ConcludeAnalysis conclusion;
 
 	RoomAnalysisService(PhotoRepository photos, VisionAnalysisPort vision,
-			RoomAnalysisRepository analyses, AnalysisJobs jobs) {
+			RoomAnalysisRepository analyses, AnalysisJobs jobs, RoomRepository rooms,
+			ConcludeAnalysis conclusion) {
 		this.photos = photos;
 		this.vision = vision;
 		this.analyses = analyses;
 		this.jobs = jobs;
+		this.rooms = rooms;
+		this.conclusion = conclusion;
 	}
 
 	@Override
@@ -50,5 +59,7 @@ class RoomAnalysisService implements AnalyseRoom {
 
 		analyses.save(analysis);
 		jobs.done(job.id());
+
+		rooms.quoteRequestOf(job.roomId()).ifPresent(conclusion::concludeIfComplete);
 	}
 }

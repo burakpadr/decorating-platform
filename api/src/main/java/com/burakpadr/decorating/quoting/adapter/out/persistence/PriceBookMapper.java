@@ -92,6 +92,8 @@ final class PriceBookMapper {
 				book.getDayRoundingTolerance(),
 				book.getMarginRatio(),
 				book.getMarginAlertThreshold(),
+				book.getSurveyAmountFactor(),
+				book.getAverageJobValue(),
 				book.getLabourVatRate(),
 				book.getMaterialVatRate(),
 				book.getBaseBandRatio(),
