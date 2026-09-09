@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 import com.burakpadr.decorating.quoting.domain.PriceBookFixture;
+import com.burakpadr.decorating.quoting.domain.model.AppliedModifier;
 import com.burakpadr.decorating.quoting.domain.model.CeilingFinding;
 import com.burakpadr.decorating.quoting.domain.model.Coating;
 import com.burakpadr.decorating.quoting.domain.model.FillerBand;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.ModifierCode;
 import com.burakpadr.decorating.quoting.domain.model.Moisture;
 import com.burakpadr.decorating.quoting.domain.model.PriceBook;
 import com.burakpadr.decorating.quoting.domain.model.PricedQuote;
@@ -257,6 +259,12 @@ class PricingEngineTest {
 		assertLine(quote.line(ItemCode.MASKING), "7.00", "1006.25", "434.00", "1440.25");
 		assertLine(quote.line(ItemCode.MOBILIZATION), "1.00", "1900.00", "0.00", "1900.00");
 
+		// §4.6's two columns, which the quote row stores and the operator's breakdown reads. Equal to
+		// WALL_PAINT's and CEILING_PAINT's quantities here, and deliberately not derived from them: a
+		// fully tiled home has no WALL_PAINT line, and that is the quote somebody needs explained.
+		assertThat(quote.totalWallSqm()).isEqualByComparingTo("220.83");
+		assertThat(quote.totalCeilingSqm()).isEqualByComparingTo("92.00");
+
 		assertThat(quote.totalCost()).isEqualByComparingTo("52509.86");
 		assertThat(quote.subtotalExVat()).isEqualByComparingTo("68262.82");
 		assertThat(quote.vatAmount()).isEqualByComparingTo("13652.56");
@@ -270,6 +278,29 @@ class PricingEngineTest {
 		assertThat(quote.bandRatio()).isEqualByComparingTo("0.12");
 		assertThat(quote.bandLow()).isEqualByComparingTo("72085.54");
 		assertThat(quote.bandHigh()).isEqualByComparingTo("91745.23");
+	}
+
+	@Test
+	@DisplayName("each line records which modifiers moved it, and by how much on each half")
+	void recordsTheModifiersItApplied() {
+		// §4.6's audit column: "answers 'why does this line have a 1.5 factor' six months later". The
+		// interesting row is mobilization — §5.2 puts it outside steps 6–8, so no labour modifier
+		// reaches it, and an empty list is that fact rather than a missing one.
+		PricedQuote quote = engine.price(workedExample(), book());
+
+		assertThat(quote.line(ItemCode.WALL_PAINT).appliedModifiers())
+				.extracting(AppliedModifier::code)
+				.containsExactly(ModifierCode.FURNISHED);
+		AppliedModifier onWalls = quote.line(ItemCode.WALL_PAINT).appliedModifiers().getFirst();
+		assertThat(onWalls.labourFactor()).isEqualByComparingTo("1.25");
+		// Material untouched: a furnished home consumes exactly as much paint (§5.7).
+		assertThat(onWalls.materialFactor()).isEqualByComparingTo("1.00");
+
+		assertThat(quote.line(ItemCode.DOOR_PAINT).appliedModifiers())
+				.extracting(AppliedModifier::code)
+				.containsExactlyInAnyOrder(ModifierCode.DARK_TO_LIGHT, ModifierCode.FURNISHED);
+
+		assertThat(quote.line(ItemCode.MOBILIZATION).appliedModifiers()).isEmpty();
 	}
 
 	@Test

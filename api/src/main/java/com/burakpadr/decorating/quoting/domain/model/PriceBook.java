@@ -1,6 +1,7 @@
 package com.burakpadr.decorating.quoting.domain.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.Collator;
 import java.util.Comparator;
 import java.util.List;
@@ -84,6 +85,26 @@ public record PriceBook(
 	 * is <b>not</b> a service check: the operator's tool prices hypothetical addresses, and
 	 * {@link #serves} is what a customer-facing path has to ask first.
 	 */
+	/**
+	 * The net area to price on, converting a gross figure with this version's own ratio (§5.1).
+	 *
+	 * <p>Here rather than in the use case because both stages need it and there is one right answer. A
+	 * second copy of this line is ADR 0016's defect in a new place: every square metre of every quote
+	 * comes through it, and two of them would drift the first time one was corrected.
+	 *
+	 * <p>The ratio is a price book coefficient and not a constant, so it can be calibrated (BOYA-2b) and
+	 * so a quote stays explainable against the version that priced it.
+	 */
+	public BigDecimal netAreaOf(BigDecimal area, AreaBasis basis) {
+		BigDecimal net = basis == AreaBasis.GROSS
+				? area.multiply(grossToNetRatio()).setScale(2, RoundingMode.HALF_UP)
+				: area.setScale(2, RoundingMode.HALF_UP);
+		if (net.signum() <= 0) {
+			throw new IllegalArgumentException("an area has to be above zero");
+		}
+		return net;
+	}
+
 	public BigDecimal districtFactor(String districtCode) {
 		ServiceDistrict district = districts.get(districtCode);
 		return district == null ? BigDecimal.ONE : district.districtFactor();

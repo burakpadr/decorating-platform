@@ -28,6 +28,18 @@ public record SurfaceFinding(
 		boolean wallpaper,
 		BigDecimal confidence) {
 
+	/**
+	 * The same surface as the engine takes it (§5.1), which is this one minus the crack level.
+	 *
+	 * <p>Not a lossy conversion by accident: nothing in §5.6 prices a crack — filling one is what
+	 * {@link FillerBand} is for — and §5.9 sends a {@code STRUCTURAL} one to a survey instead of a
+	 * price. Handing the engine a field it must ignore is how a field ends up quietly used.
+	 */
+	public SurfaceInput toInput() {
+		return new SurfaceInput(surfaceId, coating, tone, fillerBand, skimCoatRequired, moisture,
+				wallpaper, confidence);
+	}
+
 	public SurfaceFinding {
 		if (surfaceId == null || coating == null || tone == null || fillerBand == null
 				|| crackLevel == null || moisture == null || confidence == null) {

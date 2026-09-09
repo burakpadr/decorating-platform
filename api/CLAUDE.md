@@ -179,6 +179,23 @@ underquoting.
 
 §5.10 is a worked example; it exists to become a regression fixture.
 
+**Both customer-facing stages build the engine's input through `PricingInput.declaredBy`** (BOYA-50).
+§5.1 says stage 1 and stage 2 build the same object and the engine must not know which produced it;
+that factory is where it stops being a sentence. The only things a stage chooses are the rooms — a
+declaration on one side, findings on the other — and the `source` that §5.5's opening deduction and
+§5.9's band read. The three questions §2.1 never asks live as constants on `StageOneAnswers`, so a
+fourth boolean cannot appear on one side only.
+
+A stage 2 quote is priced against **the version that priced the estimate**, not against whatever is
+active now: the customer carried on from a range, and a version activated in between answers a
+different question. Same reason `room` reads its required frames from the request's version.
+
+`quote_line_item` carries `applied_modifiers` and `labour_minutes` because §4.6 does, and both are
+filled from the engine rather than defaulted — the first answers "why does this line carry a factor",
+the second "which line makes this a three-day job". `AppliedModifier` records **both halves** of a
+factor: §4.6's own example is `FURNISHED`, which is labour-only, so one number for it would be wrong
+on the material half of every furnished line (decision 0022).
+
 ## Vision
 
 One call per room, all of that room's photos in the same context including `DETAIL` shots — that is

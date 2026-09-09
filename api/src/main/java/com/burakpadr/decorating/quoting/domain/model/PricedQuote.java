@@ -13,6 +13,12 @@ import java.util.List;
  * the whole at every stage. The business quotes labour alone, so that half is not a subtotal for
  * information — it is a price somebody says out loud.
  *
+ * <p>{@code totalWallSqm} and {@code totalCeilingSqm} are §4.6's two columns, and only steps 1–5 can
+ * know them: they are what is left of the wall after the coating and the openings came off, summed
+ * over the rooms. Derivable from {@code WALL_PAINT}'s quantity right up until a home has no paintable
+ * wall at all and the line is absent, which is exactly when somebody would need the figure to explain
+ * the quote.
+ *
  * <p>{@code bandLow} and {@code bandHigh} sit symmetrically around {@code total} by construction.
  * Low confidence widens the band and never shifts the midpoint: painting surprises are
  * one-directional, so pulling an uncertain estimate toward an average underquotes systematically.
@@ -22,6 +28,8 @@ public record PricedQuote(
 		List<QuoteLine> lines,
 		BigDecimal totalMinutes,
 		int billableDays,
+		BigDecimal totalWallSqm,
+		BigDecimal totalCeilingSqm,
 		BigDecimal minimumCost,
 		boolean minimumBinding,
 		BigDecimal totalCost,

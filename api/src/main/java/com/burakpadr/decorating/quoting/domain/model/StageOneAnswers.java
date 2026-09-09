@@ -33,6 +33,25 @@ public record StageOneAnswers(
 		 */
 		Set<RoomType> selectedRooms) {
 
+	/**
+	 * The three questions §2.1 does not ask, and the answers both customer-facing stages assume.
+	 *
+	 * <p>Written once because two stages price from these answers and a fourth boolean in either place
+	 * would be a silent difference between the range a customer was shown and the quote they are sent.
+	 *
+	 * <p>The lift is the interesting one. §5.6 charges for the <em>absence</em> of one, so assuming it is
+	 * there is the assumption that cannot flatter the price — the direction to be wrong in when nobody
+	 * has been asked.
+	 */
+	public static final boolean UNASKED_DOOR_COUNT_ESTIMATED = false;
+
+	/** @see #UNASKED_DOOR_COUNT_ESTIMATED */
+	public static final boolean UNASKED_HAS_ELEVATOR = true;
+
+	/** @see #UNASKED_DOOR_COUNT_ESTIMATED */
+	public static final boolean UNASKED_RUSH = false;
+
+
 	private static final StageOneAnswers EMPTY =
 			new StageOneAnswers(null, null, null, null, null, null, null, null, null, null);
 

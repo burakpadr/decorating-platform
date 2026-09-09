@@ -14,8 +14,6 @@ import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.service.PricingEngine;
 import com.burakpadr.decorating.quoting.domain.service.RoomListDeriver;
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 class QuoteCalculationService implements CalculateQuote {
 
-	private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
-
 	private final PriceBookRepository priceBooks;
 	private final RoomListDeriver rooms = new RoomListDeriver();
 	private final PricingEngine engine = new PricingEngine();
@@ -51,12 +47,7 @@ class QuoteCalculationService implements CalculateQuote {
 				"no active price book: nothing can be priced until one version is active"));
 
 		boolean areaWasGross = command.areaBasis() == AreaBasis.GROSS;
-		BigDecimal netArea = areaWasGross
-				? command.area().multiply(book.grossToNetRatio()).setScale(2, RoundingMode.HALF_UP)
-				: command.area().setScale(2, RoundingMode.HALF_UP);
-		if (netArea.signum() <= 0) {
-			throw new IllegalArgumentException("an area has to be above zero");
-		}
+		BigDecimal netArea = book.netAreaOf(command.area(), command.areaBasis());
 
 		RoomList roomList = rooms.derive(command.layout(), command.scope(), command.selectedRooms(), book);
 

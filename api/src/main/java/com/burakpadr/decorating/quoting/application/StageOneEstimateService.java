@@ -83,14 +83,14 @@ class StageOneEstimateService implements EstimateStageOne {
 				answers.selectedRooms() == null ? Set.of() : answers.selectedRooms(),
 				answers.wallCondition(),
 				answers.furnishing(),
-				// Stage 1 does not ask these three. Zero doors when the customer did not say, no rush, and
-				// a lift assumed present — §5.6 charges for the absence of one, so assuming it is there is
-				// the assumption that cannot flatter the price.
 				answers.doorCount() == null ? 0 : answers.doorCount(),
 				Boolean.TRUE.equals(answers.doorColourChange()),
-				false,
-				true,
-				false));
+				// The three §2.1 does not ask, from the one place they are written — stage 2 prices from
+				// the same answers and a fourth boolean here would be a silent difference between the
+				// range a customer saw and the quote they are sent.
+				StageOneAnswers.UNASKED_DOOR_COUNT_ESTIMATED,
+				StageOneAnswers.UNASKED_HAS_ELEVATOR,
+				StageOneAnswers.UNASKED_RUSH));
 
 		estimates.recordEstimate(
 				id,

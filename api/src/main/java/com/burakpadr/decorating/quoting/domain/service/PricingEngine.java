@@ -1,5 +1,6 @@
 package com.burakpadr.decorating.quoting.domain.service;
 
+import com.burakpadr.decorating.quoting.domain.model.AppliedModifier;
 import com.burakpadr.decorating.quoting.domain.model.CeilingFinding;
 import com.burakpadr.decorating.quoting.domain.model.Furnishing;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
@@ -91,18 +92,17 @@ public final class PricingEngine {
 
 			// Step 6 — item-level modifiers. Step 7 — labour modifiers. Collected as one factor per
 			// portion so the multiplication happens once, in the stated order.
-			BigDecimal itemLabour = itemModifierFactor(input, book, measured, code, true);
-			BigDecimal itemMaterial = itemModifierFactor(input, book, measured, code, false);
+			Modifiers modifiers = modifiersOn(input, book, measured, code, true);
 
-			BigDecimal labour = quantity.multiply(item.labourCost()).multiply(itemLabour).multiply(labourFactor);
-			BigDecimal material = quantity.multiply(item.materialCost()).multiply(itemMaterial);
+			BigDecimal labour = quantity.multiply(item.labourCost()).multiply(modifiers.labour());
+			BigDecimal material = quantity.multiply(item.materialCost()).multiply(modifiers.material());
 
 			// §5.8: minutes carry the labour modifiers, and an item modifier that touches labour is one
 			// of them — more coats is more time.
-			minutes = minutes.add(
-					quantity.multiply(item.labourMinutes()).multiply(itemLabour).multiply(labourFactor));
+			BigDecimal lineMinutes = quantity.multiply(item.labourMinutes()).multiply(modifiers.labour());
+			minutes = minutes.add(lineMinutes);
 
-			lines.add(line(code, item, quantity, labour, material));
+			lines.add(line(code, item, quantity, labour, material, lineMinutes, modifiers.applied()));
 			items = items.add(labour, material);
 		}
 
@@ -111,11 +111,17 @@ public final class PricingEngine {
 		BigDecimal mobilizationQuantity = quantities.get(ItemCode.MOBILIZATION);
 		if (mobilizationQuantity != null) {
 			PriceBookItem item = book.item(ItemCode.MOBILIZATION);
+			// No labour modifiers here, and the audit column says so: getting a crew to the door does not
+			// take longer because the sofa is still in the lounge. §5.2 puts step 9 outside steps 6–8.
+			Modifiers modifiers = modifiersOn(input, book, measured, ItemCode.MOBILIZATION, false);
 			BigDecimal labour = mobilizationQuantity.multiply(item.labourCost())
-					.multiply(itemModifierFactor(input, book, measured, ItemCode.MOBILIZATION, true));
+					.multiply(modifiers.labour());
 			BigDecimal material = mobilizationQuantity.multiply(item.materialCost())
-					.multiply(itemModifierFactor(input, book, measured, ItemCode.MOBILIZATION, false));
-			lines.add(line(ItemCode.MOBILIZATION, item, mobilizationQuantity, labour, material));
+					.multiply(modifiers.material());
+			// No minutes: §5.2 puts step 9 outside the loop that counts them, so mobilization is money
+			// without time — it is the crew arriving, not the crew working.
+			lines.add(line(ItemCode.MOBILIZATION, item, mobilizationQuantity, labour, material,
+					BigDecimal.ZERO, modifiers.applied()));
 			withMobilization = items.add(labour, material);
 		}
 
@@ -170,6 +176,8 @@ public final class PricingEngine {
 				lines,
 				money(minutes),
 				billableDays,
+				money(measured.wallNet()),
+				money(measured.ceilingArea()),
 				money(minimumCost),
 				minimumBinding,
 				money(cost.total()),
@@ -249,7 +257,7 @@ public final class PricingEngine {
 		BigDecimal confidence = totals.confidenceWeight.signum() == 0
 				? null
 				: totals.confidenceSum.divide(totals.confidenceWeight, MC);
-		return new Measured(quantities, darkShare, confidence);
+		return new Measured(quantities, totals.wallNet, totals.ceilingArea, darkShare, confidence);
 	}
 
 	/**
@@ -388,20 +396,76 @@ public final class PricingEngine {
 	 */
 	private BigDecimal itemModifierFactor(
 			PricingInput input, PriceBook book, Measured measured, ItemCode code, boolean labour) {
-		BigDecimal factor = BigDecimal.ONE;
+		return darkToLight(input, book, measured, code, labour)
+				.multiply(noElevator(input, book, code, labour));
+	}
 
+	private BigDecimal darkToLight(
+			PricingInput input, PriceBook book, Measured measured, ItemCode code, boolean labour) {
 		if (code == ItemCode.DOOR_PAINT && input.doorColourChange()) {
-			factor = factor.multiply(factorOf(book, ModifierCode.DARK_TO_LIGHT, code, labour));
+			return factorOf(book, ModifierCode.DARK_TO_LIGHT, code, labour);
 		}
 		if (code == ItemCode.WALL_PAINT && measured.darkWallShare().signum() > 0) {
 			BigDecimal full = factorOf(book, ModifierCode.DARK_TO_LIGHT, code, labour);
-			factor = factor.multiply(
-					BigDecimal.ONE.add(full.subtract(BigDecimal.ONE).multiply(measured.darkWallShare())));
+			return BigDecimal.ONE.add(
+					full.subtract(BigDecimal.ONE).multiply(measured.darkWallShare()));
 		}
-		if (!input.hasElevator()) {
-			factor = factor.multiply(factorOf(book, ModifierCode.NO_ELEVATOR, code, labour));
+		return BigDecimal.ONE;
+	}
+
+	private BigDecimal noElevator(PricingInput input, PriceBook book, ItemCode code, boolean labour) {
+		return input.hasElevator() ? BigDecimal.ONE
+				: factorOf(book, ModifierCode.NO_ELEVATOR, code, labour);
+	}
+
+	/**
+	 * Every modifier on one line, per half, and the products the line is priced with.
+	 *
+	 * <p>Captured rather than only multiplied, because §4.6 keeps the answer to "why is this line 1.5"
+	 * on the row: a factor derived from the price book six months from now is derived from a different
+	 * price book, and {@code DARK_TO_LIGHT} on walls is not the book's figure at all — ADR 0014 scales
+	 * it by the dark share of the wall area.
+	 *
+	 * <p>{@code withLabourModifiers} is false for step 9's mobilization, which §5.2 puts outside steps
+	 * 6–8. The list says as much, which is the point of keeping it.
+	 */
+	private Modifiers modifiersOn(PricingInput input, PriceBook book, Measured measured,
+			ItemCode code, boolean withLabourModifiers) {
+		List<AppliedModifier> applied = new ArrayList<>();
+		BigDecimal labour = BigDecimal.ONE;
+		BigDecimal material = BigDecimal.ONE;
+
+		for (ModifierCode modifier : List.of(ModifierCode.DARK_TO_LIGHT, ModifierCode.NO_ELEVATOR)) {
+			BigDecimal onLabour = modifier == ModifierCode.DARK_TO_LIGHT
+					? darkToLight(input, book, measured, code, true)
+					: noElevator(input, book, code, true);
+			BigDecimal onMaterial = modifier == ModifierCode.DARK_TO_LIGHT
+					? darkToLight(input, book, measured, code, false)
+					: noElevator(input, book, code, false);
+			labour = labour.multiply(onLabour);
+			material = material.multiply(onMaterial);
+			record(applied, modifier, onLabour, onMaterial);
 		}
-		return factor;
+
+		if (withLabourModifiers) {
+			// §5.7's labour modifiers touch labour and nothing else: a furnished home consumes the same
+			// paint and more time, so applying either to material would overprice furnished jobs.
+			BigDecimal furnished = furnishedFactor(input, book);
+			BigDecimal rush = rushFactor(input, book);
+			labour = labour.multiply(furnished).multiply(rush);
+			record(applied, ModifierCode.FURNISHED, furnished, BigDecimal.ONE);
+			record(applied, ModifierCode.RUSH, rush, BigDecimal.ONE);
+		}
+
+		return new Modifiers(labour, material, List.copyOf(applied));
+	}
+
+	private static void record(List<AppliedModifier> applied, ModifierCode code,
+			BigDecimal onLabour, BigDecimal onMaterial) {
+		AppliedModifier modifier = new AppliedModifier(code, onLabour, onMaterial);
+		if (modifier.moved()) {
+			applied.add(modifier);
+		}
 	}
 
 	/**
@@ -411,22 +475,24 @@ public final class PricingEngine {
 	 * 0.625.
 	 */
 	private BigDecimal labourModifierFactor(PricingInput input, PriceBook book) {
-		BigDecimal factor = BigDecimal.ONE;
+		return furnishedFactor(input, book).multiply(rushFactor(input, book));
+	}
 
+	private BigDecimal furnishedFactor(PricingInput input, PriceBook book) {
 		PriceModifier furnished = book.modifiers().get(ModifierCode.FURNISHED);
-		if (furnished != null && input.furnishing() != Furnishing.EMPTY) {
-			BigDecimal delta = furnished.factor().subtract(BigDecimal.ONE);
-			if (input.furnishing() == Furnishing.PARTIAL) {
-				delta = delta.divide(TWO, MC);
-			}
-			factor = factor.multiply(BigDecimal.ONE.add(delta));
+		if (furnished == null || input.furnishing() == Furnishing.EMPTY) {
+			return BigDecimal.ONE;
 		}
+		BigDecimal delta = furnished.factor().subtract(BigDecimal.ONE);
+		if (input.furnishing() == Furnishing.PARTIAL) {
+			delta = delta.divide(TWO, MC);
+		}
+		return BigDecimal.ONE.add(delta);
+	}
 
+	private BigDecimal rushFactor(PricingInput input, PriceBook book) {
 		PriceModifier rush = book.modifiers().get(ModifierCode.RUSH);
-		if (rush != null && input.rush()) {
-			factor = factor.multiply(rush.factor());
-		}
-		return factor;
+		return rush != null && input.rush() ? rush.factor() : BigDecimal.ONE;
 	}
 
 	private BigDecimal factorOf(PriceBook book, ModifierCode code, ItemCode item, boolean labour) {
@@ -478,9 +544,13 @@ public final class PricingEngine {
 	}
 
 	private QuoteLine line(ItemCode code, PriceBookItem item, BigDecimal quantity, BigDecimal labour,
-			BigDecimal material) {
-		return new QuoteLine(code, item.unit(), quantity, labour, material, money(labour.add(material)));
+			BigDecimal material, BigDecimal minutes, List<AppliedModifier> applied) {
+		return new QuoteLine(code, item.unit(), quantity, labour, material,
+				money(labour.add(material)), money(minutes), applied);
 	}
+
+	/** The two products a line is priced with, and the per-code record of where they came from. */
+	private record Modifiers(BigDecimal labour, BigDecimal material, List<AppliedModifier> applied) {}
 
 	private static void put(Map<ItemCode, BigDecimal> quantities, ItemCode code, BigDecimal quantity) {
 		if (quantity.signum() > 0) {
@@ -495,6 +565,8 @@ public final class PricingEngine {
 	/** What steps 1–5 produced, including the two figures only they can know. */
 	private record Measured(
 			Map<ItemCode, BigDecimal> quantities,
+			BigDecimal wallNet,
+			BigDecimal ceilingArea,
 			BigDecimal darkWallShare,
 			BigDecimal avgSurfaceConfidence) {}
 
