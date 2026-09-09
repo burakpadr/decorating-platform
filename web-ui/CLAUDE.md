@@ -71,8 +71,9 @@ cannot expand a dynamic segment.
 **`app/utils/districts.ts` mirrors the `service_district` table.** It exists only because the SEO
 pages are prerendered at build time, when the API is unreachable. The form must still read the live
 list from `GET /api/districts` — that is where `active` and `district_factor` come from. A slug in
-this file with no matching row prerenders a page whose form cannot submit; keep it in step with
-`V2__seed_price_book.sql`.
+this file with no matching row prerenders a page whose form cannot submit; `districts.spec.ts`
+keeps it in step with `api/src/test/resources/db/fixture/V900__seed_price_book.sql` — the districts
+stopped being a migration in BOYA-72, and a fresh install enters its own through setup (BOYA-71).
 
 ## Talking to the API
 

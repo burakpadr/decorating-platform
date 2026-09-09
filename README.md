@@ -118,6 +118,12 @@ the domain is not implemented yet.
 Build order from here follows the spec's testing priorities: `PricingEngine` first (§5, §17), then
 `RoomListDeriver`, `ConfidenceEvaluator`, and the state machine.
 
-**Phase 0 cannot be skipped.** The seeded price book holds market-derived placeholders, not this
-business's costs — see the header of `V2__seed_price_book.sql` for everything that needs real
-figures, including the two VAT rates that require an accountant.
+**Phase 0 cannot be skipped.** The price book holds market-derived placeholders, not this
+business's costs — see the header of `api/src/test/resources/db/fixture/V900__seed_price_book.sql`
+for everything that needs real figures, including the two VAT rates that require an accountant.
+
+**A fresh install starts with no price book at all.** The shipped migrations carry the schema and no
+price data: this is open source, and a migration that activates a price book would quote a
+stranger's customer from figures nobody in their business entered (`docs/decisions/0024`). Entering
+them is setup's job and setup does not exist yet, so a database created today has to be filled from
+the fixture or a backup.

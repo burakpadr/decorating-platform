@@ -126,7 +126,8 @@ only. Use separate response types, never conditional field stripping on a shared
 
 ## Status
 
-Structural skeleton. In place: the schema and its seed, the contract pipeline, the deployment topology,
+Structural skeleton. In place: the schema (its price book seed is a test fixture, not a migration —
+`docs/decisions/0024`), the contract pipeline, the deployment topology,
 the architectural rules with tests, the event seam and outbox, the i18n layer, and versioned homes for
 the vision prompt and the SMS templates. No business logic yet.
 
@@ -140,9 +141,14 @@ Within increment 1, order follows §17: `PricingEngine` first — pure, no infra
 worked example waiting to become its regression fixture — then `RoomListDeriver`,
 `ConfidenceEvaluator`, the state machine, and analysis schema validation.
 
-**Phase 0 cannot be skipped.** The seeded price book holds market-derived placeholders, not this
-business's costs. `V2__seed_price_book.sql` lists what needs real figures, including the two VAT rates
-that require an accountant. §16 has the full list of external inputs — the SMS sender ID and the vision
+**Phase 0 cannot be skipped.** The price book this business runs on holds market-derived
+placeholders, not its own costs; the fixture header at
+`api/src/test/resources/db/fixture/V900__seed_price_book.sql` lists what needs real figures,
+including the two VAT rates that require an accountant. That file used to be a migration — the
+shipped migrations carry the schema and no price data now, because the project is open source and a
+seeded price book quotes a stranger's customer from figures nobody in their business entered
+(`docs/decisions/0024`). A fresh install has no price book and no districts until setup enters
+them. §16 has the full list of external inputs — the SMS sender ID and the vision
 provider's data processing agreement both have lead times, so they are worth starting early.
 
 Phase 0's second half — the record of past jobs that validates the price list — **cannot be done: the

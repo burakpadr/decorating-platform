@@ -129,11 +129,26 @@ Flyway owns the schema; `ddl-auto` is `validate` and must stay that way. Migrati
 - Timestamps are `timestamptz` in UTC. `Europe/Istanbul` is applied at presentation only.
 - No Redis. OTP codes, rate limits and sessions live in PostgreSQL.
 
-`V2__seed_price_book.sql` contains **market-derived placeholders, not this business's costs** —
-including both VAT rates, which need an accountant (§16). Replace them by creating a new
-`price_book` version through the operator API, never by editing the migration: changing a
-coefficient must not retroactively alter existing quotes. That versioning is why the metric
-coefficients (`ceiling_height_m`, `gross_to_net_ratio`, opening areas, crew figures) live in
+**The migrations carry the schema and no price data** (`../docs/decisions/0024`). The application is
+open source, so a migration that seeds and activates a price book gives a stranger's install
+fourteen item costs, a margin and two VAT rates nobody in their business entered — priced to a
+customer before anyone reads a migration header. A fresh install has no `price_book` row at all;
+`FreshInstallTest` is the guard and runs its own container, because against the shared database that
+claim would depend on test ordering.
+
+The four data migrations are now a test fixture in `src/test/resources/db/fixture`
+(`V900`–`V903`, applied by `spring.flyway.locations` in the test `application.properties`), and they
+still hold **market-derived placeholders, not this business's costs** — both VAT rates need an
+accountant (§16). Versions 2, 3, 5 and 6 stay permanently vacant in `db/migration`.
+
+A database migrated before that split needs
+`spring.flyway.ignore-migration-patterns: "*:future,*:missing"`, which is set — without `missing`
+Flyway refuses to start, naming each version it cannot resolve; `future` is repeated because setting
+the property replaces Flyway's default rather than adding to it.
+
+Real figures arrive through setup (BOYA-70) and then the operator API, never by editing a migration:
+changing a coefficient must not retroactively alter existing quotes. That versioning is why the
+metric coefficients (`ceiling_height_m`, `gross_to_net_ratio`, opening areas, crew figures) live in
 `price_book` rather than in config.
 
 `historical_job` (V4) is the other half of that handover: jobs the engine did not price, which is what

@@ -19,6 +19,20 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # This location holds the schema and nothing else (BOYA-72). The four migrations that seeded a
+    # price book are data, and the application is open source: a migration that activates a price
+    # book hands a stranger's install figures nobody in their business entered, with no symptom but
+    # "the prices are strange". They are now a test fixture, and setup is where a real install's
+    # numbers come from (BOYA-70).
+    #
+    # `missing` is what lets a database migrated before that split still start: Flyway finds versions
+    # 2, 3, 5 and 6 in flyway_schema_history with no file behind them and refuses to boot, naming
+    # each. Their checksums stay on record and the rows they wrote stay exactly as they are — this
+    # says the absence is deliberate, not that the history may be rewritten. `future` is Flyway's own
+    # default and has to be repeated: setting this property replaces the default rather than adding
+    # to it, so writing `missing` alone would quietly withdraw the tolerance that lets a database
+    # migrated by a newer release start under an older one.
+    ignore-migration-patterns: "*:future,*:missing"
 
   jackson:
     default-property-inclusion: non_null

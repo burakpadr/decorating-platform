@@ -8,13 +8,19 @@ import { DISTRICTS, findDistrictBySlug } from './districts'
  * deliberate — the 39 SEO pages are prerendered when the API is unreachable — but a comment asking
  * two lists to stay in step is a comment that gets ignored. A slug here with no matching row
  * prerenders a page whose form cannot submit, and nothing else would notice.
+ *
+ * The seed stopped being a migration in BOYA-72: the application is open source and the shipped
+ * migrations carry the schema only, so a fresh install starts with no districts and enters its own
+ * through setup. What is read here is the test fixture the backend suite prices against — still the
+ * same 39 rows, and still the only other place they are written down. When setup owns the district
+ * list (BOYA-71) this comparison moves with it; until then the fixture is the list to hold against.
  */
-const MIGRATION = fileURLToPath(
-  new URL('../../../api/src/main/resources/db/migration/V2__seed_price_book.sql', import.meta.url),
+const SEED = fileURLToPath(
+  new URL('../../../api/src/test/resources/db/fixture/V900__seed_price_book.sql', import.meta.url),
 )
 
 function seededDistricts(): { code: string; name: string }[] {
-  const sql = readFileSync(MIGRATION, 'utf8')
+  const sql = readFileSync(SEED, 'utf8')
   const block = sql.slice(sql.indexOf('INSERT INTO service_district'))
   return [...block.matchAll(/\(\s*'([A-Z_]+)',\s*'([^']+)'\s*\)/g)]
     .map((match) => ({ code: match[1]!, name: match[2]! }))

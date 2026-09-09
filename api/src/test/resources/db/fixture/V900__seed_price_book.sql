@@ -1,3 +1,22 @@
+-- A PRICE BOOK FOR THE TEST SUITE. Not shipped, not applied to any real database (BOYA-72).
+--
+-- This file and the three that follow it were migrations. They are data — no DDL between them — and
+-- the application is open source, so a migration that seeds a price book hands a stranger's install
+-- figures nobody in their business entered, active, with no symptom but "the prices are strange".
+-- The schema ships; the numbers are entered through setup (BOYA-70).
+--
+-- They live here because the suite needs a book to price against, and because these four together are
+-- the record of how this business's list was reached: the market-derived seed, the version that made
+-- it operative, the labour reconciliation (ADR 0016), the crew of two. Every expected figure in
+-- PricingEngineTest, the §5.10 fixture and the operator API tests reads from what they produce.
+--
+-- Applied only in tests, by spring.flyway.locations in src/test/resources/application.properties, and
+-- numbered from 900 so nothing here can ever land in the production sequence. FreshInstallTest runs
+-- its own container against classpath:db/migration alone, which is how "a fresh install has no price
+-- book" stays a claim about the shipped migrations rather than about test ordering.
+--
+-- Original file: V2__seed_price_book.sql.
+
 -- Default price book seed. See docs/engineering/implementation-spec.md §5.3, §5.7, §5.11.
 --
 -- PLACEHOLDER DATA. These are market-derived figures, not this business's costs. Spec §15 Phase 0
