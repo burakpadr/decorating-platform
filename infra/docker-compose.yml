@@ -89,7 +89,7 @@ services:
     logging: *default_logging
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -112,7 +112,7 @@ services:
   # One-shot: creates the bucket and closes it to anonymous readers. CORS is not set here — it is a
   # server setting on the minio service above, because MinIO has no per-bucket CORS to set.
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy

@@ -47,15 +47,20 @@ class MinioPhotoStorageTest {
 	private static final Path PRODUCTION_COMPOSE = Path.of("..", "infra", "docker-compose.yml");
 
 	/**
-	 * Pinned, like the Postgres container. {@code :latest} meant the suite ran against whatever MinIO
-	 * happened to be current that day — a year-old image on this machine, today's build in CI, and
-	 * nothing anywhere recording that the two were different software. The image also has to keep
-	 * shipping {@code mc}, which {@link #startAndConfigureTheBucket} runs inside it; a floating tag is
-	 * how that disappears without anybody choosing it.
+	 * <b>quay.io, not Docker Hub.</b> {@code minio/minio} and {@code minio/mc} are gone from Hub — the
+	 * {@code minio} namespace is still there, both repositories answer 404, and a pull reports "access
+	 * denied … repository does not exist", which reads like a credentials problem and is not one. quay
+	 * is where MinIO publishes now, and it serves this exact release: the image it returns has the same
+	 * id as the year-old {@code minio/minio:latest} this suite had been passing against.
+	 *
+	 * <p>Pinned, like the Postgres container. A floating tag meant the suite ran against whatever was
+	 * current that day — one image here, another in CI, and nothing recording that they differed. The
+	 * image also has to keep shipping {@code mc}, which {@link #startAndConfigureTheBucket} runs inside
+	 * it; a floating tag is how that disappears without anybody choosing it.
 	 *
 	 * <p>Bumping this is a deliberate step: pull the new tag, run this class, commit the pair.
 	 */
-	private static final String MINIO_IMAGE = "minio/minio:RELEASE.2025-09-07T16-13-09Z";
+	private static final String MINIO_IMAGE = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z";
 
 	private static final GenericContainer<?> MINIO = new GenericContainer<>(MINIO_IMAGE)
 			.withCommand("server", "/data", "--console-address", ":9001")

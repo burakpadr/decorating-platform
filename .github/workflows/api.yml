@@ -49,8 +49,11 @@ jobs:
           set -euo pipefail
           # `|| true` because grep exits 1 on no match, and under `set -e` that kills the step before
           # the check below can say why.
+          # Anchored on the quotes so this reads string literals and not the javadoc around them, and
+          # tolerant of a registry prefix — MinIO is pulled from quay.io, not Docker Hub.
           images=$(grep -rhoE --include='*.java' \
-            'minio/minio:[^"]+|postgres:[A-Za-z0-9._-]+' src/test/java | sort -u || true)
+            '"([a-z0-9.-]+/)?(minio/minio|postgres):[^"]+"' src/test/java \
+            | tr -d '"' | sort -u || true)
           test -n "$images" || {
             echo "::error::no test images found — has a container declaration moved?"
             exit 1
