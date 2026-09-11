@@ -32,6 +32,41 @@ jobs:
           java-version: '21'
           cache: maven
 
+      # Testcontainers pulls these the moment the first test class that needs one starts, so a failed
+      # pull surfaces as a ContainerFetchException two minutes into the suite — which is how it read
+      # the day Docker Hub would not serve minio/minio. Pulling up front with retries turns the usual
+      # flakiness (anonymous rate limits, the occasional 5xx) into a wait rather than a red build, and
+      # a genuine failure into one sentence at the top of the log.
+      #
+      # The tags come out of the test sources rather than being repeated here. They are pinned there,
+      # and a second copy is how a pre-pull ends up warming an image the suite does not use. Only the
+      # repository names live in this file, and those change roughly never — a new image introduced by
+      # a new test simply is not pre-pulled until its name is added here, and the suite still fetches
+      # it itself.
+      - name: Pre-pull the test images
+        working-directory: api
+        run: |
+          set -euo pipefail
+          # `|| true` because grep exits 1 on no match, and under `set -e` that kills the step before
+          # the check below can say why.
+          images=$(grep -rhoE --include='*.java' \
+            'minio/minio:[^"]+|postgres:[A-Za-z0-9._-]+' src/test/java | sort -u || true)
+          test -n "$images" || {
+            echo "::error::no test images found — has a container declaration moved?"
+            exit 1
+          }
+          for image in $images; do
+            for attempt in 1 2 3; do
+              echo "pulling $image (attempt $attempt)"
+              docker pull --quiet "$image" && break
+              if [ "$attempt" = 3 ]; then
+                echo "::error::could not pull $image after three attempts"
+                exit 1
+              fi
+              sleep $((attempt * 15))
+            done
+          done
+
       # Testcontainers needs a Docker daemon; ubuntu-latest ships one.
       - name: Test
         working-directory: api
