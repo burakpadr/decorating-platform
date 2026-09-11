@@ -6,6 +6,7 @@ import com.burakpadr.decorating.quoting.domain.model.ConsentOutOfOrder;
 import com.burakpadr.decorating.quoting.domain.model.DistrictNotServed;
 import com.burakpadr.decorating.quoting.domain.model.PhoneNotVerified;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
+import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -85,6 +86,21 @@ class QuoteRequestErrorHandler {
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
 		problem.setType(java.net.URI.create("urn:decorating:phone-not-verified"));
 		problem.setTitle("Telefon doğrulaması gerekiyor");
+		return problem;
+	}
+
+	@ExceptionHandler(SetupIncomplete.class)
+	ProblemDetail notSetUp(SetupIncomplete refused) {
+		// 503 rather than 422: nothing is wrong with what the customer sent, and nothing they can change
+		// would help — the service is not ready. The urn is what lets the screen say so instead of showing
+		// a generic failure, the same reason district-not-served carries one (workflow §8).
+		//
+		// What is missing is deliberately not here. It is a list of this install's unentered
+		// coefficients; a visitor can do nothing with it, and §1's line keeps internal figures on the
+		// operator's side.
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+		problem.setType(java.net.URI.create("urn:decorating:not-set-up"));
+		problem.setTitle("Fiyatlandırma şu anda kullanılamıyor");
 		return problem;
 	}
 

@@ -1081,6 +1081,25 @@
         }
       }
     },
+    "/api/op/setup/status" : {
+      "get" : {
+        "tags" : [ "setup-controller" ],
+        "summary" : "Whether this install has been set up, and what is still missing",
+        "operationId" : "status",
+        "responses" : {
+          "200" : {
+            "description" : "The settings setup still owes",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SetupStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books/{id}" : {
       "get" : {
         "tags" : [ "price-book-controller" ],
@@ -2057,6 +2076,23 @@
           }
         },
         "required" : [ "areas", "complete", "required", "taken" ]
+      },
+      "SetupStatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "complete" : {
+            "type" : "boolean",
+            "example" : false
+          },
+          "missing" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "PRICE_BOOK", "SERVICE_DISTRICTS", "LABOUR_VAT_RATE", "MATERIAL_VAT_RATE", "MARGIN_RATIO" ]
+            }
+          }
+        },
+        "required" : [ "complete", "missing" ]
       },
       "Coefficients" : {
         "type" : "object",

@@ -306,6 +306,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/setup/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether this install has been set up, and what is still missing */
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-books/{id}": {
         parameters: {
             query?: never;
@@ -725,6 +742,11 @@ export interface components {
              */
             taken: number;
             complete: boolean;
+        };
+        SetupStatusResponse: {
+            /** @example false */
+            complete: boolean;
+            missing: ("PRICE_BOOK" | "SERVICE_DISTRICTS" | "LABOUR_VAT_RATE" | "MATERIAL_VAT_RATE" | "MARGIN_RATIO")[];
         };
         Coefficients: {
             ceilingHeightM: number;
@@ -1695,6 +1717,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QuoteRequestResponse"];
+                };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings setup still owes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SetupStatusResponse"];
                 };
             };
         };

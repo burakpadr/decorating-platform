@@ -7,6 +7,8 @@ import com.burakpadr.decorating.quoting.domain.model.QuoteCalculationCommand;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import com.burakpadr.decorating.quoting.domain.model.RoomTypeConfig;
+import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
+import com.burakpadr.decorating.quoting.domain.model.SetupStatus;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.StageOneEstimate;
 import com.burakpadr.decorating.quoting.domain.port.in.CalculateQuote;
@@ -14,6 +16,7 @@ import com.burakpadr.decorating.quoting.domain.port.in.EstimateStageOne;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.QuoteRequestRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.StageOneEstimateWriter;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -64,7 +67,11 @@ class StageOneEstimateService implements EstimateStageOne {
 		// The book the calculator is about to price against, read once: the district check and §2.2's
 		// frames per kind of area are two questions about the same version, and asking twice would let a
 		// zam land between them.
-		PriceBook book = priceBooks.findActive().orElseThrow();
+		PriceBook book = priceBooks.findActive()
+				// Before the calculator's own check, because this method reads the book for the district
+				// question first. Same refusal either way (BOYA-69): a range from an install whose figures
+				// nobody entered is a number the customer will hold the business to.
+				.orElseThrow(() -> new SetupIncomplete(SetupStatus.of(Optional.empty())));
 
 		// Checked again here, and not only when the district was answered: a draft can sit for days and a
 		// district can be switched off in between. PriceBook.districtFactor prices an unlisted district at

@@ -10,6 +10,8 @@ import com.burakpadr.decorating.quoting.domain.model.QuoteRequest;
 import com.burakpadr.decorating.quoting.domain.model.QuoteRequestNotFound;
 import com.burakpadr.decorating.quoting.domain.model.RoomAnalysis;
 import com.burakpadr.decorating.quoting.domain.model.RoomInput;
+import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
+import com.burakpadr.decorating.quoting.domain.model.SetupStatus;
 import com.burakpadr.decorating.quoting.domain.model.StageOneAnswers;
 import com.burakpadr.decorating.quoting.domain.model.SurfaceFinding;
 import com.burakpadr.decorating.quoting.domain.port.in.GenerateQuote;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -148,7 +151,8 @@ class QuoteGenerationService implements GenerateQuote {
 				// customer flow cannot produce — it prices before it asks for photographs. The active
 				// version is the honest fallback for anything that got here another way.
 				.or(priceBooks::findActive)
-				.orElseThrow(() -> new IllegalStateException(
-						"no price book to price against: neither the request's version nor an active one"));
+				// Neither the version that priced the estimate nor an active one: there is nothing here to
+				// price against, which on a fresh install is the whole state of the system (BOYA-69).
+				.orElseThrow(() -> new SetupIncomplete(SetupStatus.of(Optional.empty())));
 	}
 }

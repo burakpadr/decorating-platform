@@ -304,6 +304,16 @@ operator (`/api/op/**`). The anonymous and verified filters are not implemented 
 never appear in a customer-facing DTO — do not solve this with conditional field stripping on a
 shared type.
 
+**An install nobody set up refuses to price, and says so with a type** (BOYA-69, decision 0025). The
+migrations carry no price book, so "no active version" is the shipped state and not a bug:
+`CalculateEstimate` and `GenerateQuote` throw `SetupIncomplete` and both ends answer **503** with
+`urn:decorating:not-set-up` — the customer's carries the urn alone, the operator's carries the list,
+because the panel's next move is the setup wizard. `GET /api/op/setup/status` is the same list asked
+for directly; §7 does not list it, for ADR 0015's reason. `SetupStatus` is a pure record and the
+single owner of what "set up" means, so the endpoint and the refusals cannot disagree. It checks the
+money and the locale only — a version, a served district, both VAT rates, a margin — and it does not
+and cannot check that the figures are this business's (Phase 0's question, BOYA-1 and BOYA-8).
+
 There is deliberately no bulk-approve endpoint; it would remove the only human quality gate.
 
 ## The generated contract

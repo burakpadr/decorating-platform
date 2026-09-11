@@ -3,6 +3,7 @@ package com.burakpadr.decorating.quoting.adapter.in.web;
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
+import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,6 +36,20 @@ class OperatorErrorHandler {
 	@ExceptionHandler(PriceBookVersionLocked.class)
 	ProblemDetail locked(PriceBookVersionLocked exception) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+	}
+
+	/**
+	 * The same refusal the customer end gives, with the part a customer must not see: which settings
+	 * are still missing. The panel opens the setup wizard on it (BOYA-70) rather than reporting a
+	 * failure the operator cannot act on.
+	 */
+	@ExceptionHandler(SetupIncomplete.class)
+	ProblemDetail notSetUp(SetupIncomplete refused) {
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+		problem.setType(java.net.URI.create("urn:decorating:not-set-up"));
+		problem.setTitle("Kurulum tamamlanmadı");
+		problem.setProperty("missing", refused.status().missing());
+		return problem;
 	}
 
 	/**

@@ -9,11 +9,14 @@ import com.burakpadr.decorating.quoting.domain.model.QuoteCalculation;
 import com.burakpadr.decorating.quoting.domain.model.QuoteCalculationCommand;
 import com.burakpadr.decorating.quoting.domain.model.RoomInput;
 import com.burakpadr.decorating.quoting.domain.model.RoomList;
+import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
+import com.burakpadr.decorating.quoting.domain.model.SetupStatus;
 import com.burakpadr.decorating.quoting.domain.port.in.CalculateQuote;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.service.PricingEngine;
 import com.burakpadr.decorating.quoting.domain.service.RoomListDeriver;
 import java.math.BigDecimal;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,8 +46,10 @@ class QuoteCalculationService implements CalculateQuote {
 
 	@Override
 	public QuoteCalculation calculate(QuoteCalculationCommand command) {
-		PriceBook book = priceBooks.findActive().orElseThrow(() -> new IllegalStateException(
-				"no active price book: nothing can be priced until one version is active"));
+		// Not an IllegalStateException: an install nobody has set up is the shipped state of this
+		// repository, not a bug, and the panel answers it by opening the wizard (BOYA-69).
+		PriceBook book = priceBooks.findActive()
+				.orElseThrow(() -> new SetupIncomplete(SetupStatus.of(Optional.empty())));
 
 		boolean areaWasGross = command.areaBasis() == AreaBasis.GROSS;
 		BigDecimal netArea = book.netAreaOf(command.area(), command.areaBasis());
