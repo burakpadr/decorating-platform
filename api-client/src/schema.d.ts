@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/price-books/{id}/coefficients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateCoefficients"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quote-requests": {
         parameters: {
             query?: never;
@@ -437,6 +453,44 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        UpdateCoefficientsRequest: {
+            ceilingHeightM: number;
+            grossToNetRatio: number;
+            stage1OpeningRatio: number;
+            /** Format: int32 */
+            crewSize: number;
+            crewHoursPerDay: number;
+            crewDayCost: number;
+            marginRatio: number;
+            marginAlertThreshold: number;
+            labourVatRate: number;
+            materialVatRate: number;
+        };
+        Coefficients: {
+            ceilingHeightM: number;
+            grossToNetRatio: number;
+            stage1OpeningRatio: number;
+            /** Format: int32 */
+            crewSize: number;
+            crewHoursPerDay: number;
+            crewDayCost: number;
+            marginRatio: number;
+            marginAlertThreshold: number;
+            labourVatRate: number;
+            materialVatRate: number;
+            baseBandRatio: number;
+        };
+        PriceBookDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            versionCode: string;
+            active: boolean;
+            editable: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            coefficients: components["schemas"]["Coefficients"];
+            items: components["schemas"]["PriceBookItemResponse"][];
+        };
         QuoteRequestResponse: {
             /** Format: uuid */
             id: string;
@@ -748,31 +802,6 @@ export interface components {
             complete: boolean;
             missing: ("PRICE_BOOK" | "SERVICE_DISTRICTS" | "LABOUR_VAT_RATE" | "MATERIAL_VAT_RATE" | "MARGIN_RATIO")[];
         };
-        Coefficients: {
-            ceilingHeightM: number;
-            grossToNetRatio: number;
-            stage1OpeningRatio: number;
-            /** Format: int32 */
-            crewSize: number;
-            crewHoursPerDay: number;
-            crewDayCost: number;
-            marginRatio: number;
-            marginAlertThreshold: number;
-            labourVatRate: number;
-            materialVatRate: number;
-            baseBandRatio: number;
-        };
-        PriceBookDetailResponse: {
-            /** Format: uuid */
-            id: string;
-            versionCode: string;
-            active: boolean;
-            editable: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            coefficients: components["schemas"]["Coefficients"];
-            items: components["schemas"]["PriceBookItemResponse"][];
-        };
         OperatorPhotoResponse: {
             url: string;
             /** Format: int64 */
@@ -830,6 +859,59 @@ export interface operations {
                 };
             };
             /** @description A figure the price list cannot hold */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No version with that id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The version has priced quotes; copy it and edit the copy */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    updateCoefficients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoefficientsRequest"];
+            };
+        };
+        responses: {
+            /** @description The version as it now stands, items re-derived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PriceBookDetailResponse"];
+                };
+            };
+            /** @description A coefficient outside its bounds */
             400: {
                 headers: {
                     [name: string]: unknown;

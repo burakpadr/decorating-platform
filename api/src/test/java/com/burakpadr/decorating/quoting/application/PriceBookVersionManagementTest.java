@@ -121,8 +121,14 @@ class PriceBookVersionManagementTest {
 		UUID quote = insertSentQuote(oldVersion);
 
 		PriceBookSummary raised = versions.createVersionFrom(oldVersion, "TEST-RAISE-1");
-		jdbc.update("UPDATE price_book_item SET labour_cost = 99.00 "
-				+ "WHERE price_book_id = ? AND code = 'WALL_PAINT'", raised.id());
+		// Raised through the use case rather than by writing labour_cost directly. Since BOYA-20a a
+		// version whose labour contradicts its own crew rate cannot be activated, and a hand-written
+		// 99.00 is exactly that contradiction — the row this test used to make is the row ADR 0016
+		// exists to prevent. Doubling the duration doubles the labour by the same arithmetic the
+		// database uses: six person-minutes at 31.25 TL become twelve at 62.50.
+		BigDecimal wallPaintMaterial = books.findByVersionCode(ACTIVE).orElseThrow()
+				.item(ItemCode.WALL_PAINT).materialCost();
+		versions.updateItem(raised.id(), ItemCode.WALL_PAINT, wallPaintMaterial, new BigDecimal("12"));
 		versions.activate(raised.id());
 
 		assertThat(jdbc.queryForObject(
@@ -135,7 +141,7 @@ class PriceBookVersionManagementTest {
 				.isEqualByComparingTo(WALL_PAINT_LABOUR);
 		assertThat(books.findActive().orElseThrow().item(ItemCode.WALL_PAINT).labourCost())
 				.as("while new quotes price at the raised figure")
-				.isEqualByComparingTo("99.00");
+				.isEqualByComparingTo("62.50");
 	}
 
 	@Test

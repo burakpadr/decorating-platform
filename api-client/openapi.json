@@ -92,6 +92,73 @@
         }
       }
     },
+    "/api/op/price-books/{id}/coefficients" : {
+      "put" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "updateCoefficients",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateCoefficientsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The version as it now stands, items re-derived",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookDetailResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A coefficient outside its bounds",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The version has priced quotes; copy it and edit the copy",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/quote-requests" : {
       "post" : {
         "tags" : [ "quote-request-controller" ],
@@ -1342,6 +1409,115 @@
           }
         }
       },
+      "UpdateCoefficientsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "ceilingHeightM" : {
+            "type" : "number"
+          },
+          "grossToNetRatio" : {
+            "type" : "number"
+          },
+          "stage1OpeningRatio" : {
+            "type" : "number"
+          },
+          "crewSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "crewHoursPerDay" : {
+            "type" : "number"
+          },
+          "crewDayCost" : {
+            "type" : "number"
+          },
+          "marginRatio" : {
+            "type" : "number"
+          },
+          "marginAlertThreshold" : {
+            "type" : "number"
+          },
+          "labourVatRate" : {
+            "type" : "number"
+          },
+          "materialVatRate" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
+      },
+      "Coefficients" : {
+        "type" : "object",
+        "properties" : {
+          "ceilingHeightM" : {
+            "type" : "number"
+          },
+          "grossToNetRatio" : {
+            "type" : "number"
+          },
+          "stage1OpeningRatio" : {
+            "type" : "number"
+          },
+          "crewSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "crewHoursPerDay" : {
+            "type" : "number"
+          },
+          "crewDayCost" : {
+            "type" : "number"
+          },
+          "marginRatio" : {
+            "type" : "number"
+          },
+          "marginAlertThreshold" : {
+            "type" : "number"
+          },
+          "labourVatRate" : {
+            "type" : "number"
+          },
+          "materialVatRate" : {
+            "type" : "number"
+          },
+          "baseBandRatio" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "baseBandRatio", "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
+      },
+      "PriceBookDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "versionCode" : {
+            "type" : "string"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "editable" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "coefficients" : {
+            "$ref" : "#/components/schemas/Coefficients"
+          },
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PriceBookItemResponse"
+            }
+          }
+        },
+        "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
+      },
       "QuoteRequestResponse" : {
         "type" : "object",
         "properties" : {
@@ -2093,78 +2269,6 @@
           }
         },
         "required" : [ "complete", "missing" ]
-      },
-      "Coefficients" : {
-        "type" : "object",
-        "properties" : {
-          "ceilingHeightM" : {
-            "type" : "number"
-          },
-          "grossToNetRatio" : {
-            "type" : "number"
-          },
-          "stage1OpeningRatio" : {
-            "type" : "number"
-          },
-          "crewSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "crewHoursPerDay" : {
-            "type" : "number"
-          },
-          "crewDayCost" : {
-            "type" : "number"
-          },
-          "marginRatio" : {
-            "type" : "number"
-          },
-          "marginAlertThreshold" : {
-            "type" : "number"
-          },
-          "labourVatRate" : {
-            "type" : "number"
-          },
-          "materialVatRate" : {
-            "type" : "number"
-          },
-          "baseBandRatio" : {
-            "type" : "number"
-          }
-        },
-        "required" : [ "baseBandRatio", "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
-      },
-      "PriceBookDetailResponse" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "versionCode" : {
-            "type" : "string"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "editable" : {
-            "type" : "boolean"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "coefficients" : {
-            "$ref" : "#/components/schemas/Coefficients"
-          },
-          "items" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PriceBookItemResponse"
-            }
-          }
-        },
-        "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
       },
       "OperatorPhotoResponse" : {
         "type" : "object",

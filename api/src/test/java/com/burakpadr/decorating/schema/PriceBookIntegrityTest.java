@@ -179,6 +179,13 @@ class PriceBookIntegrityTest {
 				.isEmpty();
 	}
 
+	/**
+	 * Since BOYA-20a this is a <em>fixture</em> check, not the guard. The guard is {@code
+	 * ActivationCheck}, which runs when a version goes live and therefore covers books this project
+	 * never wrote — the ones setup produces (ADR 0026). This stays because the whole suite prices
+	 * against this fixture: a fixture that drifted would quietly move every pricing assertion in the
+	 * project.
+	 */
 	@Test
 	@DisplayName("the active book's item labour costs reconcile with its own crew day cost")
 	void activeItemLabourCostsReconcileWithTheCrewDayCost() {

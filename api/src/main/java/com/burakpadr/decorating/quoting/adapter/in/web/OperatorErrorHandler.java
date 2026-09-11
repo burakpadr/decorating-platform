@@ -2,6 +2,7 @@ package com.burakpadr.decorating.quoting.adapter.in.web;
 
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookNotActivatable;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import com.burakpadr.decorating.quoting.domain.model.SetupIncomplete;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,21 @@ class OperatorErrorHandler {
 		problem.setType(java.net.URI.create("urn:decorating:not-set-up"));
 		problem.setTitle("Kurulum tamamlanmadı");
 		problem.setProperty("missing", refused.status().missing());
+		return problem;
+	}
+
+	/**
+	 * A version that may not go live. A conflict rather than a bad request: the operator asked for
+	 * something reasonable, and the answer is a list of things to fix on the version. The list travels
+	 * because &quot;this version is inconsistent&quot; leaves fourteen items to go through by hand.
+	 */
+	@ExceptionHandler(PriceBookNotActivatable.class)
+	ProblemDetail notActivatable(PriceBookNotActivatable refused) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, refused.getMessage());
+		problem.setType(java.net.URI.create("urn:decorating:price-book-not-activatable"));
+		problem.setTitle("Sürüm yürürlüğe alınamaz");
+		problem.setProperty("problems", refused.problems());
 		return problem;
 	}
 

@@ -2,6 +2,7 @@ package com.burakpadr.decorating.quoting.domain.port.out;
 
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,6 +47,13 @@ public interface PriceBookVersionRepository {
 	 * quote table and a flag would be a second copy of it that could disagree.
 	 */
 	boolean isEditable(UUID id);
+
+	/**
+	 * Sets a version's coefficients and re-derives every item's labour cost from the new crew rate in
+	 * the same statement pair (ADR 0016). Derivation lives with the write, not above it: a caller that
+	 * had to remember the second half would eventually not.
+	 */
+	void updateCoefficients(UUID priceBookId, PriceBookCoefficients coefficients);
 
 	/**
 	 * Sets one item's material cost and duration on a version the caller has established is editable.

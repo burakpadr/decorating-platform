@@ -1,10 +1,14 @@
 package com.burakpadr.decorating.quoting.application;
 
+import com.burakpadr.decorating.quoting.domain.model.ActivationProblem;
 import com.burakpadr.decorating.quoting.domain.model.DuplicateVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBook;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookDetail;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookNotActivatable;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionCode;
@@ -12,6 +16,7 @@ import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
 import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
+import com.burakpadr.decorating.quoting.domain.service.ActivationCheck;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +41,7 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 
 	private final PriceBookVersionRepository versions;
 	private final PriceBookRepository books;
+	private final ActivationCheck activationCheck = new ActivationCheck();
 
 	PriceBookVersionService(PriceBookVersionRepository versions, PriceBookRepository books) {
 		this.versions = versions;
@@ -115,12 +121,41 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 	}
 
 	@Override
+	public PriceBookDetail updateCoefficients(UUID versionId, PriceBookCoefficients coefficients) {
+		PriceBookSummary version = versions.findById(versionId)
+				.orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
+		if (!versions.isEditable(versionId)) {
+			throw new PriceBookVersionLocked(version.versionCode());
+		}
+		// The bounds are the record's own (§5.3–5.5's coefficients multiply every square metre), so a
+		// value that cannot be right never reaches the database.
+		versions.updateCoefficients(versionId, coefficients);
+		// Read back rather than assembled from the request: the caller's next question is what the
+		// change did to the fourteen items, and only the database can answer that.
+		return detail(versionId).orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
+	}
+
+	@Override
 	public PriceBookSummary activate(UUID id) {
 		PriceBookSummary version = versions.findById(id)
 				.orElseThrow(() -> new PriceBookVersionNotFound(id.toString()));
 		if (version.active()) {
 			return version;                     // already the one; nothing to switch
 		}
+
+		// The gate. Everything it refuses is a defect the engine would otherwise meet against a real
+		// customer — a code it looks up and cannot find, or a labour figure that contradicts this same
+		// book's crew rate (ADR 0016). It sits here rather than on every write because an inactive
+		// version is allowed to be half-finished: the panel and the wizard both build one field at a
+		// time. Until BOYA-72 this was a schema test reading the active book out of the migrations;
+		// there is no such book any more, and a version can now arrive from setup as well.
+		PriceBook book = books.findById(id)
+				.orElseThrow(() -> new PriceBookVersionNotFound(id.toString()));
+		List<ActivationProblem> problems = activationCheck.check(book);
+		if (!problems.isEmpty()) {
+			throw new PriceBookNotActivatable(version.versionCode(), problems);
+		}
+
 		versions.activate(id);
 		return versions.findById(id).orElseThrow(() -> new PriceBookVersionNotFound(id.toString()));
 	}

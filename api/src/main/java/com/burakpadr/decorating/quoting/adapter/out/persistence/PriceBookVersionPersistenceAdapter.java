@@ -2,6 +2,7 @@ package com.burakpadr.decorating.quoting.adapter.out.persistence;
 
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import com.burakpadr.decorating.shared.Uuid7;
@@ -153,6 +154,23 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 						+ "FROM price_book b WHERE b.id = ?",
 				Boolean.class, id);
 		return Boolean.TRUE.equals(editable);
+	}
+
+	@Override
+	public void updateCoefficients(UUID priceBookId, PriceBookCoefficients c) {
+		jdbc.update("UPDATE price_book SET ceiling_height_m = ?, gross_to_net_ratio = ?, "
+				+ "stage1_opening_ratio = ?, crew_size = ?, crew_hours_per_day = ?, crew_day_cost = ?, "
+				+ "margin_ratio = ?, margin_alert_threshold = ?, labour_vat_rate = ?, material_vat_rate = ? "
+				+ "WHERE id = ?",
+				c.ceilingHeightM(), c.grossToNetRatio(), c.stage1OpeningRatio(), c.crewSize(),
+				c.crewHoursPerDay(), c.crewDayCost(), c.marginRatio(), c.marginAlertThreshold(),
+				c.labourVatRate(), c.materialVatRate(), priceBookId);
+		// Second half of the same write, and the reason the two cannot be separated: crew size and crew
+		// day cost are halves of one figure, and changing either without re-deriving leaves every item
+		// stating a labour cost this version no longer implies (ADR 0016). The same expression the bulk
+		// increase uses, so the two paths cannot round differently.
+		jdbc.update("UPDATE price_book_item i SET labour_cost = " + DERIVED_LABOUR_COST + " "
+				+ "FROM price_book b WHERE b.id = i.price_book_id AND i.price_book_id = ?", priceBookId);
 	}
 
 	@Override

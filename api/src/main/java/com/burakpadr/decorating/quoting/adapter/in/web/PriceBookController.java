@@ -86,6 +86,27 @@ class PriceBookController {
 				id, code, request.materialCost(), request.labourMinutes()));
 	}
 
+	/**
+	 * The version's coefficients, all ten at once. Every item's labour cost is re-derived from the new
+	 * crew rate and comes back in the answer, because that is the operator's next question.
+	 */
+	@PutMapping("/{id}/coefficients")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200",
+					description = "The version as it now stands, items re-derived",
+					content = @Content(schema = @Schema(implementation = PriceBookDetailResponse.class))),
+			@ApiResponse(responseCode = "400", description = "A coefficient outside its bounds",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+			@ApiResponse(responseCode = "404", description = "No version with that id",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+			@ApiResponse(responseCode = "409",
+					description = "The version has priced quotes; copy it and edit the copy",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
+	PriceBookDetailResponse updateCoefficients(
+			@PathVariable UUID id, @Valid @RequestBody UpdateCoefficientsRequest request) {
+		return PriceBookDetailResponse.of(versions.updateCoefficients(id, request.toDomain()));
+	}
+
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	@ApiResponses({

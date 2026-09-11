@@ -304,6 +304,20 @@ operator (`/api/op/**`). The anonymous and verified filters are not implemented 
 never appear in a customer-facing DTO — do not solve this with conditional field stripping on a
 shared type.
 
+**A version is checked when it goes live** (BOYA-20a, decision 0026). `ActivationCheck` is pure and
+refuses a version with a missing item code, a missing room type, or an item whose labour contradicts
+the version's own crew rate — ADR 0016's guard, moved off the migrations that no longer carry a price
+book. It runs at activation and not on every write, because an inactive version is allowed to be
+half-finished: the panel and the wizard both build one field at a time. Its arithmetic must stay
+`minutes × crewDayCost / (crewSize × hours × 60)` rounded once, matching the SQL exactly — deriving a
+per-minute rate first disagrees by a kuruş wherever the result lands on half of one, and the live book
+has two such items.
+
+Coefficients are edited through `PriceBookCoefficients`, ten at a time, on a version nothing has been
+priced with, and **item labour is re-derived in the same write**. All ten travel together because crew
+size and crew day cost are halves of one figure; the bounds live on the record rather than the DTO.
+The engineering constants of §5.3–5.7 are not editable — the wizard ships them as structural defaults.
+
 **An install nobody set up refuses to price, and says so with a type** (BOYA-69, decision 0025). The
 migrations carry no price book, so "no active version" is the shipped state and not a bug:
 `CalculateEstimate` and `GenerateQuote` throw `SetupIncomplete` and both ends answer **503** with
