@@ -46,7 +46,18 @@ class MinioPhotoStorageTest {
 	private static final Path COMPOSE = Path.of("..", "infra", "docker-compose.dev.yml");
 	private static final Path PRODUCTION_COMPOSE = Path.of("..", "infra", "docker-compose.yml");
 
-	private static final GenericContainer<?> MINIO = new GenericContainer<>("minio/minio:latest")
+	/**
+	 * Pinned, like the Postgres container. {@code :latest} meant the suite ran against whatever MinIO
+	 * happened to be current that day — a year-old image on this machine, today's build in CI, and
+	 * nothing anywhere recording that the two were different software. The image also has to keep
+	 * shipping {@code mc}, which {@link #startAndConfigureTheBucket} runs inside it; a floating tag is
+	 * how that disappears without anybody choosing it.
+	 *
+	 * <p>Bumping this is a deliberate step: pull the new tag, run this class, commit the pair.
+	 */
+	private static final String MINIO_IMAGE = "minio/minio:RELEASE.2025-09-07T16-13-09Z";
+
+	private static final GenericContainer<?> MINIO = new GenericContainer<>(MINIO_IMAGE)
 			.withCommand("server", "/data", "--console-address", ":9001")
 			.withEnv("MINIO_ROOT_USER", "minioadmin")
 			.withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
