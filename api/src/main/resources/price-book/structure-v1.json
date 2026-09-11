@@ -1,0 +1,76 @@
+{
+  "version": "v1",
+  "_comment": [
+    "The shape of a price book, with no money in it (BOYA-70, decision 0006's arrangement).",
+    "Setup creates the first version from this file and then asks for the figures; nothing here is",
+    "a price, a wage or a rate, because a price that arrives with the repository is a price nobody",
+    "in the installing business entered (decision 0024).",
+    "",
+    "What IS here is §5.3-5.7's engineering: how a home's area is shared between rooms, how much",
+    "wall a room of that shape has, what the modifiers cover, and how long each item takes. The",
+    "durations are §5.11's and they are estimates rather than this business's measurements - BOYA-1",
+    "replaces them, one PUT per item, and BOYA-2b calibrates them from finished jobs.",
+    "",
+    "Versioned like the vision prompt: never edit a released file, add v2. A setup that ran against",
+    "v1 produced a book somebody has been quoting from, and rewriting this file would rewrite the",
+    "explanation of those quotes without touching them."
+  ],
+
+  "coefficients": {
+    "ceilingHeightM": 2.70,
+    "grossToNetRatio": 0.8200,
+    "stage1OpeningRatio": 0.1200,
+    "doorOpeningM2": 1.90,
+    "windowOpeningM2": 2.20,
+    "crewSize": 2,
+    "crewHoursPerDay": 8.00,
+    "dayRoundingTolerance": 0.25,
+    "surveyAmountFactor": 2.00,
+    "baseBandRatio": 0.1200
+  },
+
+  "items": [
+    {"code": "WALL_PAINT",          "unit": "SQM",      "labourMinutes":  6.00},
+    {"code": "CEILING_PAINT",       "unit": "SQM",      "labourMinutes":  8.00},
+    {"code": "PATCH_FILLING",       "unit": "SQM",      "labourMinutes": 12.00},
+    {"code": "SKIM_COAT",           "unit": "SQM",      "labourMinutes": 22.00},
+    {"code": "PRIMER",              "unit": "SQM",      "labourMinutes":  3.00},
+    {"code": "STAIN_BLOCK_PRIMER",  "unit": "SQM",      "labourMinutes":  4.00},
+    {"code": "WALLPAPER_STRIPPING", "unit": "SQM",      "labourMinutes": 14.00},
+    {"code": "DOOR_PAINT",          "unit": "UNIT",     "labourMinutes": 55.00},
+    {"code": "TRIM_PAINT",          "unit": "UNIT",     "labourMinutes": 22.00},
+    {"code": "RADIATOR_PAINT",      "unit": "UNIT",     "labourMinutes": 40.00},
+    {"code": "DOWNLIGHT_CUTTING",   "unit": "UNIT",     "labourMinutes":  8.00},
+    {"code": "CORNICE_CUTTING",     "unit": "ROOM",     "labourMinutes": 45.00},
+    {"code": "MASKING",             "unit": "ROOM",     "labourMinutes": 25.00},
+    {"code": "MOBILIZATION",        "unit": "LUMP_SUM", "labourMinutes": 60.00}
+  ],
+
+  "modifiers": [
+    {"code": "FURNISHED",     "factor": 1.2500, "appliesTo": "LABOUR", "scopeItems": []},
+    {"code": "RUSH",          "factor": 1.2500, "appliesTo": "LABOUR", "scopeItems": []},
+    {"code": "DARK_TO_LIGHT", "factor": 1.5000, "appliesTo": "BOTH",
+     "scopeItems": ["WALL_PAINT", "DOOR_PAINT"]},
+    {"code": "NO_ELEVATOR",   "factor": 1.2000, "appliesTo": "BOTH",
+     "scopeItems": ["MOBILIZATION"]}
+  ],
+
+  "roomTypes": [
+    {"roomType": "LIVING_ROOM",    "areaWeight": 3.00, "perimeterFactor": 4.10,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING"]},
+    {"roomType": "MASTER_BEDROOM", "areaWeight": 1.50, "perimeterFactor": 4.10,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING"]},
+    {"roomType": "BEDROOM",        "areaWeight": 1.20, "perimeterFactor": 4.10,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING"]},
+    {"roomType": "STUDY",          "areaWeight": 1.00, "perimeterFactor": 4.10,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "WALL_2", "WALL_3", "WALL_4", "CEILING"]},
+    {"roomType": "KITCHEN",        "areaWeight": 1.10, "perimeterFactor": 4.30,
+     "paintableRatio": 0.6500, "requiredPhotos": ["WALL_1", "WALL_2", "CEILING"]},
+    {"roomType": "BATHROOM",       "areaWeight": 0.50, "perimeterFactor": 4.20,
+     "paintableRatio": 0.2000, "requiredPhotos": ["WALL_1", "CEILING"]},
+    {"roomType": "HALLWAY",        "areaWeight": 0.80, "perimeterFactor": 5.50,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "WALL_2", "CEILING"]},
+    {"roomType": "BALCONY",        "areaWeight": 0.40, "perimeterFactor": 4.30,
+     "paintableRatio": 1.0000, "requiredPhotos": ["WALL_1", "CEILING"]}
+  ]
+}

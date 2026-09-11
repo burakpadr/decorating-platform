@@ -34,6 +34,13 @@ public class ActivationCheck {
 	public List<ActivationProblem> check(PriceBook book) {
 		List<ActivationProblem> problems = new ArrayList<>();
 
+		// The money first, because a version at zero passes the labour rule trivially — zero minutes'
+		// worth of a zero crew rate is zero, and every item agrees with it.
+		money(problems, "crewDayCost", book.crewDayCost());
+		money(problems, "marginRatio", book.marginRatio());
+		money(problems, "labourVatRate", book.labourVatRate());
+		money(problems, "materialVatRate", book.materialVatRate());
+
 		for (ItemCode code : ItemCode.values()) {
 			PriceBookItem item = book.items().get(code);
 			if (item == null) {
@@ -57,6 +64,14 @@ public class ActivationCheck {
 			}
 		}
 		return List.copyOf(problems);
+	}
+
+	private static void money(List<ActivationProblem> problems, String field, BigDecimal value) {
+		if (value == null || value.signum() <= 0) {
+			problems.add(new ActivationProblem(ActivationProblem.Kind.MONEY_NOT_ENTERED, field,
+					"bu sürümde " + field + " girilmemiş (" + value + "), yani her iş maliyetine "
+							+ "fiyatlanır"));
+		}
 	}
 
 	/**

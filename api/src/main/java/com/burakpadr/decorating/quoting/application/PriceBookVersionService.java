@@ -13,12 +13,16 @@ import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookVersionNotFound;
+import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import com.burakpadr.decorating.quoting.domain.port.in.ManagePriceBookVersions;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookRepository;
+import com.burakpadr.decorating.quoting.domain.port.out.PriceBookStructures;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import com.burakpadr.decorating.quoting.domain.service.ActivationCheck;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -41,11 +45,14 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 
 	private final PriceBookVersionRepository versions;
 	private final PriceBookRepository books;
+	private final PriceBookStructures structures;
 	private final ActivationCheck activationCheck = new ActivationCheck();
 
-	PriceBookVersionService(PriceBookVersionRepository versions, PriceBookRepository books) {
+	PriceBookVersionService(PriceBookVersionRepository versions, PriceBookRepository books,
+			PriceBookStructures structures) {
 		this.versions = versions;
 		this.books = books;
+		this.structures = structures;
 	}
 
 	@Override
@@ -59,6 +66,36 @@ class PriceBookVersionService implements ManagePriceBookVersions {
 	public Optional<PriceBookDetail> detail(UUID id) {
 		return versions.findById(id).flatMap(summary -> books.findById(id)
 				.map(book -> new PriceBookDetail(summary, book, versions.isEditable(id))));
+	}
+
+	@Override
+	public PriceBookSummary createFromStructure(String versionCode) {
+		if (versions.existsByVersionCode(versionCode)) {
+			throw new DuplicateVersionCode(versionCode);
+		}
+		return versions.createFromStructure(structures.current(), versionCode);
+	}
+
+	@Override
+	public PriceBookDetail replaceDistricts(UUID versionId, List<ServiceDistrict> districts) {
+		PriceBookSummary version = versions.findById(versionId)
+				.orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
+		if (!versions.isEditable(versionId)) {
+			throw new PriceBookVersionLocked(version.versionCode());
+		}
+		// Checked here rather than left to the unique constraint: a duplicate code is an operator who
+		// typed the same area twice, and the answer is which area — not a constraint name. Checked
+		// before the write so a refused list leaves the version exactly as it was.
+		Set<String> seen = new HashSet<>();
+		for (ServiceDistrict district : districts) {
+			district.validate();
+			if (!seen.add(district.districtCode())) {
+				throw new IllegalArgumentException(
+						"aynı ilçe iki kez girilmiş: " + district.districtCode());
+			}
+		}
+		versions.replaceDistricts(versionId, districts);
+		return detail(versionId).orElseThrow(() -> new PriceBookVersionNotFound(versionId.toString()));
 	}
 
 	@Override

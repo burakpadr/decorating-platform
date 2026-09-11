@@ -28,7 +28,18 @@ record PriceBookDetailResponse(
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean editable,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Instant createdAt,
 		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Coefficients coefficients,
-		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PriceBookItemResponse> items) {
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<PriceBookItemResponse> items,
+		@Schema(requiredMode = Schema.RequiredMode.REQUIRED) List<DistrictRow> districts) {
+
+	/**
+	 * A district as the operator sees it — <b>with</b> the factor, unlike the customer's list. This is
+	 * the side of §1's line where what the business charges for an area belongs.
+	 */
+	record DistrictRow(
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) String code,
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) String displayName,
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean active,
+			@Schema(requiredMode = Schema.RequiredMode.REQUIRED) BigDecimal factor) {}
 
 	/** The figures that are not per item. Nested so the item list stays the readable part. */
 	record Coefficients(
@@ -62,6 +73,15 @@ record PriceBookDetailResponse(
 						book.crewSize(), book.crewHoursPerDay(), book.crewDayCost(),
 						book.marginRatio(), book.marginAlertThreshold(),
 						book.labourVatRate(), book.materialVatRate(), book.baseBandRatio()),
-				items);
+				items,
+				// By display name, the order the operator reads them in — and the Turkish order, for
+				// the reason BOYA-26 gives: Ç after Z puts Çekmeköy at the bottom of a scanned list.
+				book.districts().values().stream()
+						.sorted(java.util.Comparator.comparing(
+								com.burakpadr.decorating.quoting.domain.model.ServiceDistrict::displayName,
+								java.text.Collator.getInstance(java.util.Locale.of("tr", "TR"))))
+						.map(d -> new DistrictRow(d.districtCode(), d.displayName(), d.active(),
+								d.districtFactor()))
+						.toList());
 	}
 }

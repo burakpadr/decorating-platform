@@ -6,6 +6,7 @@ import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookDetail;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookItem;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import com.burakpadr.decorating.quoting.domain.service.ActivationCheck;
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +27,32 @@ public interface ManagePriceBookVersions {
 
 	/** One version with its figures, and whether it can still be edited. */
 	Optional<PriceBookDetail> detail(UUID id);
+
+	/**
+	 * Builds a version from the shipped structure (BOYA-70): every item with its unit and duration,
+	 * every room type's coefficients, every modifier — and <b>no money</b>. Inactive, like a copy.
+	 *
+	 * <p>This is how the first version comes into being. {@link #createVersionFrom} cannot make it:
+	 * there is nothing to copy on an install whose migrations carry no price book (decision 0024).
+	 *
+	 * <p>Not restricted to being the first, though the wizard is its only expected caller. A rule
+	 * saying "only when no version exists" would exist to prevent a version with no money in it, and
+	 * that is what activation already refuses — one guard in the right place rather than two.
+	 */
+	PriceBookSummary createFromStructure(String versionCode);
+
+	/**
+	 * Sets a version's service districts, replacing whatever it had. The whole list rather than one
+	 * district at a time: this is the answer to "where does this business work", and a partial update
+	 * makes it possible to open an area while leaving another one open by accident.
+	 *
+	 * <p>Closing a district is therefore a new version, like every other price book change — §4.5's
+	 * promise covers the factor a quote was priced with as much as it covers the item costs.
+	 *
+	 * @throws com.burakpadr.decorating.quoting.domain.model.PriceBookVersionLocked if the version is
+	 *     live or any quote points at it
+	 */
+	PriceBookDetail replaceDistricts(UUID versionId, List<ServiceDistrict> districts);
 
 	/**
 	 * Copies a version whole — items, modifiers, room types and districts — under a new code. The copy

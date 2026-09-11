@@ -18,6 +18,14 @@ public record ActivationProblem(Kind kind, String subject, String detail) {
 		MISSING_ROOM_TYPE,
 
 		/**
+		 * A figure that decides money is still at zero — nobody has entered it. The wizard leaves a
+		 * version in exactly this shape between its first screen and its last (BOYA-70), and a book at
+		 * zero prices every job at cost with no VAT. Zero reads as unset here for the same reason it
+		 * does in BOYA-69's setup status: the columns are NOT NULL, so there is no other way to say it.
+		 */
+		MONEY_NOT_ENTERED,
+
+		/**
 		 * The item states the cost of labour twice — as a TL figure and as minutes at the book's own
 		 * crew rate — and the two disagree. ADR 0016: a figure above the crew rate is margin applied
 		 * twice, one below it is time nobody bills.

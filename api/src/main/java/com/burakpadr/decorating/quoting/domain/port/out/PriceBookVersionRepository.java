@@ -3,7 +3,9 @@ package com.burakpadr.decorating.quoting.domain.port.out;
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookStructure;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +27,18 @@ public interface PriceBookVersionRepository {
 	Optional<PriceBookSummary> findById(UUID id);
 
 	boolean existsByVersionCode(String versionCode);
+
+	/**
+	 * Writes a new inactive version from the structure: coefficients that are engineering rather than
+	 * money, every item at its structural unit and duration, every modifier and room type. Money
+	 * columns are written as zero explicitly rather than left to the schema's defaults — one of those
+	 * defaults is a 25,000 TL average job value, and a price that arrives with a migration is the
+	 * thing decision 0024 exists to prevent.
+	 */
+	PriceBookSummary createFromStructure(PriceBookStructure structure, String versionCode);
+
+	/** Replaces a version's districts in one statement pair: delete what was there, insert what was given. */
+	void replaceDistricts(UUID priceBookId, List<ServiceDistrict> districts);
 
 	/** Copies the source version and all four of its child tables under a new, inactive code. */
 	PriceBookSummary copy(UUID sourceId, String versionCode);

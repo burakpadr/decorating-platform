@@ -92,6 +92,73 @@
         }
       }
     },
+    "/api/op/price-books/{id}/districts" : {
+      "put" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "replaceDistricts",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReplaceDistrictsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "The version as it now stands",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookDetailResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "A district the price book cannot hold",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "No version with that id",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "The version has priced quotes; copy it and edit the copy",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/op/price-books/{id}/coefficients" : {
       "put" : {
         "tags" : [ "price-book-controller" ],
@@ -935,6 +1002,44 @@
         }
       }
     },
+    "/api/op/price-books/from-structure" : {
+      "post" : {
+        "tags" : [ "price-book-controller" ],
+        "operationId" : "createFromStructure",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateFromStructureRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "The new version: structure only, inactive",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PriceBookSummaryResponse"
+                }
+              }
+            }
+          },
+          "409" : {
+            "description" : "That version code is taken",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/quote-requests/{id}" : {
       "get" : {
         "tags" : [ "quote-request-controller" ],
@@ -1409,42 +1514,39 @@
           }
         }
       },
-      "UpdateCoefficientsRequest" : {
+      "District" : {
         "type" : "object",
         "properties" : {
-          "ceilingHeightM" : {
-            "type" : "number"
+          "code" : {
+            "type" : "string",
+            "example" : "KADIKOY"
           },
-          "grossToNetRatio" : {
-            "type" : "number"
+          "displayName" : {
+            "type" : "string",
+            "example" : "Kadıköy"
           },
-          "stage1OpeningRatio" : {
-            "type" : "number"
+          "active" : {
+            "type" : "boolean"
           },
-          "crewSize" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "crewHoursPerDay" : {
-            "type" : "number"
-          },
-          "crewDayCost" : {
-            "type" : "number"
-          },
-          "marginRatio" : {
-            "type" : "number"
-          },
-          "marginAlertThreshold" : {
-            "type" : "number"
-          },
-          "labourVatRate" : {
-            "type" : "number"
-          },
-          "materialVatRate" : {
-            "type" : "number"
+          "factor" : {
+            "type" : "number",
+            "example" : 1.05
           }
         },
-        "required" : [ "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
+        "required" : [ "active", "code", "displayName", "factor" ]
+      },
+      "ReplaceDistrictsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "districts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/District"
+            },
+            "minItems" : 1
+          }
+        },
+        "required" : [ "districts" ]
       },
       "Coefficients" : {
         "type" : "object",
@@ -1486,6 +1588,24 @@
         },
         "required" : [ "baseBandRatio", "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
       },
+      "DistrictRow" : {
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "displayName" : {
+            "type" : "string"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "factor" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "active", "code", "displayName", "factor" ]
+      },
       "PriceBookDetailResponse" : {
         "type" : "object",
         "properties" : {
@@ -1514,9 +1634,52 @@
             "items" : {
               "$ref" : "#/components/schemas/PriceBookItemResponse"
             }
+          },
+          "districts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DistrictRow"
+            }
           }
         },
-        "required" : [ "active", "coefficients", "createdAt", "editable", "id", "items", "versionCode" ]
+        "required" : [ "active", "coefficients", "createdAt", "districts", "editable", "id", "items", "versionCode" ]
+      },
+      "UpdateCoefficientsRequest" : {
+        "type" : "object",
+        "properties" : {
+          "ceilingHeightM" : {
+            "type" : "number"
+          },
+          "grossToNetRatio" : {
+            "type" : "number"
+          },
+          "stage1OpeningRatio" : {
+            "type" : "number"
+          },
+          "crewSize" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "crewHoursPerDay" : {
+            "type" : "number"
+          },
+          "crewDayCost" : {
+            "type" : "number"
+          },
+          "marginRatio" : {
+            "type" : "number"
+          },
+          "marginAlertThreshold" : {
+            "type" : "number"
+          },
+          "labourVatRate" : {
+            "type" : "number"
+          },
+          "materialVatRate" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "ceilingHeightM", "crewDayCost", "crewHoursPerDay", "crewSize", "grossToNetRatio", "labourVatRate", "marginAlertThreshold", "marginRatio", "materialVatRate", "stage1OpeningRatio" ]
       },
       "QuoteRequestResponse" : {
         "type" : "object",
@@ -2101,6 +2264,17 @@
           }
         },
         "required" : [ "percent", "target" ]
+      },
+      "CreateFromStructureRequest" : {
+        "type" : "object",
+        "properties" : {
+          "versionCode" : {
+            "type" : "string",
+            "maxLength" : 32,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "versionCode" ]
       },
       "PatchQuoteRequestRequest" : {
         "type" : "object",

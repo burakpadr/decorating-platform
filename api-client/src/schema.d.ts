@@ -20,6 +20,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/price-books/{id}/districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["replaceDistricts"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/op/price-books/{id}/coefficients": {
         parameters: {
             query?: never;
@@ -270,6 +286,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/op/price-books/from-structure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["createFromStructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quote-requests/{id}": {
         parameters: {
             query?: never;
@@ -453,18 +485,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        UpdateCoefficientsRequest: {
-            ceilingHeightM: number;
-            grossToNetRatio: number;
-            stage1OpeningRatio: number;
-            /** Format: int32 */
-            crewSize: number;
-            crewHoursPerDay: number;
-            crewDayCost: number;
-            marginRatio: number;
-            marginAlertThreshold: number;
-            labourVatRate: number;
-            materialVatRate: number;
+        District: {
+            /** @example KADIKOY */
+            code: string;
+            /** @example Kadıköy */
+            displayName: string;
+            active: boolean;
+            /** @example 1.05 */
+            factor: number;
+        };
+        ReplaceDistrictsRequest: {
+            districts: components["schemas"]["District"][];
         };
         Coefficients: {
             ceilingHeightM: number;
@@ -480,6 +511,12 @@ export interface components {
             materialVatRate: number;
             baseBandRatio: number;
         };
+        DistrictRow: {
+            code: string;
+            displayName: string;
+            active: boolean;
+            factor: number;
+        };
         PriceBookDetailResponse: {
             /** Format: uuid */
             id: string;
@@ -490,6 +527,20 @@ export interface components {
             createdAt: string;
             coefficients: components["schemas"]["Coefficients"];
             items: components["schemas"]["PriceBookItemResponse"][];
+            districts: components["schemas"]["DistrictRow"][];
+        };
+        UpdateCoefficientsRequest: {
+            ceilingHeightM: number;
+            grossToNetRatio: number;
+            stage1OpeningRatio: number;
+            /** Format: int32 */
+            crewSize: number;
+            crewHoursPerDay: number;
+            crewDayCost: number;
+            marginRatio: number;
+            marginAlertThreshold: number;
+            labourVatRate: number;
+            materialVatRate: number;
         };
         QuoteRequestResponse: {
             /** Format: uuid */
@@ -730,6 +781,9 @@ export interface components {
             target: "LABOUR" | "MATERIAL" | "ALL";
             percent: number;
         };
+        CreateFromStructureRequest: {
+            versionCode: string;
+        };
         PatchQuoteRequestRequest: {
             /** @example KADIKOY */
             districtCode?: string;
@@ -859,6 +913,59 @@ export interface operations {
                 };
             };
             /** @description A figure the price list cannot hold */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description No version with that id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description The version has priced quotes; copy it and edit the copy */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    replaceDistricts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceDistrictsRequest"];
+            };
+        };
+        responses: {
+            /** @description The version as it now stands */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PriceBookDetailResponse"];
+                };
+            };
+            /** @description A district the price book cannot hold */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1617,6 +1724,39 @@ export interface operations {
             };
             /** @description No version with that id */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    createFromStructure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFromStructureRequest"];
+            };
+        };
+        responses: {
+            /** @description The new version: structure only, inactive */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PriceBookSummaryResponse"];
+                };
+            };
+            /** @description That version code is taken */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -70,6 +70,27 @@ class ActivationCheckTest {
 	}
 
 	@Test
+	@DisplayName("a version nobody has entered the money into cannot go live either")
+	void unsetMoneyIsRefused() {
+		// The shape the setup wizard leaves behind between its first screen and its last (BOYA-70): the
+		// structure is there, the figures are not. Zero reads as "nobody entered it", the same way
+		// BOYA-69's setup status reads it — and a book at zero prices every job at cost, with no VAT.
+		// Reconciled *after* zeroing the crew rate, because that is the row the database produces:
+		// labour derives from the rate, so a rate of zero makes every item's labour zero and the
+		// reconciliation rule passes. The money check is the only thing standing here.
+		PriceBook empty = reconciled(withMoney(PriceBookFixture.seed(),
+				BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+
+		assertThat(check.check(empty))
+				.extracting(ActivationProblem::subject)
+				.containsExactlyInAnyOrder("crewDayCost", "marginRatio", "labourVatRate",
+						"materialVatRate");
+		assertThat(check.check(empty))
+				.allSatisfy(problem -> assertThat(problem.kind())
+						.isEqualTo(ActivationProblem.Kind.MONEY_NOT_ENTERED));
+	}
+
+	@Test
 	@DisplayName("a missing item is refused too: the engine throws on it at pricing time")
 	void aMissingItemIsRefused() {
 		PriceBook book = reconciled(PriceBookFixture.seed());
@@ -116,6 +137,15 @@ class ActivationCheckTest {
 						.divide(minutesInACrewDay, 2, RoundingMode.HALF_UP),
 				item.materialCost(), item.labourMinutes())));
 		return withItems(book, items);
+	}
+
+	private static PriceBook withMoney(PriceBook b, BigDecimal crewDayCost, BigDecimal margin,
+			BigDecimal labourVat, BigDecimal materialVat) {
+		return new PriceBook(b.versionCode(), b.ceilingHeightM(), b.grossToNetRatio(),
+				b.stage1OpeningRatio(), b.doorOpeningM2(), b.windowOpeningM2(), b.crewSize(),
+				b.crewHoursPerDay(), crewDayCost, b.dayRoundingTolerance(), margin,
+				b.marginAlertThreshold(), b.surveyAmountFactor(), b.averageJobValue(), labourVat,
+				materialVat, b.baseBandRatio(), b.items(), b.modifiers(), b.roomTypes(), b.districts());
 	}
 
 	private static PriceBook withItem(PriceBook book, PriceBookItem item) {

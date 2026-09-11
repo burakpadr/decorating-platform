@@ -304,9 +304,25 @@ operator (`/api/op/**`). The anonymous and verified filters are not implemented 
 never appear in a customer-facing DTO — do not solve this with conditional field stripping on a
 shared type.
 
+**The shape of a price book ships; its figures do not** (BOYA-70, decision 0027).
+`price-book/structure-v1.json` holds §5.3–5.7's engineering — room type weights, perimeter factors,
+paintable ratios, modifier scopes, and each item's unit and duration — and no money.
+`POST /api/op/price-books/from-structure` builds a version from it with every money column written as
+an **explicit zero**: the schema's own defaults include a 30% margin and a 25,000 TL average job value,
+and a price arriving from a migration is what 0024 exists to prevent. Setup then fills the figures in
+through the endpoints that already exist and activates. Versioned like the vision prompt — never edit
+a released file, add `v2`. `PriceBookStructureTest` reads it as **text** and fails on any number over
+100 with two decimals: a money field the loader ignores would still be a published price.
+
+`PUT /api/op/price-books/{id}/districts` replaces a version's districts whole, on a version nothing
+has been priced with. Closing a district is a new version, like every other price book change.
+`ServiceDistrict.validate()` is called on the way in rather than from the constructor, because the
+same type reads rows back and a stored row must stay loadable if a rule tightens.
+
 **A version is checked when it goes live** (BOYA-20a, decision 0026). `ActivationCheck` is pure and
-refuses a version with a missing item code, a missing room type, or an item whose labour contradicts
-the version's own crew rate — ADR 0016's guard, moved off the migrations that no longer carry a price
+refuses a version with a missing item code, a missing room type, money still at zero (crew rate,
+margin, either VAT rate — the shape setup leaves behind between its first screen and its last), or an
+item whose labour contradicts the version's own crew rate — ADR 0016's guard, moved off the migrations that no longer carry a price
 book. It runs at activation and not on every write, because an inactive version is allowed to be
 half-finished: the panel and the wizard both build one field at a time. Its arithmetic must stay
 `minutes × crewDayCost / (crewSize × hours × 60)` rounded once, matching the SQL exactly — deriving a

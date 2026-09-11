@@ -3,7 +3,9 @@ package com.burakpadr.decorating.quoting.adapter.out.persistence;
 import com.burakpadr.decorating.quoting.domain.model.IncreaseTarget;
 import com.burakpadr.decorating.quoting.domain.model.ItemCode;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookCoefficients;
+import com.burakpadr.decorating.quoting.domain.model.PriceBookStructure;
 import com.burakpadr.decorating.quoting.domain.model.PriceBookSummary;
+import com.burakpadr.decorating.quoting.domain.model.ServiceDistrict;
 import com.burakpadr.decorating.quoting.domain.port.out.PriceBookVersionRepository;
 import com.burakpadr.decorating.shared.Uuid7;
 import java.math.BigDecimal;
@@ -154,6 +156,73 @@ class PriceBookVersionPersistenceAdapter implements PriceBookVersionRepository {
 						+ "FROM price_book b WHERE b.id = ?",
 				Boolean.class, id);
 		return Boolean.TRUE.equals(editable);
+	}
+
+	@Override
+	public PriceBookSummary createFromStructure(PriceBookStructure structure, String versionCode) {
+		UUID id = Uuid7.generate();
+
+		// Every money column written as an explicit zero. Left out, the schema would supply its own
+		// defaults — a 30% margin and a 25,000 TL average job value — and a price that arrives with a
+		// migration is what decision 0024 exists to prevent. Zero is how BOYA-69 reads "nobody entered
+		// it", and activation refuses a version still at zero.
+		jdbc.update("""
+				INSERT INTO price_book (
+				  id, version_code, active,
+				  ceiling_height_m, gross_to_net_ratio, stage1_opening_ratio, door_opening_m2,
+				  window_opening_m2, crew_size, crew_hours_per_day, day_rounding_tolerance,
+				  survey_amount_factor, base_band_ratio,
+				  crew_day_cost, margin_ratio, margin_alert_threshold, average_job_value,
+				  labour_vat_rate, material_vat_rate)
+				VALUES (?, ?, false, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0)
+				""",
+				id, versionCode, structure.ceilingHeightM(), structure.grossToNetRatio(),
+				structure.stage1OpeningRatio(), structure.doorOpeningM2(), structure.windowOpeningM2(),
+				structure.crewSize(), structure.crewHoursPerDay(), structure.dayRoundingTolerance(),
+				structure.surveyAmountFactor(), structure.baseBandRatio());
+
+		// labour_cost is zero because the crew rate is: the derivation holds at zero, so the version is
+		// internally consistent from the first row and stays that way as the wizard fills it in.
+		structure.items().values().forEach(item -> jdbc.update(
+				"INSERT INTO price_book_item (id, price_book_id, code, unit, labour_cost, "
+						+ "material_cost, labour_minutes) VALUES (?, ?, ?, ?, 0, 0, ?)",
+				Uuid7.generate(), id, item.code().name(), item.unit().name(), item.labourMinutes()));
+
+		structure.modifiers().values().forEach(modifier -> jdbc.update(
+				"INSERT INTO price_modifier (id, price_book_id, code, factor, applies_to, scope_items) "
+						+ "VALUES (?, ?, ?, ?, ?, ?::jsonb)",
+				Uuid7.generate(), id, modifier.code().name(), modifier.factor(),
+				modifier.target().name(),
+				modifier.scopeItems().isEmpty() ? null : jsonArray(
+						modifier.scopeItems().stream().map(Enum::name).toList())));
+
+		structure.roomTypes().values().forEach(config -> jdbc.update(
+				"INSERT INTO room_type_config (id, price_book_id, room_type, area_weight, "
+						+ "perimeter_factor, paintable_ratio, required_photos) "
+						+ "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb)",
+				Uuid7.generate(), id, config.roomType().name(), config.areaWeight(),
+				config.perimeterFactor(), config.paintableRatio(),
+				jsonArray(config.requiredPhotos().stream().map(Enum::name).toList())));
+
+		// No districts. The installing business enters its own; ours are not their service area.
+		return findById(id).orElseThrow();
+	}
+
+	@Override
+	public void replaceDistricts(UUID priceBookId, List<ServiceDistrict> districts) {
+		jdbc.update("DELETE FROM service_district WHERE price_book_id = ?", priceBookId);
+		districts.forEach(district -> jdbc.update(
+				"INSERT INTO service_district (id, price_book_id, district_code, display_name, active, "
+						+ "district_factor) VALUES (?, ?, ?, ?, ?, ?)",
+				Uuid7.generate(), priceBookId, district.districtCode(), district.displayName(),
+				district.active(), district.districtFactor()));
+	}
+
+	/** A JSON array of quoted strings, for the two jsonb columns that hold code lists. */
+	private static String jsonArray(List<String> values) {
+		return values.stream()
+				.map(value -> "\"" + value + "\"")
+				.collect(java.util.stream.Collectors.joining(",", "[", "]"));
 	}
 
 	@Override

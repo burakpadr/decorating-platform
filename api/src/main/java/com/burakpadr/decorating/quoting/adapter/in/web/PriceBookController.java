@@ -107,6 +107,40 @@ class PriceBookController {
 		return PriceBookDetailResponse.of(versions.updateCoefficients(id, request.toDomain()));
 	}
 
+	/**
+	 * The first price book an installation has (BOYA-70). Built from the shipped structure — units,
+	 * durations, room type coefficients and modifiers — with no money in it and inactive. Setup fills
+	 * the figures in through the endpoints above and then activates it.
+	 */
+	@PostMapping("/from-structure")
+	@ResponseStatus(HttpStatus.CREATED)
+	@ApiResponses({
+			@ApiResponse(responseCode = "201", description = "The new version: structure only, inactive",
+					content = @Content(schema = @Schema(implementation = PriceBookSummaryResponse.class))),
+			@ApiResponse(responseCode = "409", description = "That version code is taken",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
+	PriceBookSummaryResponse createFromStructure(
+			@Valid @RequestBody CreateFromStructureRequest request) {
+		return PriceBookSummaryResponse.of(versions.createFromStructure(request.versionCode()));
+	}
+
+	/** The districts this business serves, as a whole list, on a version nothing has been priced with. */
+	@PutMapping("/{id}/districts")
+	@ApiResponses({
+			@ApiResponse(responseCode = "200", description = "The version as it now stands",
+					content = @Content(schema = @Schema(implementation = PriceBookDetailResponse.class))),
+			@ApiResponse(responseCode = "400", description = "A district the price book cannot hold",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+			@ApiResponse(responseCode = "404", description = "No version with that id",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class))),
+			@ApiResponse(responseCode = "409",
+					description = "The version has priced quotes; copy it and edit the copy",
+					content = @Content(schema = @Schema(implementation = ProblemDetail.class)))})
+	PriceBookDetailResponse replaceDistricts(
+			@PathVariable UUID id, @Valid @RequestBody ReplaceDistrictsRequest request) {
+		return PriceBookDetailResponse.of(versions.replaceDistricts(id, request.toDomain()));
+	}
+
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	@ApiResponses({
